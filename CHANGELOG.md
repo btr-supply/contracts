@@ -39,7 +39,3 @@ NB: [Auto-generated from commits](./scripts/release.py) - DO NOT EDIT.
 
 ### Docs
 - [docs] Update CONTRIBUTING.md for current structure and tooling
-
-## [0.0.0] - 2025-04-17
-
-> **Note:** This release consolidates the initial development (including pre-fork code) and CI/CD setup from the original [Astrolab Swapper](https://github.com/AstrolabDAO/swapper) project.
