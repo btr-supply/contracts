@@ -39,30 +39,14 @@ check-branch-main:
 	@echo "Checking if current branch is main..."
 	bash scripts/check-branch.sh main
 
-# Common release steps macro
-define RELEASE_STEPS
-	$(eval NEW_VERSION := $(shell uv run python scripts/release.py $(1)))
-	@if [ -z "$(NEW_VERSION)" ]; then \
-		echo "Error: Failed to get new version from release script." >&2; \
-		exit 1; \
-	fi
-	@echo "Staging release files for v$(NEW_VERSION)..."
-	git add pyproject.toml CHANGELOG.md
-	@echo "Committing release v$(NEW_VERSION)..."
-	git commit -m "[ops] Release v$(NEW_VERSION)" || (echo "Commit failed, check hooks or conflicts." >&2; exit 1)
-	@echo "Tagging release v$(NEW_VERSION)..."
-	git tag v$(NEW_VERSION) || (echo "Tag creation failed." >&2; exit 1)
-	@echo "Release v$(NEW_VERSION) prepared. Run 'make push-tags' to publish."
-endef
-
 release-major: check-branch-main
-	$(call RELEASE_STEPS,major)
+	bash scripts/release.sh major
 
 release-minor: check-branch-main
-	$(call RELEASE_STEPS,minor)
+	bash scripts/release.sh minor
 
 release-patch: check-branch-main
-	$(call RELEASE_STEPS,patch)
+	bash scripts/release.sh patch
 
 push-tags: pre-push
 	@echo "Pushing main branch and tags to origin..."
