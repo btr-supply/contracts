@@ -8,3 +8,23 @@ repos:
     pass_filenames: false # Makefile target doesn't need filenames
     always_run: true      # Run if any files are staged
     stages: [pre-commit]
+  - id: validate-commit-msg
+    name: Validate commit message format
+    entry: make validate-commit-msg
+    language: system
+    stages: [commit-msg]
+    # No need for pass_filenames or always_run for commit-msg
+  - id: make-pre-push
+    name: Validate branch and commits before push
+    entry: make pre-push
+    language: system
+    stages: [pre-push]
+    pass_filenames: false
+    always_run: true # Check all relevant commits/branch on push
+  - id: validate-branch-name
+    name: Validate current branch name format
+    entry: make validate-branch-name
+    language: system
+    stages: [post-checkout]
+    pass_filenames: false
+    always_run: true # Check whenever a checkout occurs

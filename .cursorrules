@@ -1,5 +1,5 @@
 ---
-description: Project structure and development guidelines for the multi-chain contracts repository.
+description: Project structure and development guidelines for multi-chain smart contract development
 globs:
   - "*"
 ---
@@ -7,69 +7,61 @@ globs:
 # Project Structure
 
 ### Multi-Chain Architecture
-- Ethereum/EVM code lives in `./evm` directory and uses `./evm/foundry.toml` for configuration
-- Solana-specific code lives in `./solana` directory
-- Sui-specific code lives in `./sui` directory
+- EVM code in `./evm` with `foundry.toml` configuration
+- Solana code in `./solana` 
+- Sui code in `./sui`
 
-### Build Tools Organization
-- Bash scripts for project-wide tooling are in `./scripts` 
-- Forge/Foundry scripts for EVM deployment are in `./evm/scripts`
-- Diamond pattern facets are in `./evm/src/facets`
+### Build Organization
+- Project-wide scripts in `./scripts`
+- EVM deployment scripts in `./evm/scripts` 
+- Diamond pattern facets in `./evm/src/facets`
 
 ### Diamond Architecture (EVM)
-- Project uses Diamond pattern (EIP-2535) for contract modularity
-- Compilation happens in two steps:
-  1. First compiling all facets from `./evm/src/facets`
-  2. Then generating the diamond deployment script to register facet functions
-  3. Finally compiling everything together (generated deployer + tests)
-- This 3-steps build process is automated via `./scripts/setup.sh`
+- Uses Diamond pattern (EIP-2535) for modularity
+- Three-step compilation via `./scripts/setup.sh`:
+  1. Compile facets from `./evm/src/facets`
+  2. Generate diamond deployment script
+  3. Compile all components together
 
 # Development Guidelines
 
-### Explicit Checkpoint Requirements
-- You must pause after completing each logical unit of work and wait for explicit approval before continuing.
-- Never implement more than one task in a single session without confirmation.
+### Core Principles
+- Implement minimum viable solutions
+- Choose narrow scope interpretations
+- Require explicit approval for scope changes
+- Use only `setup.sh` for builds
 
-### Minimalist Implementation Rule
-- Always implement the absolute minimum to meet the specified task requirements.
-- When in doubt about scope, choose the narrower interpretation.
-
-### Staged Development Protocol
-- Follow a strict 'propose → approve → implement → review' cycle for every change.
-- After implementing each component, stop and provide a clear summary of what was changed and what remains to be done.
-
-### Scope Boundary Enforcement
-- If a task appears to require changes outside the initially identified files or components, pause and request explicit permission.
-- Never perform 'while I'm at it' improvements without prior approval.
-
-### Build Process Enforcement
-- Only use setup.sh for building the project.
-- Do not use direct forge commands for building, cleaning, or testing the project.
-
-onlygodtime: Integrated (Ø,G), [07/03/2025 14:13]
----
-description: Enforce structured communication, checkpoints, and complexity management.
-globs:
-  - "*"
----
-
-# Communications
-
-### Mandatory Checkpoints
-- After every change, pause and summarize what you've done and what you're planning next.
-- Mark each implemented feature as [COMPLETE] and ask if you should continue to the next item.
-
-### Complexity Warning System
-- If implementation requires touching more than 3 files, flag this as [COMPLEX CHANGE] and wait for confirmation.
-- Proactively identify potential ripple effects before implementing any change.
-
-### Change Magnitude Indicators
-- Classify all proposed changes as:
+### Change Management
+- Classify changes as:
   - [MINOR] (1-8 lines)
-  - [MODERATE] (8-30 lines)
+  - [MODERATE] (8-30 lines) 
   - [MAJOR] (30+ lines)
-- For [MAJOR] changes, provide a detailed implementation plan and wait for explicit approval.
+- Flag [COMPLEX] changes affecting 3+ files
+- Provide implementation plans for [MAJOR] changes
+- Document potential side effects
 
-<!-- ### Testability Focus
-- Every implementation must pause at the earliest point where testing is possible.
-- Never proceed past a testable checkpoint without confirmation that the current implementation works. -->
+### Development Workflow
+- Follow strict cycle: propose → approve → implement → review
+- Pause after each [MAJOR] logical unit for approval, proceed autonomously otherwise
+- Summarize changes and remaining work
+- Do not request permission for cross-component changes unless major refactoring or deletion
+
+### AI Agent Guidelines
+- Maintain consistent code style
+- Respect project conventions
+- Provide clear reasoning for suggestions
+- Ask clarifying questions when needed
+- Break down complex tasks
+- Validate assumptions
+- Consider edge cases
+- Focus on maintainability
+- Document key decisions
+- Highlight potential risks
+
+### Communication Protocol
+- Use clear status indicators ([COMPLETE], [PENDING], etc.)
+- Provide progress summaries
+- Request explicit confirmations
+- Flag blockers immediately
+- Document key assumptions
+- Maintain audit trail

@@ -31,19 +31,19 @@ validate-branch-name:
 	@echo "Validating current branch name format..."
 	uv run python scripts/check-name.py -b
 
-validate-pre-push:
-	@echo "Validating format of commits to be pushed..."
+pre-push:
+	@echo "Validating format of commits+branch name to be pushed..."
 	uv run python scripts/check-name.py -p
 
 check-branch-main:
 	@echo "Checking if current branch is main..."
 	bash scripts/check-branch.sh main
 
-release-major: check-branch-main validate-commit-msg validate-branch-name validate-pre-push
+release-major: check-branch-main validate-commit-msg validate-branch-name pre-push
 	uv run python scripts/release.py major
 
-release-minor: check-branch-main validate-commit-msg validate-branch-name validate-pre-push
+release-minor: check-branch-main validate-commit-msg validate-branch-name pre-push
 	uv run python scripts/release.py minor
 
-release-patch: check-branch-main validate-commit-msg validate-branch-name validate-pre-push
+release-patch: check-branch-main validate-commit-msg validate-branch-name pre-push
 	uv run python scripts/release.py patch

@@ -1,0 +1,470 @@
+defaults:
+  licence: MIT
+  author: BTR Team
+  sol_version: 0.8.28
+  title:
+  short_desc:
+  desc:
+  dev_comment:
+
+evm:
+  interfaces: {}
+  src:
+    abstract:
+      ERC20Bridgeable.sol:
+        title: ERC20 Bridgeable
+        short_desc: Abstract contract for bridgeable ERC20 tokens
+        desc: Provides base functionality for tokens that can be bridged cross-chain
+        dev_comment: Intended for inheritance by specific bridgeable token implementations
+      Pausable.sol:
+        title: Pausable Base
+        short_desc: Base pausable contract pattern
+        desc: Abstract contract providing basic pause/unpause functionality using diamond storage
+        dev_comment: Based on OpenZeppelin Pausable but adapted for diamond storage
+      Managed.sol:
+        title: Managed Base
+        short_desc: Base contract for managed ownership
+        desc: Abstract contract providing ownership management features
+        dev_comment: Used for components requiring access control
+      Permissioned.sol:
+        title: Permissioned Base
+        short_desc: Base contract for permissioned access
+        desc: Abstract contract providing role-based access control hooks
+        dev_comment: Integrates with AccessControl implementation using diamond storage
+      Bridgeable.sol:
+        title: Bridgeable Base
+        short_desc: Abstract contract for generic bridging
+        desc: Provides base functionality for cross-chain interactions
+        dev_comment: Can be inherited by facets handling specific bridge protocols
+    facets:
+      abstract:
+        PausableFacet.sol:
+          title: Pausable
+          short_desc: Emergency pause functionality
+          desc: Provides emergency stop mechanism for protocol operations
+          dev_comment: Inherits from OpenZeppelin Pausable with diamond storage pattern
+        DEXAdapterFacet.sol:
+          title: DEX Adapter
+          short_desc: Base contract for DEX integrations
+          desc: Abstract base contract for decentralized exchange integrations
+          dev_comment: Implements common DEX interface and safety checks
+        RestrictedFacet.sol:
+          title: Restricted Functions
+          short_desc: Access-controlled operations
+          desc: Contains permissioned protocol administration functions
+          dev_comment: Integrates with AccessControlFacet for permissions
+        V3AdapterFacet.sol:
+          title: V3 DEX Adapter Base
+          short_desc: Abstract base for V3-style DEX adapters
+          desc: Defines the interface and common logic for V3 DEX interactions
+          dev_comment: Handles common V3 pool interactions like position minting and collecting fees
+        NonReentrantFacet.sol:
+          title: Non-Reentrant Facet
+          short_desc: Prevents reentrancy attacks
+          desc: Implements a reentrancy guard modifier for facet functions
+          dev_comment: Uses diamond storage for the reentrancy lock
+        PermissionedFacet.sol:
+          title: Permissioned Facet Base
+          short_desc: Abstract base for permissioned facets
+          desc: Provides modifiers and helpers for access-controlled facet functions
+          dev_comment: Inherits from Permissioned abstract contract
+      DiamondCutFacet.sol:
+        title: Diamond Cut
+        short_desc: Upgrade functionality
+        desc: Handles diamond proxy upgrades and facet management
+        dev_comment: Implements EIP-2535 diamond standard
+      RescueFacet.sol:
+        title: Asset Rescue
+        short_desc: Emergency asset recovery
+        desc: Allows recovery of stuck/lost assets in emergency situations
+        dev_comment: Requires admin multisig approval for executions
+      TreasuryFacet.sol:
+        title: Treasury Facet
+        short_desc: Manages protocol treasury funds
+        desc: Handles collection and distribution of protocol fees and revenues
+        dev_comment: Integrates with fee management and access control
+      DiamondLoupeFacet.sol:
+        title: Diamond Loupe
+        short_desc: Diamond introspection
+        desc: Implements EIP-2535 DiamondLoupe standard for querying facets and functions
+        dev_comment: Standard facet for diamond introspection
+      ManagementFacet.sol:
+        title: Management Facet
+        short_desc: Protocol parameter management
+        desc: Allows authorized addresses to update protocol settings and parameters
+        dev_comment: Works with AccessControl for permissions
+      SwapperFacet.sol:
+        title: Swapper Facet
+        short_desc: Handles token swaps via DEX adapters
+        desc: Provides unified interface for executing swaps across different DEXs
+        dev_comment: Routes swaps through registered DEX adapters
+      ERC1155VaultsFacet.sol:
+        title: ERC1155 Vaults Facet
+        short_desc: Manages ERC1155-based liquidity vaults
+        desc: Handles creation, deposits, withdrawals, and management of ERC1155 LP vaults
+        dev_comment: Core logic for LP token representation and vault accounting
+      ALMFacet.sol:
+        title: ALM Facet
+        short_desc: Automated Liquidity Management logic
+        desc: Implements strategies for managing and rebalancing liquidity positions on DEXs
+        dev_comment: Interacts with DEX adapters and ERC1155 Vaults
+      AccessControlFacet.sol:
+        title: Access Control Facet
+        short_desc: Role-based access control management
+        desc: Manages roles, permissions, and grants/revokes access for protocol functions
+        dev_comment: Implements standard access control logic using diamond storage
+      adapters:
+        oracles: {}
+        dexs:
+          AeroV3AdapterFacet.sol:
+            title: Aerodrome V3 Adapter
+            short_desc: Aerodrome V3 integration
+            desc: Implements Aerodrome V3 specific DEX operations
+            dev_comment:
+          UniV3AdapterFacet.sol:
+            title: Uniswap V3 Adapter
+            short_desc: Uniswap V3 integration
+            desc: Implements Uniswap V3 specific DEX operations
+            dev_comment:
+          CamelotV3AdapterFacet.sol:
+            title: Camelot V3 Adapter
+            short_desc: Camelot V3 integration
+            desc: Implements Camelot V3 specific DEX operations
+            dev_comment:
+          VeloV3AdapterFacet.sol:
+            title: Velodrome V3 Adapter
+            short_desc: Velodrome V3 integration
+            desc: Implements Velodrome V3 specific DEX operations
+            dev_comment:
+          PharaohV3AdapterFacet.sol:
+            title: Pharaoh V3 Adapter
+            short_desc: Pharaoh V3 integration
+            desc: Implements Pharaoh V3 specific DEX operations
+            dev_comment:
+          RamsesV3AdapterFacet.sol:
+            title: Ramses V3 Adapter
+            short_desc: Ramses V3 integration
+            desc: Implements Ramses V3 specific DEX operations
+            dev_comment:
+          CakeV3AdapterFacet.sol:
+            title: PancakeSwap V3 Adapter
+            short_desc: PancakeSwap V3 integration
+            desc: Implements PancakeSwap V3 specific DEX operations
+            dev_comment:
+          QuickV3AdapterFacet.sol:
+            title: QuickSwap V3 Adapter
+            short_desc: QuickSwap V3 integration
+            desc: Implements QuickSwap V3 specific DEX operations
+            dev_comment:
+          ShadowV3AdapterFacet.sol:
+            title: Shadow V3 Adapter
+            short_desc: Shadow V3 integration
+            desc: Implements Shadow V3 specific DEX operations
+            dev_comment:
+          ThenaV3AdapterFacet.sol:
+            title: Thena V3 Adapter
+            short_desc: Thena V3 integration
+            desc: Implements Thena V3 specific DEX operations
+            dev_comment:
+          KodiakV3AdapterFacet.sol:
+            title: Kodiak V3 Adapter
+            short_desc: Kodiak V3 integration
+            desc: Implements Kodiak V3 specific DEX operations
+            dev_comment:
+          EqualizerV3AdapterFacet.sol:
+            title: Equalizer V3 Adapter
+            short_desc: Equalizer V3 integration
+            desc: Implements Equalizer V3 specific DEX operations
+            dev_comment:
+          AlgebraV4AdapterFacet.sol:
+            title: Algebra V4 Adapter
+            short_desc: Algebra V4 integration
+            desc: Implements Algebra V4 specific DEX operations
+            dev_comment:
+          AlgebraV3AdapterFacet.sol:
+            title: Algebra V3 Adapter
+            short_desc: Algebra V3 integration
+            desc: Implements Algebra V3 specific DEX operations
+            dev_comment:
+          SwapXAdapterFacet.sol:
+            title: SwapX Adapter
+            short_desc: SwapX integration
+            desc: Implements SwapX specific DEX operations
+            dev_comment:
+        bridges:
+          LayerZeroAdapterFacet.sol:
+            title: LayerZero Bridge
+            short_desc: Cross-chain messaging
+            desc: Handles cross-chain communications via LayerZero
+            dev_comment: Implements ULNv2 for message verification
+          LayerZeroAdapterFacet.sol.wip:
+            title: LayerZero Bridge (WIP)
+            short_desc: Cross-chain messaging (Work In Progress)
+            desc: Handles cross-chain communications via LayerZero (under development)
+            dev_comment: Implements ULNv2 for message verification, potentially unstable
+    libraries:
+      BTREvents.sol:
+        title: BTR Events Library
+        short_desc: Centralized event definitions
+        desc: Defines all custom events emitted by the BTR protocol contracts
+        dev_comment: Used for consistency and off-chain indexing
+      LibALM.sol:
+        title: ALM Library
+        short_desc: Core logic for Automated Liquidity Management
+        desc: Contains functions for calculating positions, handling rebalances, and managing vaults
+        dev_comment: Maths related to ticks/concentrated liquidity
+      LibFee.sol:
+        title: Fee Library
+        short_desc: Protocol fee calculation and management
+        desc: Contains functions for calculating, collecting, and distributing protocol fees
+        dev_comment: Separates fee logic for clarity
+      LibPausable.sol:
+        title: Pausable Library
+        short_desc: Shared pause functionality logic
+        desc: Provides internal functions for pause/unpause checks using diamond storage
+        dev_comment: Helper library for PausableFacet and abstract Pausable
+      BTRUtils.sol:
+        title: BTR Utilities Library
+        short_desc: General utility functions
+        desc: Contains various helper functions used across the protocol
+        dev_comment: Includes type conversions, common checks, etc.
+      LibMaths.sol:
+        title: Maths Library
+        short_desc: General mathematical functions
+        desc: Provides safe and optimized mathematical operations
+        dev_comment: Includes fixed-point math and common calculations
+      LibRescue.sol:
+        title: Rescue Library
+        short_desc: Asset rescue logic
+        desc: Contains internal functions for the asset rescue mechanism
+        dev_comment: Helper library for RescueFacet
+      LibDiamond.sol:
+        title: Diamond Library
+        short_desc: Diamond pattern helpers
+        desc: Provides functions for interacting with diamond storage and facets
+        dev_comment: Core library for EIP-2535 implementation
+      LibSwapper.sol:
+        title: Swapper Library
+        short_desc: Token swapping logic
+        desc: Contains internal functions for executing swaps via DEX adapters
+        dev_comment: Helper library for SwapperFacet
+      LibTreasury.sol:
+        title: Treasury Library
+        short_desc: Treasury management logic
+        desc: Contains internal functions for managing treasury funds and distributions
+        dev_comment: Helper library for TreasuryFacet
+      LibManagement.sol:
+        title: Management Library
+        short_desc: Protocol parameter management logic
+        desc: Contains internal functions for setting and getting protocol parameters
+        dev_comment: Helper library for ManagementFacet
+      LibDEXMaths.sol:
+        title: DEX Maths Library
+        short_desc: Mathematical functions for DEX interactions
+        desc: Provides calculations specific to DEX pools (e.g., tick math, price conversions)
+        dev_comment: Used by ALM and DEX adapter components
+      LibAccessControl.sol:
+        title: Access Control Library
+        short_desc: Role-based access control logic
+        desc: Provides internal functions for checking roles and permissions
+        dev_comment: Helper library for AccessControlFacet and Permissioned contracts
+      LibBitMask.sol:
+        title: Bit Mask Library
+        short_desc: Bit manipulation utilities
+        desc: Contains functions for working with bitmasks
+        dev_comment: Useful for managing flags or compact storage
+      BTRStorage.sol:
+        title: BTR Storage Library
+        short_desc: Diamond storage layout definition
+        desc: Defines the storage layout for the BTR diamond proxy
+        dev_comment: Central location for all diamond storage variables (AppStorage pattern)
+      LibERC1155.sol:
+        title: ERC1155 Library
+        short_desc: ERC1155 token interaction logic
+        desc: Contains internal functions for managing ERC1155 vault tokens
+        dev_comment: Helper library for ERC1155VaultsFacet
+      FixedPoint96.sol:
+        title: FixedPoint96 Library
+        short_desc: Fixed-point math library (Q96)
+        desc: Provides fixed-point arithmetic operations with 96 fractional bits
+        dev_comment: Based on Uniswap V3 library for price calculations
+    core:
+      BTRTypes.sol:
+        title: BTR Types
+        short_desc: Custom data structures and types
+        desc: Defines custom structs, enums, and constants used throughout the BTR protocol
+        dev_comment: Central definition for shared data types
+      BTR.sol:
+        title: BTR Main Contract (Placeholder)
+        short_desc: Placeholder for potential core logic
+        desc: Currently serves as a placeholder or entry point, may be removed or expanded
+        dev_comment: Defines basic contract structure, potentially for non-diamond parts
+      BTRDiamond.sol:
+        title: BTR Diamond Contract
+        short_desc: Main diamond proxy contract implementation
+        desc: The main entry point for the BTR protocol, implementing the EIP-2535 diamond standard
+        dev_comment: Inherits from LibDiamond and uses BTRStorage
+  tests:
+    mocks:
+      MockERC1155.sol:
+        title: Mock ERC1155
+        short_desc: Mock implementation of ERC1155 token
+        desc: Test utility contract providing a basic ERC1155 implementation
+        dev_comment: Used for testing ERC1155 interactions
+      MockERC20.sol:
+        title: Mock ERC20
+        short_desc: Mock implementation of ERC20 token
+        desc: Test utility contract providing a basic ERC20 implementation
+        dev_comment: Used for testing ERC20 interactions
+      DummyContract.sol:
+        title: Dummy Contract
+        short_desc: Empty contract for testing
+        desc: A simple, empty contract used for various testing scenarios
+        dev_comment: Useful for testing contract interactions or deployments
+      MockERC721.sol:
+        title: Mock ERC721
+        short_desc: Mock implementation of ERC721 token
+        desc: Test utility contract providing a basic ERC721 implementation
+        dev_comment: Used for testing NFT interactions
+      MockBridge.sol:
+        title: Mock Bridge
+        short_desc: Mock implementation of a cross-chain bridge
+        desc: Test utility contract simulating bridge behavior for testing
+        dev_comment: Used for testing bridge adapter facets
+    unit:
+      ManagementTest.t.sol:
+        title: Management Test
+        short_desc: Unit tests for ManagementFacet
+        desc: Verifies the functionality of protocol parameter management
+        dev_comment: Tests setting and getting parameters with access control
+      TreasuryTest.t.sol:
+        title: Treasury Test
+        short_desc: Unit tests for TreasuryFacet
+        desc: Verifies the functionality of fee collection and distribution
+        dev_comment: Tests treasury operations and accounting
+      SaltMinerTest.t.sol:
+        title: Salt Miner Test
+        short_desc: Deterministic deployment verification
+        desc: Validates CREATE2 address generation and deployment
+        dev_comment: Tests deterministic deployment logic
+      RescuableTest.t.sol:
+        title: Rescue Functions Test
+        short_desc: Asset recovery validation
+        desc: Verifies emergency asset recovery functionality
+        dev_comment: Tests multisig approval workflows
+      DiamondTest.t.sol:
+        title: Diamond Test
+        short_desc: Proxy upgrade validation
+        desc: Verifies diamond proxy functionality and facet management
+        dev_comment: Tests EIP-2535 compliance
+      DeterministicDiamondTest.t.sol:
+        title: Deterministic Diamond Test
+        short_desc: Predictable deployment verification
+        desc: Validates deterministic diamond deployment process
+        dev_comment: Tests CREATE2 address predictability
+      StorageUpgradeTest.t.sol:
+        title: Storage Upgrade Test
+        short_desc: Storage layout validation
+        desc: Verifies storage compatibility across upgrades
+        dev_comment: Tests upgrade safety checks
+      AccessControlTest.t.sol:
+        title: Access Control Test
+        short_desc: Permission validation
+        desc: Verifies role-based access control functionality
+        dev_comment: Tests permission escalation prevention
+      BTRTest.t.sol:
+        title: BTR Core Test
+        short_desc: Tests core BTR contract interactions (if any)
+        desc: Verifies functionality related to the core BTR.sol or BTRDiamond.sol contracts
+        dev_comment: May test basic setup or interactions not covered by facet tests
+      RescueTest.t.sol:
+        title: Rescue Test
+        short_desc: Asset recovery validation
+        desc: Verifies emergency asset recovery functionality
+        dev_comment: Tests the RescueFacet logic and permissions
+    integration:
+      BNBALMTest.t.sol:
+        title: BNB ALM Test
+        short_desc: Integration tests for ALM on BNB Chain context
+        desc: Verifies ALM functionality using BNB Chain specific pools/adapters (e.g., PancakeSwap)
+        dev_comment: Inherits from ALMBaseTest
+      CakeV3StableALMTest.t.sol:
+        title: CakeV3 Stable ALM Test
+        short_desc: Integration tests for ALM on PancakeSwap V3 stable pools
+        desc: Verifies ALM functionality specifically for stablecoin pairs on PancakeSwap V3
+        dev_comment: Inherits from ALMBaseTest
+      UniV3StableALMTest.t.sol:
+        title: UniV3 Stable ALM Test
+        short_desc: Integration tests for ALM on Uniswap V3 stable pools
+        desc: Verifies ALM functionality specifically for stablecoin pairs on Uniswap V3
+        dev_comment: Inherits from ALMBaseTest
+      ThenaV3StableALMTest.t.sol:
+        title: ThenaV3 Stable ALM Test
+        short_desc: Integration tests for ALM on Thena V3 stable pools
+        desc: Verifies ALM functionality specifically for stablecoin pairs on Thena V3
+        dev_comment: Inherits from ALMBaseTest
+      BNBRebalanceTest.t.sol:
+        title: BNB Rebalance Test
+        short_desc: Integration tests for rebalancing on BNB Chain context
+        desc: Verifies the rebalancing logic within the ALM system on BNB Chain
+        dev_comment: Tests triggers and outcomes of rebalance operations
+      ChainMeta.sol:
+        title: Chain Metadata Library (Test)
+        short_desc: Provides chain-specific constants for tests
+        desc: Defines constants like block numbers or RPC URLs for specific chains used in integration tests
+        dev_comment: Helper library for fork testing setup
+      BNBMultiDEXTest.t.sol:
+        title: BNB Multi-DEX Test
+        short_desc: Integration tests for swapping across multiple DEXs on BNB
+        desc: Verifies the SwapperFacet's ability to route trades across different DEX adapters on BNB Chain
+        dev_comment: Tests aggregation or multi-hop swap logic
+      ALMBaseTest.sol:
+        title: ALM Base Test
+        short_desc: Base contract for ALM integration tests
+        desc: Provides common setup and helper functions for ALM integration testing across different DEXs/chains
+        dev_comment: Abstract contract to be inherited by specific test implementations
+      CreateXTest.t.sol:
+        title: CreateX Test
+        short_desc: Tests for CreateX factory usage
+        desc: Verifies deployments using the CreateX deterministic deployment proxy
+        dev_comment: Ensures compatibility with CreateX patterns if used
+    BaseDiamondTest.t.sol:
+      title: Base Diamond Test
+      short_desc: Base contract for diamond-related tests
+      desc: Provides common setup logic for deploying the diamond and initializing facets for testing
+      dev_comment: Inherited by most unit and integration tests
+  scripts:
+    VerifyMiner.s.sol:
+      title: Verify Miner
+      short_desc: Deployment verification
+      desc: Validates deterministic deployment parameters
+      dev_comment: Uses CREATE2 address pre-calculation
+    DeployDiamond.s.sol:
+      title: Deploy Diamond
+      short_desc: Mainnet deployment
+      desc: Handles production diamond deployment
+      dev_comment: Uses safe upgrade patterns
+    DeployDeterministic.s.sol:
+      title: Deploy Deterministic
+      short_desc: Salt-based deployment
+      desc: Manages CREATE2-based deterministic deployments
+      dev_comment: Implements salt mining logic
+  utils:
+    generated:
+      DiamondDeployer.gen.sol:
+        title: Generated Diamond Deployer
+        short_desc: Auto-generated deployment script helper
+        desc: Contract generated by scripts to facilitate diamond deployment with correct facets
+        dev_comment: Do not edit manually; generated by ./scripts/generate_deployer.py
+
+scripts:
+  generate_deployer.py:
+    title: Generate Diamond Deployer Script
+    short_desc: Generates the DiamondDeployer.sol contract
+    desc: Python script that reads facet configurations and artifacts to generate a Solidity contract responsible for deploying the diamond proxy and its initial facets.
+    dev_comment: Reads facets.json and build artifacts, uses templates/DiamondDeployer.sol.tpl
+  release.py:
+    title: Release Helper Script
+    short_desc: Automates version bumping and changelog generation
+    desc: Python script to increment the project version in uv.toml, update CHANGELOG.md based on commit messages since the last tag, and clean up local git tags.
+    dev_comment: Requires specific commit message prefixes (e.g., [feat], [fix]) for changelog generation.

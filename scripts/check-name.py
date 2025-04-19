@@ -4,24 +4,34 @@ import sys
 import os
 import subprocess
 
-BRANCH_RE = re.compile(r'^(feat|fix|refactor|ops|docs)/')
-COMMIT_RE = re.compile(r'^(feat|fix|refactor|ops|docs)\[')
+BRANCH_RE = re.compile(
+    r'^(feat|fix|refac|ops|docs)/')  # Branches must start with type/
+COMMIT_RE = re.compile(r'^\[(feat|fix|refac|ops|docs)\] '
+                       )  # Commits must start with [type] and a space
 is_invalid = False
+
 
 # Helper function to run shell commands silently and return output
 def run_cmd(cmd):
-    return subprocess.run(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True).stdout.strip()
+  return subprocess.run(cmd,
+                        shell=True,
+                        stdout=subprocess.PIPE,
+                        stderr=subprocess.DEVNULL,
+                        text=True).stdout.strip()
+
 
 def record_failure(check_type, value):
   """Prints an error message and sets the global invalid flag."""
   global is_invalid
-  print(f'[POLICY] Invalid {check_type}: {value.splitlines()[0]}', file=sys.stderr)
+  print(f'[POLICY] Invalid {check_type}: {value.splitlines()[0]}',
+        file=sys.stderr)
   is_invalid = True
+
 
 script_args = sys.argv[1:]
 check_branch = '-b' in script_args or '--check-branch' in script_args
 check_commit = '-c' in script_args or '--check-commit' in script_args
-check_push   = '-p' in script_args or '--check-push' in script_args
+check_push = '-p' in script_args or '--check-push' in script_args
 
 project_root = run_cmd('git rev-parse --show-toplevel')
 if not project_root:
@@ -34,7 +44,8 @@ if '--commit-msg-file' in script_args:
   try:
     commit_msg_file = script_args[script_args.index('--commit-msg-file') + 1]
   except IndexError:
-    print("[POLICY] Error: --commit-msg-file flag requires an argument.", file=sys.stderr)
+    print("[POLICY] Error: --commit-msg-file flag requires an argument.",
+          file=sys.stderr)
     is_invalid = True
 elif check_commit:
   commit_msg_file = os.path.join(project_root, '.git', 'COMMIT_EDITMSG')
@@ -65,11 +76,13 @@ if check_commit:
 # 3. Check Pre-push Commit Format (if checking push, and not protected)
 if check_push and not is_protected_branch:
   # Determine commit range (try upstream, fallback to HEAD~1)
-  upstream_ref = run_cmd("git rev-parse --abbrev-ref --symbolic-full-name '@{u}'") or 'HEAD~1'
+  upstream_ref = run_cmd(
+      "git rev-parse --abbrev-ref --symbolic-full-name '@{u}'") or 'HEAD~1'
   # Get log of commit messages in the range
   commit_log = run_cmd(f"git log {upstream_ref}..HEAD --pretty=%B")
   # Validate each non-empty commit message
-  for i, commit_text in enumerate([msg for msg in commit_log.split('\n\n\n') if msg.strip()]):
+  for i, commit_text in enumerate(
+      [msg for msg in commit_log.split('\n\n\n') if msg.strip()]):
     if not COMMIT_RE.match(commit_text):
       record_failure(f'pushed commit #{i+1} format', commit_text)
 
