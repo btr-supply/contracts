@@ -1,56 +1,42 @@
-#!/bin/bash
+#!/bin/sh
 
-# Script to fetch dependencies for the project
+PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+cd "$PROJECT_ROOT"
 
-# Define dependencies with versions, solidity-only flag, and optional alias
-DEPS=(
-  "https://github.com/OpenZeppelin/openzeppelin-contracts.git v5.2.0 true oz"
-  "https://github.com/OpenZeppelin/openzeppelin-contracts-upgradeable.git v5.2.0 true oz-upgradeable"
-  "https://github.com/LayerZero-Labs/devtools.git @layerzerolabs/ua-devtools-evm@5.0.7 true lz-devtools"
-  "https://github.com/LayerZero-Labs/layerzero-v2 main true lz-v2"
-  "https://github.com/foundry-rs/forge-std.git v1.9.6 false forge-std"
-)
+# Script to fetch dependencies for the project (sh compatible)
 
-# Store root directory and create dependencies dir
-ROOT_DIR=$(cd "$(dirname "$0")"/.. && pwd)
-DEPS_DIR="${ROOT_DIR}/evm/.deps"
-mkdir -p ${DEPS_DIR}
+EVM_DEPS='https://github.com/OpenZeppelin/openzeppelin-contracts.git,v5.2.0,oz
+https://github.com/OpenZeppelin/openzeppelin-contracts-upgradeable.git,v5.2.0,oz-upgradeable
+https://github.com/LayerZero-Labs/devtools.git,@layerzerolabs/ua-devtools-evm@5.0.7,lz-devtools
+https://github.com/LayerZero-Labs/layerzero-v2,main,lz-v2
+https://github.com/foundry-rs/forge-std.git,v1.9.6,forge-std'
+SOLANA_DEPS=''
+SUI_DEPS=''
 
-# Clone repos to temp dir
-TMP_DIR=$(mktemp -d)
-
-# Iterate through dependencies
-for DEP in "${DEPS[@]}"; do
-  URL=$(echo $DEP | cut -d' ' -f1)
-  VERSION=$(echo $DEP | cut -d' ' -f2)
-  SOLIDITY_ONLY=$(echo $DEP | cut -d' ' -f3)
-  ALIAS=$(echo $DEP | cut -d' ' -f4)
-  REPO_NAME=$(basename $URL .git)
-  TARGET_DIR="${DEPS_DIR}/${ALIAS:-$(echo $REPO_NAME | sed 's/-contracts//')}"
-  
-  echo "Fetching $REPO_NAME at version $VERSION..."
-  
-  # Clone the repository
-  cd $TMP_DIR
-  git clone -b $VERSION --depth 1 $URL
-  
-  # Copy files to target directory
-  mkdir -p $TARGET_DIR
-  cp -r $TMP_DIR/$REPO_NAME/* $TARGET_DIR/
-  
-  # If solidity-only flag is true, remove non-solidity files
-  if [ "$SOLIDITY_ONLY" = "true" ]; then
-    echo "Keeping only Solidity files for $REPO_NAME..."
-    find $TARGET_DIR -type f -not -name "*.sol" -delete
-    # Remove empty directories
-    find $TARGET_DIR -type d -empty -delete
-  fi
-  
-  # Update import paths for OpenZeppelin contracts
-  echo "Updating import paths for $REPO_NAME..."
+TMP=$(mktemp -d)
+for chain in evm solana sui; do
+  deps=""
+  case $chain in
+    evm) deps="$EVM_DEPS";;
+    solana) deps="$SOLANA_DEPS";;
+    sui) deps="$SUI_DEPS";;
+  esac
+  D=$PROJECT_ROOT/$chain/.deps; mkdir -p "$D"
+  n=0; echo "📦 Retrieving $chain deps"
+  printf '%s\n' "$deps" | while IFS=, read -r url ver alias; do
+    [ -z "$url" ] && continue
+    name=$(basename "$url" .git); tgt=$D/${alias:-$name}
+    printf "⏳ retrieving %s..." "$name"
+    if git -c advice.detachedHead=false clone -q -b "$ver" --depth 1 "$url" "$TMP/$name" > /dev/null 2>&1; then
+      rsync -a --delete "$TMP/$name/" "$tgt/" > /dev/null 2>&1
+      [ "$chain" = evm ] && find "$tgt" -type f ! -name "*.sol" -delete
+      size=$(du -sh "$tgt" | awk '{print $1}')
+      printf "\r✔️ %s retrieved (%s)\n" "$name" "$size"; n=$((n+1))
+    else
+      printf "\r❌ failed to retrieve %s\n" "$name"
+    fi
+  done
+  chain_size=$(du -sh "$D" | awk '{print $1}')
+  echo "--- $chain: $n deps ($chain_size)"
 done
-
-# Clean up
-rm -rf $TMP_DIR
-
-echo "Dependencies installed successfully"
+rm -rf "$TMP"

@@ -1,6 +1,10 @@
 #!/bin/bash
 
-cd "$(dirname "$0")/../evm" || { echo "Error: Could not navigate to evm directory"; exit 1; }
+PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+cd "$PROJECT_ROOT"
+
+# Navigate to the evm directory for forge commands
+cd "$PROJECT_ROOT/evm" || { echo "Error: Could not navigate to evm directory"; exit 1; }
 
 echo
 echo ">> Running tests"
@@ -16,7 +20,7 @@ EXIT_CODE=$?
 
 echo
 if [ $EXIT_CODE -eq 0 ]; then
-  echo ">> ✅ Tests completed successfully."
+  echo ">> ✔️ Tests completed successfully."
 else
   echo ">> ⚠️ Tests completed with failures."
   echo ">> Exit code: $EXIT_CODE"
@@ -34,4 +38,4 @@ echo
 # Run with coverage reporting
 # forge coverage
 
-exit $EXIT_CODE 
+exit $EXIT_CODE

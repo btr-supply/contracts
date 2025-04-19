@@ -55,6 +55,46 @@ contract DiamondDeployer is IDiamondCutCallback {
     {{ selector_functions }}
 
     /**
+     * @notice Get function selectors for a specific facet by name
+     * @param facetName The name of the facet to get selectors for
+     * @return Array of function selectors for the facet
+     */
+    function getSelectorsForFacet(string memory facetName) public pure returns (bytes4[] memory) {
+        bytes32 nameHash = keccak256(bytes(facetName));
+        
+        {{ get_selectors_for_facet_conditions }}
+        
+        return new bytes4[](0);
+    }
+
+    /**
+     * @notice Extract all facet cuts except DiamondCutFacet from deployed facets
+     * @param deployment Deployment containing facets and facet names
+     * @return Array of FacetCut structs without DiamondCutFacet
+     */
+    function getCutsWithoutDiamondCutFacet(Deployment memory deployment) 
+        public pure returns (IDiamondCut.FacetCut[] memory) 
+    {
+        // Create cuts array for all facets except DiamondCutFacet (already added)
+        IDiamondCut.FacetCut[] memory cuts = new IDiamondCut.FacetCut[](deployment.facets.length - 1);
+        uint256 cutCount = 0;
+        
+        // Add all facets except DiamondCutFacet
+        for (uint i = 0; i < deployment.facetNames.length; i++) {
+            if (keccak256(bytes(deployment.facetNames[i])) != keccak256(bytes("DiamondCutFacet"))) {
+                cuts[cutCount] = IDiamondCut.FacetCut({
+                    facetAddress: deployment.facets[i],
+                    action: IDiamondCut.FacetCutAction.Add,
+                    functionSelectors: getSelectorsForFacet(deployment.facetNames[i])
+                });
+                cutCount++;
+            }
+        }
+        
+        return cuts;
+    }
+
+    /**
      * @notice Diamond Cut Callback for authorization in diamond cut operations
      * @dev This function is implemented for compatibility with both tests and production
      */
