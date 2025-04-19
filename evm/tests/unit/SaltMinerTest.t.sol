@@ -18,43 +18,62 @@ contract SaltMinerTest is Test {
         bytes32 salt;
         address expectedAddress;
     }
-    
+
     TestCase[] public testCases;
-    
+
     function setUp() public {
         createX = ICreateX(createXAddress);
-        
+
         // Initialize test cases with checksummed addresses
-        testCases.push(TestCase(0x8300000000000000000000000000000000000000000000000000000000000000, 0x002c0a74aDCa91f09BC1B4C4dD181377fD724604));
-        testCases.push(TestCase(0xcac62d0000000000000000000000000000000000000000000000000000000000, 0x00A56d359fF7458b58Df876aC1EF648C21f12124));
-        testCases.push(TestCase(0xa1c72d0000000000000000000000000000000000000000000000000000000000, 0x003f08fFBf7e8E91537e446E2bE19a4b0e527e5E));
-        testCases.push(TestCase(0x9b093d0000000000000000000000000000000000000000000000000000000000, 0x0056A093ee9f4980a31D3a9D53BDD04BD7615876));
+        testCases.push(
+            TestCase(
+                0x8300000000000000000000000000000000000000000000000000000000000000,
+                0x002c0a74aDCa91f09BC1B4C4dD181377fD724604
+            )
+        );
+        testCases.push(
+            TestCase(
+                0xcac62d0000000000000000000000000000000000000000000000000000000000,
+                0x00A56d359fF7458b58Df876aC1EF648C21f12124
+            )
+        );
+        testCases.push(
+            TestCase(
+                0xa1c72d0000000000000000000000000000000000000000000000000000000000,
+                0x003f08fFBf7e8E91537e446E2bE19a4b0e527e5E
+            )
+        );
+        testCases.push(
+            TestCase(
+                0x9b093d0000000000000000000000000000000000000000000000000000000000,
+                0x0056A093ee9f4980a31D3a9D53BDD04BD7615876
+            )
+        );
     }
 
     function testVerifyMinedAddresses() public view {
         console.log("Using CreateX at:", createXAddress);
         console.log("Using deployer:", deployer);
         console.log("Testing", testCases.length, "mined addresses");
-        
-        for (uint i = 0; i < testCases.length; i++) {
+
+        for (uint256 i = 0; i < testCases.length; i++) {
             bytes32 salt = testCases[i].salt;
             address expectedAddress = testCases[i].expectedAddress;
-            
+
             // Compute the address using CreateX
             address computedAddress = createX.computeCreate3Address(salt, deployer);
-            
+
             // Log results
             console.log("\nTest Case", i + 1);
             console.log("Salt:");
             console.logBytes32(salt);
             console.log("Expected address:", expectedAddress);
             console.log("Computed address:", computedAddress);
-            
+
             // Verify the address matches
             assertTrue(
-                computedAddress == expectedAddress,
-                string.concat("Address mismatch for salt ", vm.toString(salt))
+                computedAddress == expectedAddress, string.concat("Address mismatch for salt ", vm.toString(salt))
             );
         }
     }
-} 
+}

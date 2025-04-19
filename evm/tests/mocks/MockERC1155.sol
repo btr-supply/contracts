@@ -32,4 +32,4 @@ contract MockERC1155 is ERC1155, Ownable {
     function mintBatch(address to, uint256[] memory ids, uint256[] memory amounts, bytes memory data) public {
         _mintBatch(to, ids, amounts, data);
     }
-} 
+}

@@ -19,4 +19,4 @@ contract MockERC721 is ERC721Burnable, Ownable {
     function mint(address to, uint256 tokenId) public {
         _safeMint(to, tokenId);
     }
-} 
+}

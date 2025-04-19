@@ -6,5 +6,5 @@ pragma solidity 0.8.28;
  * @notice Dummy contract for mocking in tests
  */
 contract DummyContract {
-    // This contract is empty and used for mocking
-} 
+// This contract is empty and used for mocking
+}
