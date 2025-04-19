@@ -12,7 +12,7 @@ target/
 **/target/
 
 # IDE files
-.vscode/
+# .vscode/
 .idea/
 
 # OS files
@@ -31,6 +31,8 @@ node_modules/
 .env.*
 **/.env
 **/.env.*
+!.env.example
+!**/.env.example
 
 # Broadcast folders
 broadcast/
@@ -41,6 +43,8 @@ Cargo.lock
 **/Cargo.lock
 foundry.lock
 **/foundry.lock
+uv.lock
+**/uv.lock
 
 # Old files and folders
 arrakis-v2
