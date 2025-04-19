@@ -1,40 +1,20 @@
 [project]
 name = "btr-supply-contracts"
-version = "0.1.0"
+version = "0.2.0"
 description = "BTR Supply smart contracts: EVM, Solana, Sui"
-authors = [{name = "BTR Supply", email = "contact@btr.supply"}]
-license = {text = "MIT"}
 readme = "README.md"
 changelog = "CHANGELOG.md"
 requires-python = ">=3.9"
-dependencies = [] # Your regular runtime dependencies (empty list is fine if none)
+dependencies = []
+[[project.authors]]
+name = "BTR Supply"
+email = "contact@btr.supply"
 
-# [project.scripts]
-# installed package cli scripts
+[project.license]
+text = "MIT"
 
-# [build-system]
-# requires = ["setuptools>=61.0"]
-# build-backend = "setuptools.build_meta"
-
-# --- UV Configuration ---
 [tool.uv]
-dev-dependencies = [
-  "toml>=0.10.2",
-  "yapf>=0.40.2",
-  "ruff>=0.3.5",
-  "pre-commit>=3.7.0",
-]
-# hash-checking = true
-# global-cache = true
-
-# --- Ruff Configuration ---
-[tool.ruff]
-# See https://docs.astral.build/ruff/settings/
+dev-dependencies = [ "toml>=0.10.2", "yapf>=0.40.2", "ruff>=0.3.5", "pre-commit>=3.7.0",]
 
 [tool.ruff.lint]
-# Ignore E731 (lambda assignment), allow other checks
-# Ignore E701 (multiple statements on one line)
-ignore = ["E731", "E701"]
-
-# Select rulesets (optional, defaults are usually good)
-# select = ["E", "F", "W", "I", "N"]
+ignore = [ "E731", "E701",]
