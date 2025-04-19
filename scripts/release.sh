@@ -14,5 +14,4 @@ VER=$(uv run python scripts/release.py "$TYPE" | tail -n1)
 git add pyproject.toml CHANGELOG.md
 git commit -m "[ops] Release v$VER"
 git tag "v$VER"
-
-echo "Prepared release v$VER. Run 'make push-tags' to publish."
+git push origin main --tags

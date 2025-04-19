@@ -1,5 +1,5 @@
 #!/bin/bash
-set -e
+set -euo pipefail
 cd "$(dirname "${BASH_SOURCE[0]}")/.." || { echo "Error: Cannot cd to project root"; exit 1; }
 
 # Load default metadata into shell variables (defaults_licence, defaults_author, defaults_sol_version, ...)

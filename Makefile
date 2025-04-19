@@ -39,13 +39,13 @@ check-branch-main:
 	@echo "Checking if current branch is main..."
 	bash scripts/check-branch.sh main
 
-release-major: check-branch-main
+publish-major: check-branch-main
 	bash scripts/release.sh major
 
-release-minor: check-branch-main
+publish-minor: check-branch-main
 	bash scripts/release.sh minor
 
-release-patch: check-branch-main
+publish-patch: check-branch-main
 	bash scripts/release.sh patch
 
 push-tags: pre-push

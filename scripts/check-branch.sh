@@ -1,5 +1,5 @@
 #!/usr/bin/env sh
-set -eu
+set -euo pipefail
 
 exp=${1:-main}
 curr=$(git rev-parse --abbrev-ref HEAD)
