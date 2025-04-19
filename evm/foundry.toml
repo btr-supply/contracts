@@ -12,6 +12,7 @@ evm_version = "london"    # Use London EVM version for better gas optimizations
 metadata_hash = "none"    # Reduces bytecode size
 bytecode_hash = "none"    # Further reduces bytecode size
 cbor_metadata = false     # Don't include CBOR metadata
+allow_paths = ["../../", "../", "./"]
 
 [profile.debug]
 src = 'src'

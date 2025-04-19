@@ -10,7 +10,6 @@ import {LibRescue} from "@libraries/LibRescue.sol";
 /// @title LibAccessControl
 /// @notice Library to manage role-based access control
 library LibAccessControl {
-
     using EnumerableSet for EnumerableSet.AddressSet;
 
     /*═══════════════════════════════════════════════════════════════╗
@@ -53,7 +52,7 @@ library LibAccessControl {
     function getManagers() internal view returns (address[] memory) {
         return getMembers(MANAGER_ROLE);
     }
-    
+
     /// @notice Get the keeper addresses
     /// @return Array of addresses with the keeper role
     function getKeepers() internal view returns (address[] memory) {
@@ -124,13 +123,15 @@ library LibAccessControl {
     function getMembers(bytes32 role) internal view returns (address[] memory) {
         AccessControl storage acs = S.accessControl();
         RoleData storage roleData = acs.roles[role];
-        
+
         uint256 length = roleData.members.length();
         address[] memory result = new address[](length);
-        
+
         for (uint256 i = 0; i < length;) {
             result[i] = roleData.members.at(i);
-            unchecked { ++i; }
+            unchecked {
+                ++i;
+            }
         }
 
         return result;
@@ -147,25 +148,22 @@ library LibAccessControl {
     /// @notice Validate a pending role acceptance
     /// @param acceptance The pending acceptance to check
     /// @param role The role being accepted
-    function checkRoleAcceptance(
-        PendingAcceptance memory acceptance,
-        bytes32 role
-    ) internal view {
+    function checkRoleAcceptance(PendingAcceptance memory acceptance, bytes32 role) internal view {
         // Make sure the role accepted is the same as the pending one
         if (acceptance.role != role) {
             revert Errors.Unauthorized(ErrorType.ROLE);
         }
-        
+
         // Grant the keeper role instantly (no attack surface here)
         if (acceptance.role == KEEPER_ROLE) return;
-        
+
         (uint256 grantDelay, uint256 acceptWindow) = getTimelockConfig();
-        
+
         // Check expiry
         if (block.timestamp > (acceptance.timestamp + grantDelay + acceptWindow)) {
             revert Errors.Expired(ErrorType.ACCEPTANCE);
         }
-        
+
         // Check timelock
         if (block.timestamp < (acceptance.timestamp + grantDelay)) {
             revert Errors.Locked();
@@ -192,10 +190,10 @@ library LibAccessControl {
         }
 
         RoleData storage roleData = S.accessControl().roles[role];
-        
+
         bytes32 previousAdminRole = roleData.adminRole;
         roleData.adminRole = adminRole;
-        
+
         emit Events.RoleAdminChanged(role, previousAdminRole, adminRole);
     }
 
@@ -203,15 +201,17 @@ library LibAccessControl {
     /// @param grantDelay The delay before a role grant can be accepted
     /// @param acceptWindow The window of time during which a role grant can be accepted
     function setTimelockConfig(uint256 grantDelay, uint256 acceptWindow) internal {
-        if (grantDelay < MIN_GRANT_DELAY || grantDelay > MAX_GRANT_DELAY ||
-            acceptWindow < MIN_ACCEPT_WINDOW || acceptWindow > MAX_ACCEPT_WINDOW) {
+        if (
+            grantDelay < MIN_GRANT_DELAY || grantDelay > MAX_GRANT_DELAY || acceptWindow < MIN_ACCEPT_WINDOW
+                || acceptWindow > MAX_ACCEPT_WINDOW
+        ) {
             revert Errors.OutOfRange(grantDelay, MIN_GRANT_DELAY, MAX_GRANT_DELAY);
         }
-        
+
         AccessControl storage acs = S.accessControl();
         acs.grantDelay = grantDelay;
         acs.acceptWindow = acceptWindow;
-        
+
         emit Events.TimelockConfigUpdated(grantDelay, acceptWindow);
     }
 
@@ -223,13 +223,13 @@ library LibAccessControl {
         if (account == address(0)) {
             revert Errors.ZeroAddress();
         }
-        
+
         AccessControl storage acs = S.accessControl();
-        
+
         if (_hasRole(acs, role, account)) {
             revert Errors.AlreadyExists(ErrorType.ROLE);
         }
-        
+
         // Validate that the role exists (has an admin role defined)
         bytes32 adminRole = getRoleAdmin(role);
         if (adminRole == bytes32(0) && role != ADMIN_ROLE) {
@@ -249,11 +249,8 @@ library LibAccessControl {
         }
 
         // Set up pending acceptance
-        acs.pendingAcceptance[account] = PendingAcceptance({
-            replacing: replacing,
-            timestamp: uint64(block.timestamp),
-            role: role
-        });
+        acs.pendingAcceptance[account] =
+            PendingAcceptance({replacing: replacing, timestamp: uint64(block.timestamp), role: role});
 
         emit Events.RoleAcceptanceCreated(role, account, sender);
     }
@@ -264,24 +261,24 @@ library LibAccessControl {
     function acceptRole(bytes32 role, address account) internal {
         AccessControl storage acs = S.accessControl();
         PendingAcceptance memory acceptance = acs.pendingAcceptance[account];
-        
+
         checkRoleAcceptance(acceptance, role);
-        
+
         // Always grant the role first to ensure there's at least one admin
         _grantRole(acs, acceptance.role, account);
-        
+
         address replacing = acceptance.replacing;
         if (replacing != address(0)) {
             // Clear all pending rescue requests if replacing an admin
             if (role == ADMIN_ROLE) {
                 LibRescue.cancelRescueAll(replacing);
             }
-            
+
             // Now revoke the role from the replaced account
             // This will work for admin too since we added the new admin first
             revokeRole(acceptance.role, replacing);
         }
-        
+
         delete acs.pendingAcceptance[account];
     }
 
@@ -290,14 +287,15 @@ library LibAccessControl {
     function cancelRoleGrant(address account) internal {
         AccessControl storage acs = S.accessControl();
         PendingAcceptance memory acceptance = acs.pendingAcceptance[account];
-        
+
         // Only allow admin, role admin, or the account itself to cancel
-        if (!_hasRole(acs, ADMIN_ROLE, msg.sender) && 
-            !_hasRole(acs, getRoleAdmin(acceptance.role), msg.sender) &&
-            msg.sender != account) {
+        if (
+            !_hasRole(acs, ADMIN_ROLE, msg.sender) && !_hasRole(acs, getRoleAdmin(acceptance.role), msg.sender)
+                && msg.sender != account
+        ) {
             revert Errors.Unauthorized(ErrorType.ACCESS);
         }
-        
+
         emit Events.RoleAcceptanceCreated(acceptance.role, address(0), account);
         delete acs.pendingAcceptance[account];
     }
@@ -308,7 +306,7 @@ library LibAccessControl {
     function revokeRole(bytes32 role, address account) internal {
         AccessControl storage acs = S.accessControl();
         RoleData storage roleData = acs.roles[role];
-        
+
         if (role == ADMIN_ROLE && roleData.members.length() == 1) {
             revert Errors.Unauthorized(ErrorType.ADMIN); // Cannot revoke the last admin
         }
@@ -319,7 +317,7 @@ library LibAccessControl {
 
         roleData.members.remove(account);
         emit Events.RoleRevoked(role, account, msg.sender);
-        
+
         // Emit ownership transferred event if this was an admin role
         if (role == ADMIN_ROLE) {
             // Find the first admin in the list to consider as the "owner"
@@ -348,12 +346,12 @@ library LibAccessControl {
         if (_hasRole(acs, role, account)) {
             return; // Account already has the role
         }
-        
+
         RoleData storage roleData = acs.roles[role];
         roleData.members.add(account);
-        
+
         emit Events.RoleGranted(role, account, msg.sender);
-        
+
         // Emit ownership transfer event if this is an admin role
         if (role == ADMIN_ROLE) {
             emit Events.OwnershipTransferred(msg.sender, account);
@@ -374,7 +372,7 @@ library LibAccessControl {
     /// @param replacing The account being replaced (if any)
     function grantPendingRole(bytes32 role, address account, address replacing) internal {
         AccessControl storage acs = S.accessControl();
-        
+
         // If already has a pending acceptance for any role, revert
         if (acs.pendingAcceptance[account].role != bytes32(0)) {
             revert Errors.AlreadyExists(ErrorType.ROLE);
@@ -411,7 +409,7 @@ library LibAccessControl {
         }
 
         AccessControl storage acs = S.accessControl();
-        
+
         // Grant initial roles
         _grantRole(acs, ADMIN_ROLE, adminAddress);
         _grantRole(acs, MANAGER_ROLE, adminAddress);
@@ -425,7 +423,7 @@ library LibAccessControl {
         // Set default timelock settings
         acs.grantDelay = DEFAULT_GRANT_DELAY;
         acs.acceptWindow = DEFAULT_ACCEPT_WINDOW;
-        
+
         emit Events.TimelockConfigUpdated(DEFAULT_GRANT_DELAY, DEFAULT_ACCEPT_WINDOW);
     }
 }

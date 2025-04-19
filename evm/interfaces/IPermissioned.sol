@@ -7,12 +7,12 @@ interface IPermissioned {
     function MANAGER_ROLE() external view returns (bytes32);
     function KEEPER_ROLE() external view returns (bytes32);
     function TREASURY_ROLE() external view returns (bytes32);
-    
+
     // Role checking functions
     function hasRole(bytes32 role, address account) external view returns (bool);
     function checkRole(bytes32 role) external view;
     function checkRole(bytes32 role, address account) external view;
-    
+
     // Convenience role functions
     function isAdmin(address account) external view returns (bool);
     function isManager(address account) external view returns (bool);

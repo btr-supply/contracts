@@ -17,7 +17,6 @@ import {TokenType, ErrorType, Rescue, RescueRequest} from "@/BTRTypes.sol";
  * @dev Implements ERC721 and ERC1155 receiver interfaces to handle NFT transfers
  */
 contract RescueFacet is PermissionedFacet, IERC721Receiver, IERC1155Receiver {
-
     /*═══════════════════════════════════════════════════════════════╗
     ║                             VIEWS                              ║
     ╚═══════════════════════════════════════════════════════════════*/
@@ -34,11 +33,11 @@ contract RescueFacet is PermissionedFacet, IERC721Receiver, IERC1155Receiver {
     /// @return timestamp The timestamp when the rescue was requested
     /// @return tokenAddress The address of the token contract
     /// @return tokenIdsCount The number of token IDs in the request
-    function getRescueRequest(address receiver, TokenType tokenType) external view returns (
-        uint64 timestamp,
-        address tokenAddress,
-        uint256 tokenIdsCount
-    ) {
+    function getRescueRequest(address receiver, TokenType tokenType)
+        external
+        view
+        returns (uint64 timestamp, address tokenAddress, uint256 tokenIdsCount)
+    {
         RescueRequest storage request = R.getRescueRequest(receiver, tokenType);
         return (request.timestamp, request.tokenAddress, request.tokenIds.length);
     }
@@ -122,7 +121,7 @@ contract RescueFacet is PermissionedFacet, IERC721Receiver, IERC1155Receiver {
     }
 
     /// @notice Request to rescue a single ERC1155 token
-    /// @param tokenAddress The address of the NFT contract 
+    /// @param tokenAddress The address of the NFT contract
     /// @param tokenId The token ID to rescue
     /// @dev Only callable by admin
     function requestRescueERC1155(address tokenAddress, uint256 tokenId) external onlyAdmin {
@@ -183,36 +182,29 @@ contract RescueFacet is PermissionedFacet, IERC721Receiver, IERC1155Receiver {
 
     /// @notice Handle reception of ERC1155 tokens
     /// @dev Required for IERC1155Receiver compliance
-    function onERC1155Received(
-        address,
-        address,
-        uint256,
-        uint256,
-        bytes calldata
-    ) external pure override returns (bytes4) {
+    function onERC1155Received(address, address, uint256, uint256, bytes calldata)
+        external
+        pure
+        override
+        returns (bytes4)
+    {
         return this.onERC1155Received.selector;
     }
 
     /// @notice Handle reception of batched ERC1155 tokens
     /// @dev Required for IERC1155Receiver compliance
-    function onERC1155BatchReceived(
-        address,
-        address,
-        uint256[] calldata,
-        uint256[] calldata,
-        bytes calldata
-    ) external pure override returns (bytes4) {
+    function onERC1155BatchReceived(address, address, uint256[] calldata, uint256[] calldata, bytes calldata)
+        external
+        pure
+        override
+        returns (bytes4)
+    {
         return this.onERC1155BatchReceived.selector;
     }
 
     /// @notice Handle reception of ERC721 tokens
     /// @dev Required for IERC721Receiver compliance
-    function onERC721Received(
-        address,
-        address,
-        uint256,
-        bytes calldata
-    ) external pure override returns (bytes4) {
+    function onERC721Received(address, address, uint256, bytes calldata) external pure override returns (bytes4) {
         return this.onERC721Received.selector;
     }
 
@@ -233,9 +225,7 @@ contract RescueFacet is PermissionedFacet, IERC721Receiver, IERC1155Receiver {
 
     /// @notice IERC165 support
     function supportsInterface(bytes4 interfaceId) external pure override returns (bool) {
-        return
-            interfaceId == type(IERC721Receiver).interfaceId ||
-            interfaceId == type(IERC1155Receiver).interfaceId ||
-            interfaceId == type(IERC165).interfaceId;
+        return interfaceId == type(IERC721Receiver).interfaceId || interfaceId == type(IERC1155Receiver).interfaceId
+            || interfaceId == type(IERC165).interfaceId;
     }
 }

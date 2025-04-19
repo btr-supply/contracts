@@ -21,9 +21,7 @@ contract ALMFacet is ERC1155Facet, PermissionedFacet {
         // No initialization needed for ALMFacet
     }
 
-    function createVault(
-        VaultInitParams calldata params
-    ) external onlyManager returns (uint32 vaultId) {
+    function createVault(VaultInitParams calldata params) external onlyManager returns (uint32 vaultId) {
         return ALM.createVault(params);
     }
 
@@ -43,19 +41,21 @@ contract ALMFacet is ERC1155Facet, PermissionedFacet {
         return ALM.getRangeDexAdapter(rangeId);
     }
 
-    function deposit(
-        uint32 vaultId,
-        uint256 sharesMinted,
-        address receiver
-    ) external whenVaultNotPaused(vaultId) nonReentrant returns (uint256 amount0, uint256 amount1, uint256 fee0, uint256 fee1) {
+    function deposit(uint32 vaultId, uint256 sharesMinted, address receiver)
+        external
+        whenVaultNotPaused(vaultId)
+        nonReentrant
+        returns (uint256 amount0, uint256 amount1, uint256 fee0, uint256 fee1)
+    {
         return ALM.deposit(vaultId, sharesMinted, receiver);
     }
 
-    function withdraw(
-        uint32 vaultId,
-        uint256 sharesBurnt,
-        address receiver
-    ) external whenVaultNotPaused(vaultId) nonReentrant returns (uint256 amount0, uint256 amount1, uint256 fee0, uint256 fee1) {
+    function withdraw(uint32 vaultId, uint256 sharesBurnt, address receiver)
+        external
+        whenVaultNotPaused(vaultId)
+        nonReentrant
+        returns (uint256 amount0, uint256 amount1, uint256 fee0, uint256 fee1)
+    {
         return ALM.withdraw(vaultId, sharesBurnt, receiver);
     }
 
@@ -67,10 +67,13 @@ contract ALMFacet is ERC1155Facet, PermissionedFacet {
      * @return protocolFees0 The amount of protocol fees collected (token0)
      * @return protocolFees1 The amount of protocol fees collected (token1)
      */
-    function rebalance(
-        uint32 vaultId,
-        Rebalance calldata rebalanceData
-    ) external whenVaultNotPaused(vaultId) onlyKeeper nonReentrant returns (uint256 protocolFees0, uint256 protocolFees1) {
+    function rebalance(uint32 vaultId, Rebalance calldata rebalanceData)
+        external
+        whenVaultNotPaused(vaultId)
+        onlyKeeper
+        nonReentrant
+        returns (uint256 protocolFees0, uint256 protocolFees1)
+    {
         return ALM.rebalance(vaultId, rebalanceData);
     }
 
@@ -94,7 +97,12 @@ contract ALMFacet is ERC1155Facet, PermissionedFacet {
         return ALM.targetRatio1(vaultId);
     }
 
-    function collectFees(uint32 vaultId) external onlyTreasury nonReentrant returns (uint256 amount0, uint256 amount1) {
+    function collectFees(uint32 vaultId)
+        external
+        onlyTreasury
+        nonReentrant
+        returns (uint256 amount0, uint256 amount1)
+    {
         return ALM.collectFees(vaultId);
     }
 
@@ -107,10 +115,10 @@ contract ALMFacet is ERC1155Facet, PermissionedFacet {
      * @return fee0 The amount of token0 that will be taken as fee
      * @return fee1 The amount of token1 that will be taken as fee
      */
-    function previewDeposit(
-        uint32 vaultId, 
-        uint256 sharesMinted
-    ) external returns (uint256 amount0, uint256 amount1, uint256 fee0, uint256 fee1) {
+    function previewDeposit(uint32 vaultId, uint256 sharesMinted)
+        external
+        returns (uint256 amount0, uint256 amount1, uint256 fee0, uint256 fee1)
+    {
         return ALM.previewDeposit(vaultId, sharesMinted);
     }
 
@@ -123,11 +131,10 @@ contract ALMFacet is ERC1155Facet, PermissionedFacet {
      * @return fee0 The fee amount for token0
      * @return fee1 The fee amount for token1
      */
-    function previewDeposit(
-        uint32 vaultId,
-        uint256 amount0,
-        uint256 amount1
-    ) external returns (uint256 sharesAmount, uint256 fee0, uint256 fee1) {
+    function previewDeposit(uint32 vaultId, uint256 amount0, uint256 amount1)
+        external
+        returns (uint256 sharesAmount, uint256 fee0, uint256 fee1)
+    {
         return ALM.previewDeposit(vaultId, amount0, amount1);
     }
 
@@ -140,10 +147,10 @@ contract ALMFacet is ERC1155Facet, PermissionedFacet {
      * @return fee0 The fee amount for token0
      * @return fee1 The fee amount for token1
      */
-    function previewDeposit0For1(
-        uint32 vaultId,
-        uint256 amount1
-    ) external returns (uint256 amount0, uint256 mintShares, uint256 fee0, uint256 fee1) {
+    function previewDeposit0For1(uint32 vaultId, uint256 amount1)
+        external
+        returns (uint256 amount0, uint256 mintShares, uint256 fee0, uint256 fee1)
+    {
         return ALM.previewDeposit0For1(vaultId, amount1);
     }
 
@@ -156,10 +163,10 @@ contract ALMFacet is ERC1155Facet, PermissionedFacet {
      * @return fee0 The fee amount for token0
      * @return fee1 The fee amount for token1
      */
-    function previewDeposit1For0(
-        uint32 vaultId,
-        uint256 amount0
-    ) external returns (uint256 amount1, uint256 mintShares, uint256 fee0, uint256 fee1) {
+    function previewDeposit1For0(uint32 vaultId, uint256 amount0)
+        external
+        returns (uint256 amount1, uint256 mintShares, uint256 fee0, uint256 fee1)
+    {
         return ALM.previewDeposit1For0(vaultId, amount0);
     }
 
@@ -172,18 +179,17 @@ contract ALMFacet is ERC1155Facet, PermissionedFacet {
      * @return fee0 The fee amount for token0
      * @return fee1 The fee amount for token1
      */
-    function previewWithdraw(
-        uint32 vaultId,
-        uint256 sharesBurnt
-    ) external returns (uint256 amount0, uint256 amount1, uint256 fee0, uint256 fee1) {
+    function previewWithdraw(uint32 vaultId, uint256 sharesBurnt)
+        external
+        returns (uint256 amount0, uint256 amount1, uint256 fee0, uint256 fee1)
+    {
         return ALM.previewWithdraw(vaultId, sharesBurnt);
     }
 
-    function previewWithdraw(
-        uint32 vaultId,
-        uint256 amount0,
-        uint256 amount1
-    ) external returns (uint256 sharesAmount, uint256 fee0, uint256 fee1) {
+    function previewWithdraw(uint32 vaultId, uint256 amount0, uint256 amount1)
+        external
+        returns (uint256 sharesAmount, uint256 fee0, uint256 fee1)
+    {
         return ALM.previewWithdraw(vaultId, amount0, amount1);
     }
 
@@ -196,10 +202,10 @@ contract ALMFacet is ERC1155Facet, PermissionedFacet {
      * @return fee0 The fee amount for token0
      * @return fee1 The fee amount for token1
      */
-    function previewWithdraw0For1(
-        uint32 vaultId,
-        uint256 amount1
-    ) external returns (uint256 amount0, uint256 sharesBurnt, uint256 fee0, uint256 fee1) {
+    function previewWithdraw0For1(uint32 vaultId, uint256 amount1)
+        external
+        returns (uint256 amount0, uint256 sharesBurnt, uint256 fee0, uint256 fee1)
+    {
         return ALM.previewWithdraw0For1(vaultId, amount1);
     }
 
@@ -212,10 +218,10 @@ contract ALMFacet is ERC1155Facet, PermissionedFacet {
      * @return fee0 The fee amount for token0
      * @return fee1 The fee amount for token1
      */
-    function previewWithdraw1For0(
-        uint32 vaultId,
-        uint256 amount0
-    ) external returns (uint256 amount1, uint256 sharesBurnt, uint256 fee0, uint256 fee1) {
+    function previewWithdraw1For0(uint32 vaultId, uint256 amount0)
+        external
+        returns (uint256 amount1, uint256 sharesBurnt, uint256 fee0, uint256 fee1)
+    {
         return ALM.previewWithdraw1For0(vaultId, amount0);
     }
 
@@ -229,12 +235,12 @@ contract ALMFacet is ERC1155Facet, PermissionedFacet {
      * @return fee0 The amount of token0 taken as fee
      * @return fee1 The amount of token1 taken as fee
      */
-    function deposit(
-        uint32 vaultId,
-        uint256 amount0, 
-        uint256 amount1,
-        address receiver
-    ) external whenVaultNotPaused(vaultId) nonReentrant returns (uint256 mintedShares, uint256 fee0, uint256 fee1) {
+    function deposit(uint32 vaultId, uint256 amount0, uint256 amount1, address receiver)
+        external
+        whenVaultNotPaused(vaultId)
+        nonReentrant
+        returns (uint256 mintedShares, uint256 fee0, uint256 fee1)
+    {
         return ALM.deposit(vaultId, amount0, amount1, receiver);
     }
 
@@ -248,12 +254,12 @@ contract ALMFacet is ERC1155Facet, PermissionedFacet {
      * @return fee0 The amount of token0 taken as fee
      * @return fee1 The amount of token1 taken as fee
      */
-    function withdraw(
-        uint32 vaultId,
-        uint256 amount0,
-        uint256 amount1,
-        address receiver
-    ) external whenVaultNotPaused(vaultId) nonReentrant returns (uint256 sharesBurnt, uint256 fee0, uint256 fee1) {
+    function withdraw(uint32 vaultId, uint256 amount0, uint256 amount1, address receiver)
+        external
+        whenVaultNotPaused(vaultId)
+        nonReentrant
+        returns (uint256 sharesBurnt, uint256 fee0, uint256 fee1)
+    {
         return ALM.withdraw(vaultId, amount0, amount1, receiver);
     }
 }

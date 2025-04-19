@@ -30,14 +30,23 @@ interface IUniV4Quoter {
         int24 tickSpacing;
         address hooks;
     }
+
     function poolManager() external view returns (address);
     function _quoteExactInput(QuoteExactParams calldata params) external returns (bytes memory);
     function _quoteExactInputSingle(QuoteExactSingleParams calldata params) external returns (bytes memory);
     function _quoteExactOutput(QuoteExactParams calldata params) external returns (bytes memory);
     function _quoteExactOutputSingle(QuoteExactSingleParams calldata params) external returns (bytes memory);
-    function quoteExactInput(QuoteExactParams calldata params) external returns (uint256 amountOut, uint256 gasEstimate);
-    function quoteExactInputSingle(QuoteExactSingleParams calldata params) external returns (uint256 amountOut, uint256 gasEstimate);
-    function quoteExactOutput(QuoteExactParams calldata params) external returns (uint256 amountIn, uint256 gasEstimate);
-    function quoteExactOutputSingle(QuoteExactSingleParams calldata params) external returns (uint256 amountIn, uint256 gasEstimate);
+    function quoteExactInput(QuoteExactParams calldata params)
+        external
+        returns (uint256 amountOut, uint256 gasEstimate);
+    function quoteExactInputSingle(QuoteExactSingleParams calldata params)
+        external
+        returns (uint256 amountOut, uint256 gasEstimate);
+    function quoteExactOutput(QuoteExactParams calldata params)
+        external
+        returns (uint256 amountIn, uint256 gasEstimate);
+    function quoteExactOutputSingle(QuoteExactSingleParams calldata params)
+        external
+        returns (uint256 amountIn, uint256 gasEstimate);
     function unlockCallback(bytes calldata data) external returns (bytes memory);
 }

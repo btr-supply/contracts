@@ -13,7 +13,6 @@ import {IERC1155} from "@openzeppelin/contracts/token/ERC1155/IERC1155.sol";
 /// @title LibRescue
 /// @notice Library for rescuing tokens accidentally sent to the contract
 library LibRescue {
-
     using SafeERC20 for IERC20;
 
     /*═══════════════════════════════════════════════════════════════╗
@@ -33,7 +32,7 @@ library LibRescue {
     ║                             VIEWS                              ║
     ╚═══════════════════════════════════════════════════════════════*/
 
-    /// @notice Get rescue storage pointer 
+    /// @notice Get rescue storage pointer
     function rs() internal pure returns (Rescue storage) {
         return S.rescue();
     }
@@ -42,9 +41,7 @@ library LibRescue {
     /// @param receiver The address of the receiver
     /// @param tokenType The type of token being rescued
     /// @return The rescue request struct
-    function getRescueRequest(address receiver, TokenType tokenType) internal view returns (
-        RescueRequest storage
-    ) {
+    function getRescueRequest(address receiver, TokenType tokenType) internal view returns (RescueRequest storage) {
         return rs().rescueRequests[receiver][tokenType];
     }
 
@@ -54,17 +51,17 @@ library LibRescue {
     /// @return Status code: 0=none, 1=locked, 2=unlocked, 3=expired
     function getRescueStatus(address receiver, TokenType tokenType) internal view returns (uint8) {
         RescueRequest storage request = getRescueRequest(receiver, tokenType);
-        
+
         // Check if request exists
         if (request.timestamp == 0) return 0; // No request
 
         // Cache timelock and validity values to avoid multiple SLOAD operations
         uint64 timelock = rs().rescueTimelock;
         uint64 validity = rs().rescueValidity;
-        
+
         uint64 unlockTime = request.timestamp + timelock;
         uint64 expiryTime = unlockTime + validity;
-        
+
         uint64 currentTime = uint64(block.timestamp);
         if (currentTime < unlockTime) return 1; // Locked
         if (currentTime >= expiryTime) return 3; // Expired
@@ -75,11 +72,11 @@ library LibRescue {
     function isRescueLocked(address receiver, TokenType tokenType) internal view returns (bool) {
         return getRescueStatus(receiver, tokenType) == 1;
     }
-    
+
     function isRescueExpired(address receiver, TokenType tokenType) internal view returns (bool) {
         return getRescueStatus(receiver, tokenType) == 3;
     }
-    
+
     function isRescueUnlocked(address receiver, TokenType tokenType) internal view returns (bool) {
         return getRescueStatus(receiver, tokenType) == 2;
     }
@@ -97,15 +94,17 @@ library LibRescue {
 
     /// @notice Set the timelock and validity periods for rescue requests
     function setRescueConfig(uint64 timelock, uint64 validity) internal {
-        if (timelock < MIN_RESCUE_TIMELOCK || timelock > MAX_RESCUE_TIMELOCK ||
-            validity < MIN_RESCUE_VALIDITY || validity > MAX_RESCUE_VALIDITY) {
+        if (
+            timelock < MIN_RESCUE_TIMELOCK || timelock > MAX_RESCUE_TIMELOCK || validity < MIN_RESCUE_VALIDITY
+                || validity > MAX_RESCUE_VALIDITY
+        ) {
             revert Errors.OutOfRange(timelock, MIN_RESCUE_TIMELOCK, MAX_RESCUE_TIMELOCK);
         }
 
         Rescue storage _rescue = rs();
         _rescue.rescueTimelock = timelock;
         _rescue.rescueValidity = validity;
-        
+
         emit Events.RescueConfigUpdated(timelock, validity);
     }
 
@@ -121,29 +120,29 @@ library LibRescue {
         bytes32[] memory tokenIds
     ) private {
         RescueRequest storage request = getRescueRequest(receiver, tokenType);
-        
+
         // Create the rescue request
         request.timestamp = uint64(block.timestamp);
         request.receiver = receiver;
         request.tokenType = tokenType;
         request.tokenAddress = tokenAddress;
-        
+
         // Store the token IDs
         delete request.tokenIds;
-        
+
         // Copy tokenIds to storage - use unchecked to save gas on loop counters
         uint256 length = tokenIds.length;
         if (length > 0) {
             // Pre-allocate the array size to save gas
             request.tokenIds = new bytes32[](length);
-            
+
             unchecked {
                 for (uint256 i = 0; i < length; ++i) {
                     request.tokenIds[i] = tokenIds[i];
                 }
             }
         }
-        
+
         emit Events.RescueRequested(receiver, uint64(block.timestamp), tokenType, request.tokenIds);
     }
 
@@ -158,13 +157,13 @@ library LibRescue {
         // Store all token addresses as bytes32 in tokenIds
         uint256 length = tokenAddresses.length;
         bytes32[] memory encodedAddresses = new bytes32[](length);
-        
+
         unchecked {
             for (uint256 i = 0; i < length; ++i) {
                 encodedAddresses[i] = bytes32(uint256(uint160(tokenAddresses[i])));
             }
         }
-        
+
         // Create a single request with multiple tokens
         _createRescueRequest(msg.sender, TokenType.ERC20, address(0), encodedAddresses);
     }
@@ -174,7 +173,7 @@ library LibRescue {
         tokenIds[0] = bytes32(tokenId);
         _createRescueRequest(msg.sender, TokenType.ERC721, tokenAddress, tokenIds);
     }
-    
+
     function requestRescueERC721(address tokenAddress, bytes32[] memory tokenIds) internal {
         _createRescueRequest(msg.sender, TokenType.ERC721, tokenAddress, tokenIds);
     }
@@ -184,7 +183,7 @@ library LibRescue {
         tokenIds[0] = bytes32(tokenId);
         _createRescueRequest(msg.sender, TokenType.ERC1155, tokenAddress, tokenIds);
     }
-    
+
     function requestRescueERC1155(address tokenAddress, bytes32[] memory tokenIds) internal {
         _createRescueRequest(msg.sender, TokenType.ERC1155, tokenAddress, tokenIds);
     }
@@ -192,21 +191,21 @@ library LibRescue {
     /// @notice Cancel rescue requests
     function cancelRescue(address receiver, TokenType tokenType) internal {
         RescueRequest storage request = getRescueRequest(receiver, tokenType);
-        
+
         // Create copies for the event
         address tokenAddress = request.tokenAddress;
         uint256 length = request.tokenIds.length;
         bytes32[] memory tokenIdsCopy = new bytes32[](length);
-        
+
         unchecked {
             for (uint256 i = 0; i < length; ++i) {
                 tokenIdsCopy[i] = request.tokenIds[i];
             }
         }
-        
+
         // Clear the rescue request
         delete rs().rescueRequests[receiver][tokenType];
-        
+
         emit Events.RescueCancelled(receiver, tokenType, tokenIdsCopy);
     }
 
@@ -224,7 +223,7 @@ library LibRescue {
     /// @notice Validate that a rescue can be executed
     function validateRescue(address receiver, TokenType tokenType) internal view {
         uint8 status = getRescueStatus(receiver, tokenType);
-        
+
         if (status == 0) {
             revert Errors.NotFound(ErrorType.RESCUE);
         } else if (status == 1) {
@@ -243,13 +242,13 @@ library LibRescue {
             uint8 status = getRescueStatus(receiver, tokenType);
             if (status != 2) return false; // Only proceed if unlocked
         }
-        
+
         // Get request data (once) and cache in memory
         RescueRequest storage request = getRescueRequest(receiver, tokenType);
         address tokenAddress = request.tokenAddress;
         uint256 tokenIdsLength = request.tokenIds.length;
         bool success = false;
-        
+
         if (tokenType == TokenType.NATIVE) {
             // Rescue ETH
             uint256 balance = address(this).balance;
@@ -319,12 +318,12 @@ library LibRescue {
                 }
             }
         }
-        
+
         // Clear the rescue request if any rescue was successful or we're validating
         if (success || validate) {
             delete rs().rescueRequests[receiver][tokenType];
         }
-        
+
         return success;
     }
 
@@ -336,7 +335,7 @@ library LibRescue {
         uint8 erc20Status = getRescueStatus(receiver, TokenType.ERC20);
         uint8 erc721Status = getRescueStatus(receiver, TokenType.ERC721);
         uint8 erc1155Status = getRescueStatus(receiver, TokenType.ERC1155);
-        
+
         if (nativeStatus == 2) _rescueTokenType(receiver, TokenType.NATIVE, false);
         if (erc20Status == 2) _rescueTokenType(receiver, TokenType.ERC20, false);
         if (erc721Status == 2) _rescueTokenType(receiver, TokenType.ERC721, false);
@@ -347,7 +346,7 @@ library LibRescue {
     function rescue(address receiver, TokenType tokenType) internal {
         validateRescue(receiver, tokenType);
         bool success = _rescueTokenType(receiver, tokenType, false);
-        
+
         if (!success) {
             // Clear the request even if rescue failed - it was validated
             delete rs().rescueRequests[receiver][tokenType];

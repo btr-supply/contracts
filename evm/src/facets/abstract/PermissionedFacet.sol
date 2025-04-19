@@ -4,7 +4,6 @@ pragma solidity 0.8.28;
 import {LibAccessControl as AC} from "@libraries/LibAccessControl.sol";
 
 abstract contract PermissionedFacet {
-
     modifier onlyRole(bytes32 role) virtual {
         AC.checkRole(role);
         _;
@@ -62,7 +61,7 @@ abstract contract PermissionedFacet {
     function isTreasury(address account) external view returns (bool) {
         return hasRole(AC.TREASURY_ROLE, account);
     }
-    
+
     function admin() external view virtual returns (address) {
         return AC.admin();
     }
@@ -78,7 +77,7 @@ abstract contract PermissionedFacet {
     function getKeepers() external view virtual returns (address[] memory) {
         return AC.getMembers(AC.KEEPER_ROLE);
     }
-    
+
     function isBlacklisted(address account) external view virtual returns (bool) {
         return AC.isBlacklisted(account);
     }

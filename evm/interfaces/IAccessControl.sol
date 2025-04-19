@@ -10,11 +10,13 @@ import {PendingAcceptance} from "@/BTRTypes.sol";
  * @notice Diamond facet interface for role-based access control
  */
 interface IAccessControl is IPermissioned, IERC173 {
-    
     function getMembers(bytes32 role) external view returns (address[] memory);
     function getTimelockConfig() external view returns (uint256 grantDelay, uint256 acceptWindow);
     function checkRoleAcceptance(PendingAcceptance calldata acceptance, bytes32 role) external view;
-    function getPendingAcceptance(address account) external view returns (bytes32 pendingRole, address replacing, uint64 timestamp);
+    function getPendingAcceptance(address account)
+        external
+        view
+        returns (bytes32 pendingRole, address replacing, uint64 timestamp);
     function admin() external view returns (address);
     function getManagers() external view returns (address[] memory);
     function getKeepers() external view returns (address[] memory);

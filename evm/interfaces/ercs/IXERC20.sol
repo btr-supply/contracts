@@ -17,12 +17,12 @@ interface IXERC20 {
     error IXERC20_NotHighEnoughLimits();
 
     /**
-    * @notice Updates the limits of any bridge
-    * @dev Can only be called by the owner
-    * @param _mintingLimit The updated minting limit we are setting to the bridge
-    * @param _burningLimit The updated burning limit we are setting to the bridge
-    * @param _bridge The address of the bridge we are setting the limits too
-    */
+     * @notice Updates the limits of any bridge
+     * @dev Can only be called by the owner
+     * @param _mintingLimit The updated minting limit we are setting to the bridge
+     * @param _burningLimit The updated burning limit we are setting to the bridge
+     * @param _bridge The address of the bridge we are setting the limits too
+     */
     function setLimits(address _bridge, uint256 _mintingLimit, uint256 _burningLimit) external;
 
     /**

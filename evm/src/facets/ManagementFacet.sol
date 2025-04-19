@@ -12,7 +12,6 @@ import {PausableFacet} from "@facets/abstract/PausableFacet.sol";
 import {NonReentrantFacet} from "@facets/abstract/NonReentrantFacet.sol";
 
 contract ManagementFacet is PermissionedFacet, PausableFacet, NonReentrantFacet {
-
     /*═══════════════════════════════════════════════════════════════╗
     ║                             PAUSE                              ║
     ╚═══════════════════════════════════════════════════════════════*/
@@ -22,10 +21,10 @@ contract ManagementFacet is PermissionedFacet, PausableFacet, NonReentrantFacet 
     function initializeManagement() external onlyAdmin {
         // Initialize management facet with default restrictions
         M.initializeRestrictions(
-            true,  // restrictSwapCaller - enabled by default for security
-            true,  // restrictSwapRouter - enabled by default for security
+            true, // restrictSwapCaller - enabled by default for security
+            true, // restrictSwapRouter - enabled by default for security
             false, // approveMax - disabled by default for security
-            true   // autoRevoke - enabled by default for security
+            true // autoRevoke - enabled by default for security
         );
     }
 
@@ -134,7 +133,7 @@ contract ManagementFacet is PermissionedFacet, PausableFacet, NonReentrantFacet 
     function isRestrictedMint(uint32 vaultId) external view returns (bool) {
         return M.isRestrictedMint(vaultId);
     }
-    
+
     function isRestrictedMinter(uint32 vaultId, address minter) external view returns (bool) {
         return M.isRestrictedMinter(vaultId, minter);
     }

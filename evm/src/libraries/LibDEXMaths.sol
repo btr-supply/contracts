@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.28;
 
-import {FixedPoint96} from "@libraries/FixedPoint96.sol";
+import {LibDEXMaths} from "@libraries/LibDEXMaths.sol";
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {LibMaths as M} from "@libraries/LibMaths.sol"; // contains mulDiv
 
@@ -15,7 +15,7 @@ library LibDEXMaths {
     using SafeCast for int256;
     using M for uint256;
     using M for uint160;
-    
+
     /// @dev The minimum tick that may be passed to #getSqrtPriceAtTick computed from log base 1.0001 of 2**-128
     int24 internal constant MIN_TICK = -887272;
     /// @dev The maximum tick that may be passed to #getSqrtPriceAtTick computed from log base 1.0001 of 2**128
@@ -25,7 +25,10 @@ library LibDEXMaths {
     uint160 internal constant MIN_SQRT_RATIO = 4295128739;
     /// @dev The maximum value that can be returned from #getSqrtPriceAtTick. Equivalent to getSqrtPriceAtTick(MAX_TICK)
     uint160 internal constant MAX_SQRT_RATIO = 1461446703485210103287273052203988822378723970342;
-    
+
+    /// @dev 2^96
+    uint256 internal constant Q96 = 0x1000000000000000000000000;
+
     /**
      * @notice Calculate token0 amount for given liquidity
      * @param sqrtPriceAX96 Lower sqrt price
@@ -33,18 +36,18 @@ library LibDEXMaths {
      * @param liquidity Liquidity amount
      * @return amount0 Amount of token0
      */
-    function getAmount0ForLiquidity(
-        uint160 sqrtPriceAX96,
-        uint160 sqrtPriceBX96,
-        uint128 liquidity
-    ) internal pure returns (uint256 amount0) {
+    function getAmount0ForLiquidity(uint160 sqrtPriceAX96, uint160 sqrtPriceBX96, uint128 liquidity)
+        internal
+        pure
+        returns (uint256 amount0)
+    {
         if (sqrtPriceAX96 > sqrtPriceBX96) {
             (sqrtPriceAX96, sqrtPriceBX96) = (sqrtPriceBX96, sqrtPriceAX96);
         }
 
-        return uint256(liquidity) * FixedPoint96.Q96 * (sqrtPriceBX96 - sqrtPriceAX96) / (sqrtPriceAX96 * sqrtPriceBX96);
+        return uint256(liquidity) * LibDEXMaths.Q96 * (sqrtPriceBX96 - sqrtPriceAX96) / (sqrtPriceAX96 * sqrtPriceBX96);
     }
-    
+
     /**
      * @notice Calculate token1 amount for given liquidity
      * @param sqrtPriceAX96 Lower sqrt price
@@ -52,18 +55,18 @@ library LibDEXMaths {
      * @param liquidity Liquidity amount
      * @return amount1 Amount of token1
      */
-    function getAmount1ForLiquidity(
-        uint160 sqrtPriceAX96,
-        uint160 sqrtPriceBX96,
-        uint128 liquidity
-    ) internal pure returns (uint256 amount1) {
+    function getAmount1ForLiquidity(uint160 sqrtPriceAX96, uint160 sqrtPriceBX96, uint128 liquidity)
+        internal
+        pure
+        returns (uint256 amount1)
+    {
         if (sqrtPriceAX96 > sqrtPriceBX96) {
             (sqrtPriceAX96, sqrtPriceBX96) = (sqrtPriceBX96, sqrtPriceAX96);
         }
 
-        return uint256(liquidity) * (sqrtPriceBX96 - sqrtPriceAX96) / FixedPoint96.Q96;
+        return uint256(liquidity) * (sqrtPriceBX96 - sqrtPriceAX96) / LibDEXMaths.Q96;
     }
-    
+
     /**
      * @notice Calculate liquidity for given token amounts
      * @param sqrtPriceX96 Current sqrt price
@@ -102,15 +105,15 @@ library LibDEXMaths {
      * @param amount0 Amount of token0
      * @return liquidity The calculated liquidity amount
      */
-    function getLiquidityForAmount0(
-        uint160 sqrtPriceAX96, 
-        uint160 sqrtPriceBX96, 
-        uint256 amount0
-    ) internal pure returns (uint128 liquidity) {
+    function getLiquidityForAmount0(uint160 sqrtPriceAX96, uint160 sqrtPriceBX96, uint256 amount0)
+        internal
+        pure
+        returns (uint128 liquidity)
+    {
         if (sqrtPriceAX96 > sqrtPriceBX96) {
             (sqrtPriceAX96, sqrtPriceBX96) = (sqrtPriceBX96, sqrtPriceAX96);
         }
-        uint256 intermediate = sqrtPriceAX96.mulDivDown(sqrtPriceBX96, FixedPoint96.Q96);
+        uint256 intermediate = sqrtPriceAX96.mulDivDown(sqrtPriceBX96, LibDEXMaths.Q96);
         return uint128(amount0.mulDivDown(intermediate, sqrtPriceBX96 - sqrtPriceAX96));
     }
 
@@ -121,15 +124,15 @@ library LibDEXMaths {
      * @param amount1 Amount of token1
      * @return liquidity The calculated liquidity amount
      */
-    function getLiquidityForAmount1(
-        uint160 sqrtPriceAX96, 
-        uint160 sqrtPriceBX96, 
-        uint256 amount1
-    ) internal pure returns (uint128 liquidity) {
+    function getLiquidityForAmount1(uint160 sqrtPriceAX96, uint160 sqrtPriceBX96, uint256 amount1)
+        internal
+        pure
+        returns (uint128 liquidity)
+    {
         if (sqrtPriceAX96 > sqrtPriceBX96) {
             (sqrtPriceAX96, sqrtPriceBX96) = (sqrtPriceBX96, sqrtPriceAX96);
         }
-        return uint128(amount1.mulDivDown(FixedPoint96.Q96, sqrtPriceBX96 - sqrtPriceAX96));
+        return uint128(amount1.mulDivDown(LibDEXMaths.Q96, sqrtPriceBX96 - sqrtPriceAX96));
     }
 
     /**
@@ -139,11 +142,11 @@ library LibDEXMaths {
      * @param liquidity Liquidity amount
      * @return fee Amount of fees
      */
-    function calculateFeeGrowth(
-        uint256 feeGrowthGlobal,
-        uint256 feeGrowthInside,
-        uint128 liquidity
-    ) internal pure returns (uint256 fee) {
+    function calculateFeeGrowth(uint256 feeGrowthGlobal, uint256 feeGrowthInside, uint128 liquidity)
+        internal
+        pure
+        returns (uint256 fee)
+    {
         uint256 feeGrowthDelta = feeGrowthGlobal - feeGrowthInside;
         return uint256(liquidity) * feeGrowthDelta / (1 << 128);
     }
@@ -161,7 +164,8 @@ library LibDEXMaths {
             require(absTick <= int256(MAX_TICK));
 
             uint256 absTickUint = SafeCast.toUint256(absTick);
-            uint256 ratio = absTickUint & 0x1 != 0 ? 0xfffcb933bd6fad37aa2d162d1a594001 : 0x100000000000000000000000000000000;
+            uint256 ratio =
+                absTickUint & 0x1 != 0 ? 0xfffcb933bd6fad37aa2d162d1a594001 : 0x100000000000000000000000000000000;
             if (absTickUint & 0x2 != 0) ratio = (ratio * 0xfff97272373d413259a46990580e213a) >> 128;
             if (absTickUint & 0x4 != 0) ratio = (ratio * 0xfff2e50f5f656932ef12357cf3c7fdcc) >> 128;
             if (absTickUint & 0x8 != 0) ratio = (ratio * 0xffe5caca7e10e4e61c3624eaa0941cd0) >> 128;
@@ -200,7 +204,7 @@ library LibDEXMaths {
      */
     function getTickAtSqrtPrice(uint160 sqrtPriceX96) internal pure returns (int24 tick) {
         // second inequality must be < because the price can never reach the price at the max tick
-        require(sqrtPriceX96 >= MIN_SQRT_RATIO && sqrtPriceX96 < MAX_SQRT_RATIO, 'R');
+        require(sqrtPriceX96 >= MIN_SQRT_RATIO && sqrtPriceX96 < MAX_SQRT_RATIO, "R");
         uint256 ratio = uint256(sqrtPriceX96) << 32;
 
         uint256 r = ratio;
@@ -342,7 +346,7 @@ library LibDEXMaths {
 
         tick = tickLow == tickHi ? tickLow : getSqrtPriceAtTick(tickHi) <= sqrtPriceX96 ? tickHi : tickLow;
     }
-    
+
     /**
      * @notice Calculates total asset value across multiple positions
      * @param currentTick Current tick in the pool
@@ -350,26 +354,23 @@ library LibDEXMaths {
      * @return amount0 Total amount of token0
      * @return amount1 Total amount of token1
      */
-    function getTotalPositionValues(
-        int24 currentTick, 
-        Position[] memory positions
-    ) internal pure returns (uint256 amount0, uint256 amount1) {
+    function getTotalPositionValues(int24 currentTick, Position[] memory positions)
+        internal
+        pure
+        returns (uint256 amount0, uint256 amount1)
+    {
         for (uint256 i = 0; i < positions.length; i++) {
             Position memory pos = positions[i];
             if (pos.liquidity == 0) continue;
 
-            (uint256 posAmount0, uint256 posAmount1) = getAmountsForLiquidity(
-                currentTick,
-                pos.lowerTick,
-                pos.upperTick,
-                pos.liquidity
-            );
-            
+            (uint256 posAmount0, uint256 posAmount1) =
+                getAmountsForLiquidity(currentTick, pos.lowerTick, pos.upperTick, pos.liquidity);
+
             amount0 += posAmount0;
             amount1 += posAmount1;
         }
     }
-    
+
     /**
      * @notice Calculate amounts in a single position
      * @param currentTick Current tick in the pool
@@ -379,42 +380,25 @@ library LibDEXMaths {
      * @return amount0 Amount of token0
      * @return amount1 Amount of token1
      */
-    function getAmountsForLiquidity(
-        int24 currentTick,
-        int24 lowerTick,
-        int24 upperTick,
-        uint128 liquidity
-    ) internal pure returns (uint256 amount0, uint256 amount1) {
+    function getAmountsForLiquidity(int24 currentTick, int24 lowerTick, int24 upperTick, uint128 liquidity)
+        internal
+        pure
+        returns (uint256 amount0, uint256 amount1)
+    {
         // Calculate token amounts based on liquidity
         if (currentTick < lowerTick) {
             // All token0, no token1
-            amount0 = getAmount0ForLiquidity(
-                getSqrtPriceAtTick(lowerTick),
-                getSqrtPriceAtTick(upperTick),
-                liquidity
-            );
+            amount0 = getAmount0ForLiquidity(getSqrtPriceAtTick(lowerTick), getSqrtPriceAtTick(upperTick), liquidity);
         } else if (currentTick >= upperTick) {
             // All token1, no token0
-            amount1 = getAmount1ForLiquidity(
-                getSqrtPriceAtTick(lowerTick),
-                getSqrtPriceAtTick(upperTick),
-                liquidity
-            );
+            amount1 = getAmount1ForLiquidity(getSqrtPriceAtTick(lowerTick), getSqrtPriceAtTick(upperTick), liquidity);
         } else {
             // Mix of token0 and token1
-            amount0 = getAmount0ForLiquidity(
-                getSqrtPriceAtTick(currentTick),
-                getSqrtPriceAtTick(upperTick),
-                liquidity
-            );
-            amount1 = getAmount1ForLiquidity(
-                getSqrtPriceAtTick(lowerTick),
-                getSqrtPriceAtTick(currentTick),
-                liquidity
-            );
+            amount0 = getAmount0ForLiquidity(getSqrtPriceAtTick(currentTick), getSqrtPriceAtTick(upperTick), liquidity);
+            amount1 = getAmount1ForLiquidity(getSqrtPriceAtTick(lowerTick), getSqrtPriceAtTick(currentTick), liquidity);
         }
     }
-    
+
     // Helper struct for position operations
     struct Position {
         int24 lowerTick;
@@ -440,16 +424,10 @@ library LibDEXMaths {
     ) internal pure returns (uint128 liquidity) {
         uint160 sqrtPriceAX96 = getSqrtPriceAtTick(tickLower);
         uint160 sqrtPriceBX96 = getSqrtPriceAtTick(tickUpper);
-        
-        return getLiquidityForAmounts(
-            sqrtPriceX96,
-            sqrtPriceAX96,
-            sqrtPriceBX96,
-            amount0Desired,
-            amount1Desired
-        );
+
+        return getLiquidityForAmounts(sqrtPriceX96, sqrtPriceAX96, sqrtPriceBX96, amount0Desired, amount1Desired);
     }
-    
+
     /**
      * @notice Validate tick spacing for a range
      * @param spacing The tick spacing for the pool
@@ -457,15 +435,26 @@ library LibDEXMaths {
      * @param tickUpper The upper tick of the position
      * @return Whether the range is valid according to the pool's tick spacing
      */
-    function validateTickSpacing(
-        int24 spacing,
-        int24 tickLower,
-        int24 tickUpper
-    ) internal pure returns (bool) {
-        return
-            tickLower < tickUpper &&
-            tickLower % spacing == 0 &&
-            tickUpper % spacing == 0;
+    function validateTickSpacing(int24 spacing, int24 tickLower, int24 tickUpper) internal pure returns (bool) {
+        return tickLower < tickUpper && tickLower % spacing == 0 && tickUpper % spacing == 0;
+    }
+
+    /**
+     * @notice Round a tick to the nearest tick spacing
+     * @param tick The tick to round
+     * @param tickSpacing The spacing to round to
+     * @param roundUp Whether to round up (true) or down (false)
+     * @return The rounded tick
+     */
+    function roundToTickSpacing(int24 tick, int24 tickSpacing, bool roundUp) internal pure returns (int24) {
+        int24 remainder = tick % tickSpacing;
+        if (remainder == 0) return tick;
+
+        if (roundUp) {
+            return remainder < 0 ? tick - remainder : tick + (tickSpacing - remainder);
+        } else {
+            return remainder < 0 ? tick - (remainder + tickSpacing) : tick - remainder;
+        }
     }
 
     /**
@@ -476,12 +465,11 @@ library LibDEXMaths {
      * @param quoteToken Quote token address
      * @return quoteAmount Amount of quote token
      */
-    function getQuoteAtTick(
-        int24 tick,
-        uint128 baseAmount,
-        address baseToken,
-        address quoteToken
-    ) internal pure returns (uint256 quoteAmount) {
+    function getQuoteAtTick(int24 tick, uint128 baseAmount, address baseToken, address quoteToken)
+        internal
+        pure
+        returns (uint256 quoteAmount)
+    {
         uint160 sqrtRatioX96 = getSqrtPriceAtTick(tick);
 
         if (sqrtRatioX96 <= type(uint128).max) {
@@ -497,7 +485,6 @@ library LibDEXMaths {
         }
     }
 
-
     /**
      * @notice Validate current price against time-weighted average price to detect manipulation
      * @param currentSqrtPriceX96 Current sqrt price
@@ -506,11 +493,11 @@ library LibDEXMaths {
      * @return isStale True if price is stale, false if price is valid
      * @return deviation Deviation between current price and TWAP in basis points
      */
-    function getPriceDeviation(
-        uint160 currentSqrtPriceX96,
-        uint160 meanSqrtPriceX96,
-        uint256 maxDeviation
-    ) internal pure returns (bool isStale, uint256 deviation) {
+    function getPriceDeviation(uint160 currentSqrtPriceX96, uint160 meanSqrtPriceX96, uint256 maxDeviation)
+        internal
+        pure
+        returns (bool isStale, uint256 deviation)
+    {
         if (currentSqrtPriceX96 > meanSqrtPriceX96) {
             deviation = uint256(currentSqrtPriceX96 - meanSqrtPriceX96) * M.BP_BASIS / uint256(meanSqrtPriceX96);
         } else {

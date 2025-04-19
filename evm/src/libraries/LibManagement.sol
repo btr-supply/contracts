@@ -9,11 +9,20 @@ import {LibAccessControl as AC} from "@libraries/LibAccessControl.sol";
 import {LibPausable as P} from "@libraries/LibPausable.sol";
 import {LibMaths as M} from "@libraries/LibMaths.sol";
 import {LibTreasury as T} from "@libraries/LibTreasury.sol";
-import {AccountStatus as AS, AddressType, ErrorType, Fees, CoreStorage, ALMVault, Oracles, Range, Registry} from "@/BTRTypes.sol";
+import {
+    AccountStatus as AS,
+    AddressType,
+    ErrorType,
+    Fees,
+    CoreStorage,
+    ALMVault,
+    Oracles,
+    Range,
+    Registry
+} from "@/BTRTypes.sol";
 import {LibBitMask} from "@libraries/LibBitMask.sol";
 
 library LibManagement {
-
     using BTRUtils for uint32;
     using LibBitMask for uint256;
 
@@ -114,7 +123,9 @@ library LibManagement {
         uint256 len = accounts.length;
         for (uint256 i = 0; i < len;) {
             setAccountStatus(accounts[i], status);
-            unchecked { ++i; }
+            unchecked {
+                ++i;
+            }
         }
     }
 
@@ -145,14 +156,18 @@ library LibManagement {
     function addToListBatch(address[] memory accounts, AS status) internal {
         for (uint256 i = 0; i < accounts.length;) {
             setAccountStatus(accounts[i], status);
-            unchecked { ++i; }
+            unchecked {
+                ++i;
+            }
         }
     }
 
     function removeFromListBatch(address[] memory accounts) internal {
         for (uint256 i = 0; i < accounts.length;) {
             setAccountStatus(accounts[i], AS.NONE);
-            unchecked { ++i; }
+            unchecked {
+                ++i;
+            }
         }
     }
 
@@ -166,7 +181,7 @@ library LibManagement {
             revert Errors.InvalidParameter(); // restrictedMint is only at vault level
         }
         S.registry().vaults[vaultId].restrictedMint = restricted;
-        
+
         if (restricted) {
             emit Events.MintRestricted(vaultId, msg.sender);
         } else {
@@ -181,11 +196,11 @@ library LibManagement {
     function getTreasury() internal view returns (address) {
         return T.getTreasury();
     }
-    
+
     function setTreasury(address treasury) internal {
         T.setTreasury(treasury);
     }
-    
+
     // Forward fee-related functions to LibTreasury
     function validateFees(Fees memory fees) internal pure {
         T.validateFees(fees);
@@ -231,7 +246,7 @@ library LibManagement {
 
     function setRangeWeights(uint32 vaultId, uint256[] memory weights) internal {
         ALMVault storage vs = vaultId.getVault();
-        
+
         if (weights.length != vs.ranges.length) {
             revert Errors.UnexpectedOutput();
         }
@@ -243,7 +258,9 @@ library LibManagement {
             totalWeight += weights[i];
             Range storage range = rs.ranges[vs.ranges[i]];
             range.weightBps = weights[i];
-            unchecked { ++i; }
+            unchecked {
+                ++i;
+            }
         }
 
         if (totalWeight >= M.BP_BASIS) {
@@ -256,7 +273,9 @@ library LibManagement {
         uint256[] memory weights = new uint256[](vs.ranges.length);
         for (uint256 i = 0; i < weights.length;) {
             weights[i] = 0;
-            unchecked { ++i; }
+            unchecked {
+                ++i;
+            }
         }
         setRangeWeights(vaultId, weights);
     }
@@ -277,10 +296,7 @@ library LibManagement {
      * @param lookback Default TWAP interval in seconds for new vaults
      * @param maxDeviation Default maximum price deviation in basis points
      */
-    function setDefaultPriceProtection(
-        uint32 lookback,
-        uint256 maxDeviation
-    ) internal {
+    function setDefaultPriceProtection(uint32 lookback, uint256 maxDeviation) internal {
         validatePriceProtection(lookback, maxDeviation);
         Oracles storage os = S.oracles();
         os.lookback = lookback;
@@ -294,11 +310,7 @@ library LibManagement {
      * @param lookback TWAP interval in seconds
      * @param maxDeviation Maximum price deviation in basis points
      */
-    function setVaultPriceProtection(
-        uint32 vaultId,
-        uint32 lookback,
-        uint256 maxDeviation
-    ) internal {
+    function setVaultPriceProtection(uint32 vaultId, uint32 lookback, uint256 maxDeviation) internal {
         validatePriceProtection(lookback, maxDeviation);
         ALMVault storage vs = vaultId.getVault();
         vs.lookback = lookback;
@@ -316,9 +328,7 @@ library LibManagement {
 
     function setRestriction(uint8 _bit, bool _value) internal {
         uint256 restrictions = S.restrictions().restrictionMask;
-        S.restrictions().restrictionMask = _value 
-            ? restrictions.setBit(_bit)
-            : restrictions.resetBit(_bit);
+        S.restrictions().restrictionMask = _value ? restrictions.setBit(_bit) : restrictions.resetBit(_bit);
         emit Events.RestrictionUpdated(_bit, _value);
     }
 
@@ -414,7 +424,7 @@ library LibManagement {
         if (_approveMax) restrictions = restrictions.setBit(APPROVE_MAX_BIT);
         if (_autoRevoke) restrictions = restrictions.setBit(AUTO_REVOKE_BIT);
         S.restrictions().restrictionMask = restrictions;
-        
+
         // Emit single initialization event
         emit Events.RestrictionsInitialized(_restrictSwapCaller, _restrictSwapRouter, _approveMax, _autoRevoke);
     }

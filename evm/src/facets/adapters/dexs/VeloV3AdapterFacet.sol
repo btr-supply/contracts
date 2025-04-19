@@ -26,9 +26,13 @@ contract VeloV3AdapterFacet is UniV3AdapterFacet {
      * @return sqrtPriceX96 The current square root price as a Q64.96
      * @return tick The current tick
      */
-    function _getPoolSqrtPriceAndTick(
-        address pool
-    ) internal view virtual override returns (uint160 sqrtPriceX96, int24 tick) {
+    function _getPoolSqrtPriceAndTick(address pool)
+        internal
+        view
+        virtual
+        override
+        returns (uint160 sqrtPriceX96, int24 tick)
+    {
         (sqrtPriceX96, tick,,,,) = IVeloV3Pool(pool).slot0();
         return (sqrtPriceX96, tick);
     }

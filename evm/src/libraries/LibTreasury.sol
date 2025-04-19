@@ -10,7 +10,6 @@ import {LibALM} from "@libraries/LibALM.sol";
 import {BTRUtils} from "@libraries/BTRUtils.sol";
 
 library LibTreasury {
-
     using LibALM for uint32;
     using BTRUtils for uint32;
 
@@ -98,7 +97,9 @@ library LibTreasury {
     function collectAllFees() internal {
         for (uint32 vaultId = 0; vaultId < S.registry().vaultCount;) {
             vaultId.collectFees();
-            unchecked { ++vaultId; }
+            unchecked {
+                ++vaultId;
+            }
         }
     }
 

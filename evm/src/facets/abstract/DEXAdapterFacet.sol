@@ -28,8 +28,11 @@ abstract contract DEXAdapterFacet is PermissionedFacet, NonReentrantFacet, Pausa
     using LibDEXMaths for int24;
     using LibDEXMaths for uint160;
 
-
-    function _getRangeId(uint32 vaultId, bytes32 poolId, int24 tickLower, int24 tickUpper) internal view returns (bytes32) {
+    function _getRangeId(uint32 vaultId, bytes32 poolId, int24 tickLower, int24 tickUpper)
+        internal
+        view
+        returns (bytes32)
+    {
         return keccak256(abi.encodePacked(address(this), vaultId, poolId, tickLower, tickUpper));
     }
 
@@ -88,9 +91,17 @@ abstract contract DEXAdapterFacet is PermissionedFacet, NonReentrantFacet, Pausa
         return _validateTickSpacing(range);
     }
 
-    function _getPoolSqrtPriceAndTick(bytes32 poolId) internal view virtual returns (uint160 sqrtPriceX96, int24 tick);
+    function _getPoolSqrtPriceAndTick(bytes32 poolId)
+        internal
+        view
+        virtual
+        returns (uint160 sqrtPriceX96, int24 tick);
 
-    function _getPositionWithAmounts(bytes32 rangeId) internal view virtual returns (uint128 liquidity, uint256 amount0, uint256 amount1, uint128 fees0, uint128 fees1);
+    function _getPositionWithAmounts(bytes32 rangeId)
+        internal
+        view
+        virtual
+        returns (uint128 liquidity, uint256 amount0, uint256 amount1, uint128 fees0, uint128 fees1);
 
     /**
      * @notice Get position details for a specific vault
@@ -101,7 +112,11 @@ abstract contract DEXAdapterFacet is PermissionedFacet, NonReentrantFacet, Pausa
      * @return fees0 Accumulated fees for token0
      * @return fees1 Accumulated fees for token1
      */
-    function getPositionInfo(bytes32 rangeId) external view returns (uint128 liquidity, uint256 amount0, uint256 amount1, uint128 fees0, uint128 fees1) {
+    function getPositionInfo(bytes32 rangeId)
+        external
+        view
+        returns (uint128 liquidity, uint256 amount0, uint256 amount1, uint128 fees0, uint128 fees1)
+    {
         return _getPositionWithAmounts(rangeId);
     }
 
@@ -112,14 +127,13 @@ abstract contract DEXAdapterFacet is PermissionedFacet, NonReentrantFacet, Pausa
      * @return amount0 Amount of token0 in the position
      * @return amount1 Amount of token1 in the position
      */
-    function _getAmountsForLiquidity(
-        bytes32 rangeId,
-        uint256 liquidity
-    ) internal view virtual returns (uint256 amount0, uint256 amount1);
+    function _getAmountsForLiquidity(bytes32 rangeId, uint256 liquidity)
+        internal
+        view
+        virtual
+        returns (uint256 amount0, uint256 amount1);
 
-    function _getAmountsForLiquidity(
-        bytes32 rangeId
-    ) internal view returns (uint256 amount0, uint256 amount1) {
+    function _getAmountsForLiquidity(bytes32 rangeId) internal view returns (uint256 amount0, uint256 amount1) {
         Range storage range = rangeId.getRange();
         return _getAmountsForLiquidity(rangeId, range.liquidity);
     }
@@ -129,20 +143,36 @@ abstract contract DEXAdapterFacet is PermissionedFacet, NonReentrantFacet, Pausa
      * @param rangeId The range ID
      * @param liquidity The liquidity amount to calculate for
      * @return amount0 Amount of token0 for the specified liquidity
-     * @return amount1 Amount of token1 for the specified liquidity 
+     * @return amount1 Amount of token1 for the specified liquidity
      */
-    function getAmountsForLiquidity(
-        bytes32 rangeId,
-        uint128 liquidity
-    ) external view returns (uint256 amount0, uint256 amount1) {
+    function getAmountsForLiquidity(bytes32 rangeId, uint128 liquidity)
+        external
+        view
+        returns (uint256 amount0, uint256 amount1)
+    {
         return _getAmountsForLiquidity(rangeId, liquidity);
     }
 
-    function _getLiquidityForAmounts(
-        bytes32 rangeId,
-        uint256 amount0Desired,
-        uint256 amount1Desired
-    ) internal view virtual returns (uint128 liquidity);
+    function _getLiquidityForAmounts(bytes32 rangeId, uint256 amount0Desired, uint256 amount1Desired)
+        internal
+        view
+        virtual
+        returns (uint128 liquidity);
+
+    /**
+     * @notice Calculate liquidity for given token amounts
+     * @param rangeId The range ID
+     * @param amount0Desired Desired amount of token0
+     * @param amount1Desired Desired amount of token1
+     * @return liquidity The calculated liquidity amount
+     */
+    function getLiquidityForAmounts(bytes32 rangeId, uint256 amount0Desired, uint256 amount1Desired)
+        external
+        view
+        returns (uint128 liquidity)
+    {
+        return _getLiquidityForAmounts(rangeId, amount0Desired, amount1Desired);
+    }
 
     /**
      * @notice Calculate liquidity ratio for token0 compared to total liquidity
@@ -152,15 +182,13 @@ abstract contract DEXAdapterFacet is PermissionedFacet, NonReentrantFacet, Pausa
     function getLiquidityRatio0(bytes32 rangeId) external view returns (uint256) {
         return _getLiquidityRatio0(rangeId);
     }
-    
+
     /**
      * @notice Internal implementation to calculate liquidity ratio for token0
      * @param rangeId The range ID
      * @return ratio0 The ratio of token0 to total liquidity (in basis points)
      */
-    function _getLiquidityRatio0(
-        bytes32 rangeId
-    ) internal view returns (uint256 ratio0) {
+    function _getLiquidityRatio0(bytes32 rangeId) internal view returns (uint256 ratio0) {
         (uint256 amount0, uint256 amount1) = _getAmountsForLiquidity(rangeId, M.PRECISION_BP_BASIS);
         return amount0.divDown(amount1 + amount0);
     }
@@ -169,30 +197,26 @@ abstract contract DEXAdapterFacet is PermissionedFacet, NonReentrantFacet, Pausa
      * @notice Pool-specific implementation for collecting tokens and fees
      * @dev Must be implemented by each adapter to handle pool-specific collect logic
      */
-    function _collectRangeFees(
-        bytes32 rangeId
-    ) internal virtual returns (uint256 collected0, uint256 collected1);
+    function _collectRangeFees(bytes32 rangeId) internal virtual returns (uint256 collected0, uint256 collected1);
 
-    function collectRangeFees(
-        bytes32 rangeId
-    ) external virtual returns (uint256 collected0, uint256 collected1) {
+    function collectRangeFees(bytes32 rangeId) external virtual returns (uint256 collected0, uint256 collected1) {
         return _collectRangeFees(rangeId);
     }
 
-    function _mintRange(
-        bytes32 rangeId
-    ) internal virtual returns (uint128 liquidity, uint256 amount0, uint256 amount1);
+    function _mintRange(bytes32 rangeId)
+        internal
+        virtual
+        returns (uint128 liquidity, uint256 amount0, uint256 amount1);
 
-    function mintRange(
-        bytes32 rangeId
-    ) external virtual returns (uint256 amount0, uint256 amount1) {
+    function mintRange(bytes32 rangeId) external virtual returns (uint256 amount0, uint256 amount1) {
         uint128 liquidity;
         (liquidity, amount0, amount1) = _mintRange(rangeId);
     }
 
-    function _burnRange(
-        bytes32 rangeId
-    ) internal virtual returns (uint256 amount0, uint256 amount1, uint256 lpFees0, uint256 lpFees1);
+    function _burnRange(bytes32 rangeId)
+        internal
+        virtual
+        returns (uint256 amount0, uint256 amount1, uint256 lpFees0, uint256 lpFees1);
 
     /**
      * @notice Withdraw liquidity from a position using rangeId
@@ -202,9 +226,11 @@ abstract contract DEXAdapterFacet is PermissionedFacet, NonReentrantFacet, Pausa
      * @return lpFees0 Fees collected for token0
      * @return lpFees1 Fees collected for token1
      */
-    function burnRange(
-        bytes32 rangeId
-    ) external virtual returns (uint256 amount0, uint256 amount1, uint256 lpFees0, uint256 lpFees1) {
+    function burnRange(bytes32 rangeId)
+        external
+        virtual
+        returns (uint256 amount0, uint256 amount1, uint256 lpFees0, uint256 lpFees1)
+    {
         return _burnRange(rangeId);
     }
 }

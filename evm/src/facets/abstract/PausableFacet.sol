@@ -7,7 +7,6 @@ import {LibPausable as P} from "@libraries/LibPausable.sol";
 import {ErrorType} from "@/BTRTypes.sol";
 
 abstract contract PausableFacet {
-
     function isPaused() external view returns (bool) {
         return P.isPaused();
     }

@@ -9,11 +9,26 @@ interface ICamelotYieldBooster {
     function emergencyWithdraw(address token) external;
     function forceDeallocate() external;
     function forcedDeallocationStatus() external view returns (bool);
-    function getExpectedMultiplier(uint256 maxBoostMultiplier, uint256 lpAmount, uint256 totalLpSupply, uint256 userAllocation, uint256 poolTotalAllocation) external view returns (uint256);
-    function getMultiplier(address poolAddress, uint256 maxBoostMultiplier, uint256 lpAmount, uint256 totalLpSupply, uint256 userAllocation) external view returns (uint256);
+    function getExpectedMultiplier(
+        uint256 maxBoostMultiplier,
+        uint256 lpAmount,
+        uint256 totalLpSupply,
+        uint256 userAllocation,
+        uint256 poolTotalAllocation
+    ) external view returns (uint256);
+    function getMultiplier(
+        address poolAddress,
+        uint256 maxBoostMultiplier,
+        uint256 lpAmount,
+        uint256 totalLpSupply,
+        uint256 userAllocation
+    ) external view returns (uint256);
     function getPoolTotalAllocation(address poolAddress) external view returns (uint256);
     function getUserPosition(address userAddress, address poolAddress, uint256 index) external view returns (uint256);
-    function getUserPositionAllocation(address userAddress, address poolAddress, uint256 tokenId) external view returns (uint256);
+    function getUserPositionAllocation(address userAddress, address poolAddress, uint256 tokenId)
+        external
+        view
+        returns (uint256);
     function getUserPositionsLength(address userAddress, address poolAddress) external view returns (uint256);
     function getUserTotalAllocation(address userAddress) external view returns (uint256);
     function owner() external view returns (address);

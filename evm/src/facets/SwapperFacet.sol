@@ -56,15 +56,7 @@ contract SwapperFacet is PermissionedFacet {
         address _targetRouter,
         bytes calldata _callData
     ) external returns (uint256 received, uint256 spent) {
-        return SW.swap(
-            _input,
-            _output,
-            _amountIn,
-            _minAmountOut,
-            _targetRouter,
-            _callData,
-            msg.sender
-        );
+        return SW.swap(_input, _output, _amountIn, _minAmountOut, _targetRouter, _callData, msg.sender);
     }
 
     /// @notice Executes a swap using the entire balance of input token
@@ -82,14 +74,7 @@ contract SwapperFacet is PermissionedFacet {
         address _targetRouter,
         bytes calldata _callData
     ) external returns (uint256 received, uint256 spent) {
-        return SW.swapBalance(
-            _input,
-            _output,
-            _minAmountOut,
-            _targetRouter,
-            _callData,
-            msg.sender
-        );
+        return SW.swapBalance(_input, _output, _minAmountOut, _targetRouter, _callData, msg.sender);
     }
 
     /// @notice Executes a swap with encoded parameters
@@ -99,19 +84,11 @@ contract SwapperFacet is PermissionedFacet {
     /// @param _params Encoded swap parameters
     /// @return received Amount of output tokens received
     /// @return spent Amount of input tokens spent
-    function decodeAndSwap(
-        address _input,
-        address _output,
-        uint256 _amount,
-        bytes memory _params
-    ) external returns (uint256 received, uint256 spent) {
-        return SW.decodeAndSwap(
-            _input,
-            _output,
-            _amount,
-            _params,
-            msg.sender
-        );
+    function decodeAndSwap(address _input, address _output, uint256 _amount, bytes memory _params)
+        external
+        returns (uint256 received, uint256 spent)
+    {
+        return SW.decodeAndSwap(_input, _output, _amount, _params, msg.sender);
     }
 
     /// @notice Executes a swap with the entire balance using encoded parameters
@@ -120,16 +97,10 @@ contract SwapperFacet is PermissionedFacet {
     /// @param _params Encoded swap parameters
     /// @return received Amount of output tokens received
     /// @return spent Amount of input tokens spent
-    function decodeAndSwapBalance(
-        address _input,
-        address _output,
-        bytes memory _params
-    ) external returns (uint256 received, uint256 spent) {
-        return SW.decodeAndSwapBalance(
-            _input,
-            _output,
-            _params,
-            msg.sender
-        );
+    function decodeAndSwapBalance(address _input, address _output, bytes memory _params)
+        external
+        returns (uint256 received, uint256 spent)
+    {
+        return SW.decodeAndSwapBalance(_input, _output, _params, msg.sender);
     }
 }

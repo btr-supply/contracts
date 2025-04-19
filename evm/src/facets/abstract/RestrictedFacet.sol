@@ -7,7 +7,6 @@ import {BTRErrors as Errors} from "@libraries/BTREvents.sol";
 import {ErrorType, AccountStatus as AS} from "@/BTRTypes.sol";
 
 abstract contract RestrictedFacet {
-
     using BTRUtils for uint32;
 
     function checkNotBlacklisted(address account) internal view {
@@ -18,7 +17,7 @@ abstract contract RestrictedFacet {
         if (S.restrictions().accountStatus[account] != AS.WHITELISTED) revert Errors.Unauthorized(ErrorType.ADDRESS);
     }
 
-    function checkUnlisted(uint32 /* vaultId */, address account) internal view {
+    function checkUnlisted(uint32, /* vaultId */ address account) internal view {
         if (S.restrictions().accountStatus[account] != AS.NONE) revert Errors.Unauthorized(ErrorType.ADDRESS);
     }
 
@@ -40,7 +39,7 @@ abstract contract RestrictedFacet {
         checkUnlisted(vaultId, account);
         _;
     }
-    
+
     modifier onlyUnrestrictedMinter(uint32 vaultId, address account) {
         checkUnrestrictedMinter(vaultId, account);
         _;

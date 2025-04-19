@@ -23,18 +23,11 @@ abstract contract ERC1155Facet is RestrictedFacet, PausableFacet, NonReentrantFa
         return id.totalSupply();
     }
 
-    function balanceOf(
-        uint32 id,
-        address account
-    ) external view returns (uint256) {
+    function balanceOf(uint32 id, address account) external view returns (uint256) {
         return id.balanceOf(account);
     }
 
-    function allowance(
-        uint32 id,
-        address owner,
-        address spender
-    ) external view returns (uint256) {
+    function allowance(uint32 id, address owner, address spender) external view returns (uint256) {
         return id.allowance(owner, spender);
     }
 
@@ -42,33 +35,23 @@ abstract contract ERC1155Facet is RestrictedFacet, PausableFacet, NonReentrantFa
         id.approve(msg.sender, spender, amount);
     }
 
-    function _mint(
-        uint32 id,
-        address account,
-        uint256 amount
-    ) internal
+    function _mint(uint32 id, address account, uint256 amount)
+        internal
         whenVaultNotPaused(id)
         onlyUnrestrictedMinter(id, account)
     {
         id.mint(account, amount);
     }
 
-    function _burn(
-        uint32 id,
-        address account,
-        uint256 amount
-    ) internal
+    function _burn(uint32 id, address account, uint256 amount)
+        internal
         whenVaultNotPaused(id)
         onlyUnrestrictedMinter(id, account)
     {
         id.burn(account, amount);
     }
 
-    function transfer(
-        uint32 id,
-        address recipient,
-        uint256 amount
-    )
+    function transfer(uint32 id, address recipient, uint256 amount)
         external
         whenVaultNotPaused(id)
         onlyNotBlacklisted(id, msg.sender)
@@ -79,12 +62,7 @@ abstract contract ERC1155Facet is RestrictedFacet, PausableFacet, NonReentrantFa
         return true;
     }
 
-    function transferFrom(
-        uint32 id,
-        address sender,
-        address recipient,
-        uint256 amount
-    )
+    function transferFrom(uint32 id, address sender, address recipient, uint256 amount)
         external
         whenVaultNotPaused(id)
         onlyUnrestrictedMinter(id, recipient)

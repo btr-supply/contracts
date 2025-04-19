@@ -30,7 +30,8 @@ interface IIntegralPool {
     function name() external view returns (string memory);
     function nonces(address) external view returns (uint256);
     function oracle() external view returns (address);
-    function permit(address owner, address spender, uint256 value, uint256 deadline, uint8 v, bytes32 r, bytes32 s) external;
+    function permit(address owner, address spender, uint256 value, uint256 deadline, uint8 v, bytes32 r, bytes32 s)
+        external;
     function setBurnFee(uint256 fee) external;
     function setMintFee(uint256 fee) external;
     function setOracle(address _oracle) external;

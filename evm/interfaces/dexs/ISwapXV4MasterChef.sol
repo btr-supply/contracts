@@ -33,7 +33,10 @@ interface ISwapXV4MasterChef {
     function owner() external view returns (address);
     function pendingReward(address _user) external view returns (uint256 pending);
     function pendingRewardExtra(address _user) external view returns (uint256 pending);
-    function poolInfo() external view returns (uint256 accRewardPerShare, uint256 accRewardPerShareExtra, uint256 lastRewardTime);
+    function poolInfo()
+        external
+        view
+        returns (uint256 accRewardPerShare, uint256 accRewardPerShareExtra, uint256 lastRewardTime);
     function removeKeeper(address[] memory _keepers) external;
     function renounceOwnership() external;
     function rewardPerSecond() external view returns (uint256);

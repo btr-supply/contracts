@@ -19,7 +19,7 @@ library LibERC1155 {
     function balanceOf(uint32 id, address account) internal view returns (uint256) {
         return id.getVault().balances[account];
     }
-    
+
     function allowance(uint32 id, address owner, address spender) internal view returns (uint256) {
         return id.getVault().allowances[owner][spender];
     }
@@ -40,53 +40,53 @@ library LibERC1155 {
             }
             vs.allowances[sender][operator] = currentAllowance - amount;
         }
-        
+
         transfer(id, sender, recipient, amount);
     }
 
     function transfer(uint32 id, address sender, address recipient, uint256 amount) internal {
         if (sender == address(0) || recipient == address(0)) revert Errors.ZeroAddress();
         if (amount == 0) revert Errors.ZeroValue();
-        
+
         ALMVault storage vs = id.getVault();
-        
+
         if (vs.balances[sender] < amount) {
             revert Errors.Insufficient(vs.balances[sender], amount);
         }
-        
+
         vs.balances[sender] -= amount;
         vs.balances[recipient] += amount;
-        
+
         emit Events.Transfer(sender, recipient, amount);
     }
 
     function mint(uint32 id, address account, uint256 amount) internal {
         if (account == address(0)) revert Errors.ZeroAddress();
-        
+
         ALMVault storage vs = id.getVault();
-        
+
         if (vs.maxSupply > 0 && vs.totalSupply + amount > vs.maxSupply) {
             revert Errors.Exceeds(vs.totalSupply + amount, vs.maxSupply);
         }
-        
+
         vs.totalSupply += amount;
         vs.balances[account] += amount;
-        
+
         emit Events.Transfer(address(0), account, amount);
     }
 
     function burn(uint32 id, address account, uint256 amount) internal {
         if (account == address(0)) revert Errors.ZeroAddress();
-        
+
         ALMVault storage vs = id.getVault();
-        
+
         if (vs.balances[account] < amount) {
             revert Errors.Insufficient(vs.balances[account], amount);
         }
-        
+
         vs.totalSupply -= amount;
         vs.balances[account] -= amount;
-        
+
         emit Events.Transfer(account, address(0), amount);
     }
 }

@@ -17,8 +17,12 @@ interface ISwapXV4Voter {
     function claimFees(address[] memory _bribes, address[][] memory _tokens) external;
     function claimRewards(address[] memory _gauges) external;
     function claimable(address) external view returns (uint256);
-    function createGauge(address _pool, uint256 _gaugeType) external returns (address _gauge, address _internal_bribe, address _external_bribe);
-    function createGauges(address[] memory _pool, uint256[] memory _gaugeTypes) external returns (address[] memory, address[] memory, address[] memory);
+    function createGauge(address _pool, uint256 _gaugeType)
+        external
+        returns (address _gauge, address _internal_bribe, address _external_bribe);
+    function createGauges(address[] memory _pool, uint256[] memory _gaugeTypes)
+        external
+        returns (address[] memory, address[] memory, address[] memory);
     function distribute(address[] memory _gauges) external;
     function distribute(uint256 start, uint256 finish) external;
     function distributeAll() external;
@@ -33,7 +37,8 @@ interface ISwapXV4Voter {
     function gaugesDistributionTimestmap(address) external view returns (uint256);
     function hasGaugeKilled(address) external view returns (uint256);
     function indexAt(uint256 _time) external view returns (uint256);
-    function initialize(address __ve, address _pairFactory, address _gaugeFactory, address _bribes, address _masterChef) external;
+    function initialize(address __ve, address _pairFactory, address _gaugeFactory, address _bribes, address _masterChef)
+        external;
     function internal_bribes(address) external view returns (address);
     function isAlive(address) external view returns (bool);
     function isFactory(address) external view returns (bool);

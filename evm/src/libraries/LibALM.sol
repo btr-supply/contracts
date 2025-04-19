@@ -4,7 +4,19 @@ pragma solidity 0.8.28;
 import {LibDiamond} from "@libraries/LibDiamond.sol";
 import {LibAccessControl} from "@libraries/LibAccessControl.sol";
 import {LibTreasury as T} from "@libraries/LibTreasury.sol";
-import {ALMVault, PoolInfo, Range, Rebalance, AddressType, CoreStorage, ErrorType, VaultInitParams, DEX, Registry, FeeType} from "@/BTRTypes.sol";
+import {
+    ALMVault,
+    PoolInfo,
+    Range,
+    Rebalance,
+    AddressType,
+    CoreStorage,
+    ErrorType,
+    VaultInitParams,
+    DEX,
+    Registry,
+    FeeType
+} from "@/BTRTypes.sol";
 import {BTRStorage as S} from "@libraries/BTRStorage.sol";
 import {BTRErrors as Errors, BTREvents as Events} from "@libraries/BTREvents.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
@@ -32,15 +44,16 @@ library LibALM {
         if (length > MAX_RANGES) revert Errors.Exceeds(length, MAX_RANGES);
     }
 
-    function createVault(
-        VaultInitParams calldata params
-    ) internal returns (uint32 vaultId) {
-        if (params.token0 == address(0) || params.token1 == address(0))
+    function createVault(VaultInitParams calldata params) internal returns (uint32 vaultId) {
+        if (params.token0 == address(0) || params.token1 == address(0)) {
             revert Errors.ZeroAddress();
-        if (params.initAmount0 == 0 || params.initAmount1 == 0)
-            revert Errors.ZeroValue(); // initial token amounts must be non-zero
-        if (uint160(params.token0) >= uint160(params.token1))
-            revert Errors.WrongOrder(ErrorType.TOKEN); // strict ordering in vault pair
+        }
+        if (params.initAmount0 == 0 || params.initAmount1 == 0) {
+            revert Errors.ZeroValue();
+        } // initial token amounts must be non-zero
+        if (uint160(params.token0) >= uint160(params.token1)) {
+            revert Errors.WrongOrder(ErrorType.TOKEN);
+        } // strict ordering in vault pair
 
         CoreStorage storage cs = S.core();
 
@@ -72,10 +85,7 @@ library LibALM {
         return vaultId;
     }
 
-    function _getDexAdapter(
-        Registry storage registry,
-        DEX dex
-    ) internal view returns (address) {
+    function _getDexAdapter(Registry storage registry, DEX dex) internal view returns (address) {
         return registry.dexAdapters[uint8(dex)];
     }
 
@@ -106,17 +116,14 @@ library LibALM {
         // ensure that new dexs are sequentially added (if dex is not 0)
         uint8 dexIndex = uint8(dex);
         Registry storage registry = S.registry();
-        if (
-            dexIndex > 0 &&
-            registry.dexAdapters[dexIndex - 1] == address(0)
-        ) revert Errors.UnexpectedInput();
+        if (dexIndex > 0 && registry.dexAdapters[dexIndex - 1] == address(0)) revert Errors.UnexpectedInput();
         registry.dexAdapters[dexIndex] = adapter;
     }
 
-    function _getTotalBalances(
-        ALMVault storage vs,
-        Registry storage registry
-    ) internal returns (uint256 balance0, uint256 balance1) {
+    function _getTotalBalances(ALMVault storage vs, Registry storage registry)
+        internal
+        returns (uint256 balance0, uint256 balance1)
+    {
         // NB: undeployed token balances are shared between all vaults, not part of this vault's accounting
         // balance0 = vs.token0.balanceOf(address(this)).subMax0(vs.pendingFees[vs.token0]);
         // balance1 = vs.token1.balanceOf(address(this)).subMax0(vs.pendingFees[vs.token1]);
@@ -134,23 +141,14 @@ library LibALM {
             if (range.liquidity == 0) continue;
 
             // Use delegatecall for read-only function with rangeId to access the same storage context
-            bytes memory callData = abi.encodeWithSelector(
-                DEXAdapterFacet.getAmountsForLiquidity.selector,
-                range.id
-            );
+            bytes memory callData = abi.encodeWithSelector(DEXAdapterFacet.getAmountsForLiquidity.selector, range.id);
 
             // Execute delegatecall to preserve storage context
-            (bool success, bytes memory returnData) = _getPoolDexAdapter(
-                registry,
-                range.poolId
-            ).delegatecall(callData);
+            (bool success, bytes memory returnData) = _getPoolDexAdapter(registry, range.poolId).delegatecall(callData);
             if (!success) revert Errors.DelegateCallFailed();
 
             // Decode return data
-            (uint256 posAmount0, uint256 posAmount1) = abi.decode(
-                returnData,
-                (uint256, uint256)
-            );
+            (uint256 posAmount0, uint256 posAmount1) = abi.decode(returnData, (uint256, uint256));
 
             balance0 += posAmount0;
             balance1 += posAmount1;
@@ -159,39 +157,29 @@ library LibALM {
         return (balance0, balance1);
     }
 
-    function getTotalBalances(
-        uint32 vaultId
-    ) internal returns (uint256 balance0, uint256 balance1) {
+    function getTotalBalances(uint32 vaultId) internal returns (uint256 balance0, uint256 balance1) {
         return _getTotalBalances(vaultId.getVault(), S.registry());
     }
 
-    function _getWeights(
-        ALMVault storage vs,
-        Registry storage registry
-    ) internal view returns (uint256[] memory weights0) {
+    function _getWeights(ALMVault storage vs, Registry storage registry)
+        internal
+        view
+        returns (uint256[] memory weights0)
+    {
         weights0 = new uint256[](vs.ranges.length);
         for (uint256 i = 0; i < vs.ranges.length; i++) {
             weights0[i] = registry.ranges[vs.ranges[i]].weightBps;
         }
     }
 
-    function getWeights(
-        uint32 vaultId
-    ) internal view returns (uint256[] memory weights0) {
+    function getWeights(uint32 vaultId) internal view returns (uint256[] memory weights0) {
         return _getWeights(vaultId.getVault(), S.registry());
     }
 
     // in PRECISION_BP_BASIS
-    function _getRangeRatio0(
-        address adapterAddress,
-        bytes32 rangeId
-    ) internal returns (uint256 ratio0) {
-        (bool success, bytes memory data) = adapterAddress.delegatecall(
-            abi.encodeWithSelector(
-                DEXAdapterFacet.getLiquidityRatio0.selector,
-                rangeId
-            )
-        );
+    function _getRangeRatio0(address adapterAddress, bytes32 rangeId) internal returns (uint256 ratio0) {
+        (bool success, bytes memory data) =
+            adapterAddress.delegatecall(abi.encodeWithSelector(DEXAdapterFacet.getLiquidityRatio0.selector, rangeId));
         if (!success) {
             revert Errors.DelegateCallFailed();
         }
@@ -199,10 +187,7 @@ library LibALM {
     }
 
     // in PRECISION_BP_BASIS
-    function _getRatios0(
-        ALMVault storage vs,
-        Registry storage registry
-    ) internal returns (uint256[] memory ratios0) {
+    function _getRatios0(ALMVault storage vs, Registry storage registry) internal returns (uint256[] memory ratios0) {
         ratios0 = new uint256[](vs.ranges.length);
         if (vs.ranges.length == 0) {
             revert Errors.NotFound(ErrorType.RANGE);
@@ -220,27 +205,21 @@ library LibALM {
 
     // should return the current weights of token0 and token1 in the vault
     // to reflect the
-    function getRatios0(
-        uint32 vaultId
-    ) internal returns (uint256[] memory ratios0) {
+    function getRatios0(uint32 vaultId) internal returns (uint256[] memory ratios0) {
         return _getRatios0(vaultId.getVault(), S.registry());
     }
 
     // in PRECISION_BP_BASIS
-    function _getRatio0(
-        ALMVault storage vs,
-        Registry storage registry,
-        uint256 /* index */
-    ) internal returns (uint256 ratio0) {
+    function _getRatio0(ALMVault storage vs, Registry storage registry, uint256 /* index */ )
+        internal
+        returns (uint256 ratio0)
+    {
         (uint256 amount0, uint256 amount1) = _getTotalBalances(vs, registry);
         return amount0.mulDivDown(M.PRECISION_BP_BASIS, amount0 + amount1);
     }
 
     // in PRECISION_BP_BASIS
-    function _targetRatio0(
-        ALMVault storage vs,
-        Registry storage registry
-    ) internal returns (uint256 targetPBp0) {
+    function _targetRatio0(ALMVault storage vs, Registry storage registry) internal returns (uint256 targetPBp0) {
         uint256[] memory ratios0 = _getRatios0(vs, registry);
         uint256[] memory weights = _getWeights(vs, registry);
         unchecked {
@@ -250,23 +229,16 @@ library LibALM {
         }
     }
 
-    function targetRatio0(
-        uint32 vaultId
-    ) internal returns (uint256 targetPBp0) {
+    function targetRatio0(uint32 vaultId) internal returns (uint256 targetPBp0) {
         return _targetRatio0(vaultId.getVault(), S.registry());
     }
 
     // in PRECISION_BP_BASIS
-    function _targetRatio1(
-        ALMVault storage vs,
-        Registry storage registry
-    ) internal returns (uint256 targetPBp1) {
+    function _targetRatio1(ALMVault storage vs, Registry storage registry) internal returns (uint256 targetPBp1) {
         return M.PRECISION_BP_BASIS.subMax0(_targetRatio0(vs, registry));
     }
 
-    function targetRatio1(
-        uint32 vaultId
-    ) internal returns (uint256 targetPBp1) {
+    function targetRatio1(uint32 vaultId) internal returns (uint256 targetPBp1) {
         return _targetRatio1(vaultId.getVault(), S.registry());
     }
 
@@ -280,14 +252,13 @@ library LibALM {
      * @return fee0 The fee amount for token0
      * @return fee1 The fee amount for token1
      */
-    function _sharesToAmounts(
-        ALMVault storage vs,
-        Registry storage registry,
-        uint256 shares,
-        FeeType feeType
-    ) internal returns (uint256 amount0, uint256 amount1, uint256 fee0, uint256 fee1) {
-        if (shares == 0)
+    function _sharesToAmounts(ALMVault storage vs, Registry storage registry, uint256 shares, FeeType feeType)
+        internal
+        returns (uint256 amount0, uint256 amount1, uint256 fee0, uint256 fee1)
+    {
+        if (shares == 0) {
             return (0, 0, 0, 0);
+        }
         if (vs.totalSupply == 0) {
             // For first deposit, use init amounts to determine share amount
             amount0 = vs.initAmount0.mulDivDown(shares, vs.initShares);
@@ -331,8 +302,10 @@ library LibALM {
 
         (uint256 balance0, uint256 balance1) = _getTotalBalances(vs, registry);
 
-        if (balance0.mulDivDown(M.PRECISION_BP_BASIS, balance0 + balance1)
-            != amount0.mulDivDown(M.PRECISION_BP_BASIS, amount0 + amount1)) {
+        if (
+            balance0.mulDivDown(M.PRECISION_BP_BASIS, balance0 + balance1)
+                != amount0.mulDivDown(M.PRECISION_BP_BASIS, amount0 + amount1)
+        ) {
             revert Errors.UnexpectedInput(); // ratio breach
         }
 
@@ -349,11 +322,14 @@ library LibALM {
         }
     }
 
-    function _burnAllRanges(
-        ALMVault storage vs,
-        Registry storage registry
-    ) internal returns (uint256 totalAmount0, uint256 totalAmount1, uint256 totalLpFees0, uint256 totalLpFees1) {
-        uint256 amount0; uint256 amount1; uint256 lpFees0; uint256 lpFees1;
+    function _burnAllRanges(ALMVault storage vs, Registry storage registry)
+        internal
+        returns (uint256 totalAmount0, uint256 totalAmount1, uint256 totalLpFees0, uint256 totalLpFees1)
+    {
+        uint256 amount0;
+        uint256 amount1;
+        uint256 lpFees0;
+        uint256 lpFees1;
         uint256 length = vs.ranges.length;
         unchecked {
             for (uint256 i = 0; i < length; i++) {
@@ -367,17 +343,20 @@ library LibALM {
         return (totalAmount0, totalAmount1, totalLpFees0, totalLpFees1);
     }
 
-    function _burnAllRanges(ALMVault storage vs, Rebalance memory rebalanceData) internal returns (uint256 totalAmount0, uint256 totalAmount1, uint256 totalLpFees0, uint256 totalLpFees1) {
+    function _burnAllRanges(ALMVault storage vs, Rebalance memory rebalanceData)
+        internal
+        returns (uint256 totalAmount0, uint256 totalAmount1, uint256 totalLpFees0, uint256 totalLpFees1)
+    {
         Registry storage registry = S.registry();
         uint256 burnLength = rebalanceData.ranges.length;
-        
+
         for (uint256 i = 0; i < burnLength; ++i) {
             bytes32 rangeId = rebalanceData.ranges[i].id;
-            
+
             // Find the index of the range in vs.ranges
             uint256 index = _findRangeIndex(vs, rangeId);
             if (index == type(uint256).max) continue; // Skip if range not found
-            
+
             // Burn range and accumulate values
             (uint256 amount0, uint256 amount1, uint256 lpFees0, uint256 lpFees1) = _burnRange(vs, registry, index);
             totalAmount0 += amount0;
@@ -399,49 +378,38 @@ library LibALM {
         return type(uint256).max; // Return max value if not found
     }
 
-    function _previewDeposit(
-        ALMVault storage vs,
-        Registry storage registry,
-        uint256 mintShares
-    ) internal returns (uint256 amount0, uint256 amount1, uint256 fee0, uint256 fee1) {
+    function _previewDeposit(ALMVault storage vs, Registry storage registry, uint256 mintShares)
+        internal
+        returns (uint256 amount0, uint256 amount1, uint256 fee0, uint256 fee1)
+    {
         return _sharesToAmounts(vs, registry, mintShares, FeeType.ENTRY);
     }
 
-    function _previewDeposit(
-        ALMVault storage vs,
-        Registry storage registry,
-        uint256 amount0,
-        uint256 amount1
-    ) internal returns (uint256 mintShares, uint256 fee0, uint256 fee1) {
+    function _previewDeposit(ALMVault storage vs, Registry storage registry, uint256 amount0, uint256 amount1)
+        internal
+        returns (uint256 mintShares, uint256 fee0, uint256 fee1)
+    {
         return _amountsToShares(vs, registry, amount0, amount1, FeeType.ENTRY);
     }
 
-    function previewDeposit(
-        uint32 vaultId,
-        uint256 sharesMinted
-    )
+    function previewDeposit(uint32 vaultId, uint256 sharesMinted)
         internal
         returns (uint256 amount0, uint256 amount1, uint256 fee0, uint256 fee1)
     {
         return _previewDeposit(vaultId.getVault(), S.registry(), sharesMinted);
     }
 
-    function previewDeposit(
-        uint32 vaultId,
-        uint256 amount0,
-        uint256 amount1
-    )
+    function previewDeposit(uint32 vaultId, uint256 amount0, uint256 amount1)
         internal
         returns (uint256 sharesAmount, uint256 fee0, uint256 fee1)
     {
         return _previewDeposit(vaultId.getVault(), S.registry(), amount0, amount1);
     }
 
-    function _previewDeposit0For1(
-        ALMVault storage vs,
-        Registry storage registry,
-        uint256 amount1
-    ) internal returns (uint256 amount0, uint256 mintShares, uint256 fee0, uint256 fee1) {
+    function _previewDeposit0For1(ALMVault storage vs, Registry storage registry, uint256 amount1)
+        internal
+        returns (uint256 amount0, uint256 mintShares, uint256 fee0, uint256 fee1)
+    {
         uint256 ratio0 = _targetRatio0(vs, registry);
         if (amount1 == 0 || vs.totalSupply == 0 || ratio0 == 0) {
             return (0, 0, 0, 0);
@@ -451,19 +419,18 @@ library LibALM {
         (mintShares, fee0, fee1) = _amountsToShares(vs, registry, amount0, amount1, FeeType.ENTRY);
     }
 
-    function previewDeposit0For1(
-        uint32 vaultId,
-        uint256 amount1
-    ) internal returns (uint256 amount0, uint256 mintShares, uint256 fee0, uint256 fee1) {
+    function previewDeposit0For1(uint32 vaultId, uint256 amount1)
+        internal
+        returns (uint256 amount0, uint256 mintShares, uint256 fee0, uint256 fee1)
+    {
         return _previewDeposit0For1(vaultId.getVault(), S.registry(), amount1);
     }
 
     // in wei
-    function _previewDeposit1For0(
-        ALMVault storage vs,
-        Registry storage registry,
-        uint256 amount0
-    ) internal returns (uint256 amount1, uint256 mintShares, uint256 fee0, uint256 fee1) {
+    function _previewDeposit1For0(ALMVault storage vs, Registry storage registry, uint256 amount0)
+        internal
+        returns (uint256 amount1, uint256 mintShares, uint256 fee0, uint256 fee1)
+    {
         uint256 ratio1 = _targetRatio1(vs, registry);
         if (amount0 == 0 || vs.totalSupply == 0 || ratio1 == 0) {
             return (0, 0, 0, 0);
@@ -473,42 +440,30 @@ library LibALM {
         (mintShares, fee0, fee1) = _amountsToShares(vs, registry, amount0, amount1, FeeType.ENTRY);
     }
 
-    function previewDeposit1For0(
-        uint32 vaultId,
-        uint256 amount0
-    ) internal returns (uint256 amount1, uint256 mintShares, uint256 fee0, uint256 fee1) {
+    function previewDeposit1For0(uint32 vaultId, uint256 amount0)
+        internal
+        returns (uint256 amount1, uint256 mintShares, uint256 fee0, uint256 fee1)
+    {
         return _previewDeposit1For0(vaultId.getVault(), S.registry(), amount0);
     }
 
-    function _previewWithdraw(
-        ALMVault storage vs,
-        Registry storage registry,
-        uint256 sharesBurnt
-    ) internal returns (uint256 amount0, uint256 amount1, uint256 fee0, uint256 fee1) {
+    function _previewWithdraw(ALMVault storage vs, Registry storage registry, uint256 sharesBurnt)
+        internal
+        returns (uint256 amount0, uint256 amount1, uint256 fee0, uint256 fee1)
+    {
         return _sharesToAmounts(vs, registry, sharesBurnt, FeeType.EXIT);
     }
 
-    function _previewWithdraw(
-        ALMVault storage vs,
-        Registry storage registry,
-        uint256 amount0,
-        uint256 amount1
-    ) internal returns (uint256 sharesBurnt, uint256 fee0, uint256 fee1) {
+    function _previewWithdraw(ALMVault storage vs, Registry storage registry, uint256 amount0, uint256 amount1)
+        internal
+        returns (uint256 sharesBurnt, uint256 fee0, uint256 fee1)
+    {
         return _amountsToShares(vs, registry, amount0, amount1, FeeType.EXIT);
     }
 
-    function _previewWithdraw0For1(
-        ALMVault storage vs,
-        Registry storage registry,
-        uint256 amount1
-    )
+    function _previewWithdraw0For1(ALMVault storage vs, Registry storage registry, uint256 amount1)
         internal
-        returns (
-            uint256 amount0,
-            uint256 sharesBurnt,
-            uint256 fee0,
-            uint256 fee1
-        )
+        returns (uint256 amount0, uint256 sharesBurnt, uint256 fee0, uint256 fee1)
     {
         uint256 ratio0 = _targetRatio0(vs, registry);
         if (amount1 == 0 || vs.totalSupply == 0 || ratio0 == 0) {
@@ -519,42 +474,32 @@ library LibALM {
         (sharesBurnt, fee0, fee1) = _amountsToShares(vs, registry, amount0, amount1, FeeType.EXIT);
     }
 
-    function previewWithdraw(
-        uint32 vaultId,
-        uint256 sharesAmount
-    ) internal returns (uint256 amount0, uint256 amount1, uint256 fee0, uint256 fee1) {
+    function previewWithdraw(uint32 vaultId, uint256 sharesAmount)
+        internal
+        returns (uint256 amount0, uint256 amount1, uint256 fee0, uint256 fee1)
+    {
         return _sharesToAmounts(vaultId.getVault(), S.registry(), sharesAmount, FeeType.EXIT);
     }
 
-    function previewWithdraw(
-        uint32 vaultId,
-        uint256 amount0,
-        uint256 amount1
-    ) internal returns (uint256 sharesAmount, uint256 fee0, uint256 fee1) {
+    function previewWithdraw(uint32 vaultId, uint256 amount0, uint256 amount1)
+        internal
+        returns (uint256 sharesAmount, uint256 fee0, uint256 fee1)
+    {
         return _amountsToShares(vaultId.getVault(), S.registry(), amount0, amount1, FeeType.EXIT);
     }
 
-    function previewWithdraw0For1(
-        uint32 vaultId,
-        uint256 amount1
-    )
+    function previewWithdraw0For1(uint32 vaultId, uint256 amount1)
         internal
-        returns (
-            uint256 amount0,
-            uint256 sharesBurnt,
-            uint256 fee0,
-            uint256 fee1
-        )
+        returns (uint256 amount0, uint256 sharesBurnt, uint256 fee0, uint256 fee1)
     {
         ALMVault storage vs = vaultId.getVault();
         return _previewWithdraw0For1(vs, S.registry(), amount1);
     }
 
-    function _previewWithdraw1For0(
-        ALMVault storage vs,
-        Registry storage registry,
-        uint256 amount0
-    ) internal returns (uint256 amount1, uint256 sharesBurnt, uint256 fee0, uint256 fee1) {
+    function _previewWithdraw1For0(ALMVault storage vs, Registry storage registry, uint256 amount0)
+        internal
+        returns (uint256 amount1, uint256 sharesBurnt, uint256 fee0, uint256 fee1)
+    {
         uint256 ratio1 = _targetRatio1(vs, registry);
         if (amount0 == 0 || vs.totalSupply == 0 || ratio1 == 0) {
             return (0, 0, 0, 0);
@@ -564,26 +509,17 @@ library LibALM {
         (sharesBurnt, fee0, fee1) = _amountsToShares(vs, registry, amount0, amount1, FeeType.EXIT);
     }
 
-    function previewWithdraw1For0(
-        uint32 vaultId,
-        uint256 amount0
-    )
+    function previewWithdraw1For0(uint32 vaultId, uint256 amount0)
         internal
-        returns (
-            uint256 amount1,
-            uint256 sharesBurnt,
-            uint256 fee0,
-            uint256 fee1
-        )
+        returns (uint256 amount1, uint256 sharesBurnt, uint256 fee0, uint256 fee1)
     {
         return _previewWithdraw1For0(vaultId.getVault(), S.registry(), amount0);
     }
 
-    function _deposit(
-        ALMVault storage vs,
-        uint256 sharesMinted,
-        address receiver
-    ) internal returns (uint256 supply0, uint256 supply1, uint256 fee0, uint256 fee1) {
+    function _deposit(ALMVault storage vs, uint256 sharesMinted, address receiver)
+        internal
+        returns (uint256 supply0, uint256 supply1, uint256 fee0, uint256 fee1)
+    {
         if (sharesMinted == 0) revert Errors.ZeroValue();
 
         // Check that mint wouldn't exceed maxSupply
@@ -600,17 +536,15 @@ library LibALM {
         return (supply0, supply1, fee0, fee1);
     }
 
-    function _deposit(
-        ALMVault storage vs,
-        uint256 amount0,
-        uint256 amount1,
-        address receiver
-    ) internal returns (uint256 mintedShares, uint256 fee0, uint256 fee1) {
+    function _deposit(ALMVault storage vs, uint256 amount0, uint256 amount1, address receiver)
+        internal
+        returns (uint256 mintedShares, uint256 fee0, uint256 fee1)
+    {
         if (amount0 == 0 && amount1 == 0) revert Errors.ZeroValue();
 
         // Preview how many shares will be minted and fee info
         (mintedShares, fee0, fee1) = _amountsToShares(vs, S.registry(), amount0, amount1, FeeType.ENTRY);
-        
+
         // Check that mint wouldn't exceed maxSupply
         if (vs.totalSupply + mintedShares > vs.maxSupply) {
             revert Errors.Exceeds(vs.totalSupply + mintedShares, vs.maxSupply);
@@ -654,7 +588,7 @@ library LibALM {
 
             // Adjust share amount if this is a share-based deposit (not amount-based)
             // For amount-based deposits the fee is already accounted for in mintedShares calculation
-            (uint256 sharesWithoutFee, , ) = _amountsToShares(vs, S.registry(), amount0, amount1, FeeType.NONE);
+            (uint256 sharesWithoutFee,,) = _amountsToShares(vs, S.registry(), amount0, amount1, FeeType.NONE);
             if (sharesToMint > sharesWithoutFee) {
                 adjustedMintAmount = sharesToMint.subBpDown(vs.fees.entry);
             }
@@ -666,31 +600,26 @@ library LibALM {
         emit Events.SharesMinted(receiver, adjustedMintAmount, amount0, amount1);
     }
 
-    function deposit(
-        uint32 vaultId,
-        uint256 sharesMinted,
-        address receiver
-    ) internal returns (uint256 supply0, uint256 supply1, uint256 fee0, uint256 fee1) {
+    function deposit(uint32 vaultId, uint256 sharesMinted, address receiver)
+        internal
+        returns (uint256 supply0, uint256 supply1, uint256 fee0, uint256 fee1)
+    {
         ALMVault storage vs = vaultId.getVault();
         return _deposit(vs, sharesMinted, receiver);
     }
 
-    function deposit(
-        uint32 vaultId,
-        uint256 amount0,
-        uint256 amount1,
-        address receiver
-    ) internal returns (uint256 mintedShares, uint256 fee0, uint256 fee1) {
+    function deposit(uint32 vaultId, uint256 amount0, uint256 amount1, address receiver)
+        internal
+        returns (uint256 mintedShares, uint256 fee0, uint256 fee1)
+    {
         ALMVault storage vs = vaultId.getVault();
         return _deposit(vs, amount0, amount1, receiver);
     }
 
-    function _withdraw(
-        ALMVault storage vs,
-        Registry storage registry,
-        uint256 sharesBurnt,
-        address receiver
-    ) internal returns (uint256 amount0, uint256 amount1, uint256 fee0, uint256 fee1) {
+    function _withdraw(ALMVault storage vs, Registry storage registry, uint256 sharesBurnt, address receiver)
+        internal
+        returns (uint256 amount0, uint256 amount1, uint256 fee0, uint256 fee1)
+    {
         // Validate withdrawal parameters
         _validateWithdrawal(vs, sharesBurnt);
 
@@ -698,17 +627,7 @@ library LibALM {
         (amount0, amount1, fee0, fee1) = _sharesToAmounts(vs, registry, sharesBurnt, FeeType.EXIT);
 
         // Execute withdrawal with calculated amounts
-        _burnShares(
-            vs, 
-            registry, 
-            amount0, 
-            amount1, 
-            fee0, 
-            fee1, 
-            sharesBurnt, 
-            receiver, 
-            false
-        );
+        _burnShares(vs, registry, amount0, amount1, fee0, fee1, sharesBurnt, receiver, false);
     }
 
     function _withdraw(
@@ -723,23 +642,13 @@ library LibALM {
 
         // Preview how many shares to burn and fee info
         (sharesAmount, fee0, fee1) = _amountsToShares(vs, registry, amount0, amount1, FeeType.EXIT);
-        
+
         // Validate the withdrawal
         if (vs.totalSupply < sharesAmount) revert Errors.Exceeds(vs.totalSupply, sharesAmount); // supply breach
         if (vs.id.balanceOf(msg.sender) < sharesAmount) revert Errors.BurnExceedsBalance(); // balance breach
 
         // Execute withdrawal with the input amounts
-        _burnShares(
-            vs, 
-            registry, 
-            amount0, 
-            amount1, 
-            fee0, 
-            fee1, 
-            sharesAmount, 
-            receiver, 
-            true
-        );
+        _burnShares(vs, registry, amount0, amount1, fee0, fee1, sharesAmount, receiver, true);
 
         return (sharesAmount, fee0, fee1);
     }
@@ -791,7 +700,7 @@ library LibALM {
         uint256 totalLpFees0;
         uint256 totalLpFees1;
         // TODO: partial burn to meet user requirements and not the whole vault
-        (,,totalLpFees0, totalLpFees1) = _burnAllRanges(vs, S.registry());
+        (,, totalLpFees0, totalLpFees1) = _burnAllRanges(vs, S.registry());
         _accrueFees(vs, registry, totalLpFees0, totalLpFees1);
 
         // For amount-based withdrawals, adjust for fees
@@ -807,30 +716,26 @@ library LibALM {
         emit Events.SharesBurnt(receiver, sharesBurnt, transferAmount0, transferAmount1);
     }
 
-    function withdraw(
-        uint32 vaultId,
-        uint256 sharesBurnt,
-        address receiver
-    ) internal returns (uint256 amount0, uint256 amount1, uint256 fee0, uint256 fee1) {
+    function withdraw(uint32 vaultId, uint256 sharesBurnt, address receiver)
+        internal
+        returns (uint256 amount0, uint256 amount1, uint256 fee0, uint256 fee1)
+    {
         ALMVault storage vs = vaultId.getVault();
         return _withdraw(vs, S.registry(), sharesBurnt, receiver);
     }
 
-    function withdraw(
-        uint32 vaultId,
-        uint256 amount0,
-        uint256 amount1,
-        address receiver
-    ) internal returns (uint256 sharesAmount, uint256 fee0, uint256 fee1) {
+    function withdraw(uint32 vaultId, uint256 amount0, uint256 amount1, address receiver)
+        internal
+        returns (uint256 sharesAmount, uint256 fee0, uint256 fee1)
+    {
         ALMVault storage vs = vaultId.getVault();
         return _withdraw(vs, S.registry(), amount0, amount1, receiver);
     }
 
-    function _accruePerformanceFees(
-        ALMVault storage vs,
-        uint256 lpFees0,
-        uint256 lpFees1
-    ) internal returns (uint256 perfFee0, uint256 perfFee1) {
+    function _accruePerformanceFees(ALMVault storage vs, uint256 lpFees0, uint256 lpFees1)
+        internal
+        returns (uint256 perfFee0, uint256 perfFee1)
+    {
         if (vs.fees.perf > 0 && (lpFees0 + lpFees1 > 0)) {
             perfFee0 = lpFees0.bpUp(vs.fees.perf);
             perfFee1 = lpFees1.bpUp(vs.fees.perf);
@@ -840,25 +745,19 @@ library LibALM {
         }
     }
 
-    function _accrueManagementFees(
-        ALMVault storage vs,
-        Registry storage registry
-    ) internal returns (uint256 mgmtFee0, uint256 mgmtFee1) {
+    function _accrueManagementFees(ALMVault storage vs, Registry storage registry)
+        internal
+        returns (uint256 mgmtFee0, uint256 mgmtFee1)
+    {
         // Get current balances
-        (uint256 balance0, uint256 balance1) = _getTotalBalances(
-            vs,
-            registry
-        );
+        (uint256 balance0, uint256 balance1) = _getTotalBalances(vs, registry);
 
         // Calculate elapsed time since last fee accrual
         uint256 elapsed = block.timestamp - vs.timePoints.mgmtAccruedAt;
         if (elapsed == 0) return (0, 0);
 
         // Calculate pro-rated management fee for the elapsed period - round UP for protocol favor
-        uint256 durationBps = uint256(elapsed).mulDivUp(
-            M.PRECISION_BP_BASIS,
-            M.SEC_PER_YEAR
-        ); // in PRECISION_BP_BASIS
+        uint256 durationBps = uint256(elapsed).mulDivUp(M.PRECISION_BP_BASIS, M.SEC_PER_YEAR); // in PRECISION_BP_BASIS
 
         // Apply management fee rate to token balances - round UP for protocol favor
         uint256 scaledRate = uint256(vs.fees.mgmt).mulDivUp(durationBps, M.BP_BASIS); // in PRECISION_BP_BASIS
@@ -869,20 +768,15 @@ library LibALM {
         vs.timePoints.mgmtAccruedAt = uint64(block.timestamp);
     }
 
-    function _accrueFees(
-        ALMVault storage vs,
-        Registry storage registry,
-        uint256 lpFees0,
-        uint256 lpFees1
-    ) internal returns (uint256 perfFees0, uint256 perfFees1, uint256 mgmtFees0, uint256 mgmtFees1) {
+    function _accrueFees(ALMVault storage vs, Registry storage registry, uint256 lpFees0, uint256 lpFees1)
+        internal
+        returns (uint256 perfFees0, uint256 perfFees1, uint256 mgmtFees0, uint256 mgmtFees1)
+    {
         (perfFees0, perfFees1) = _accruePerformanceFees(vs, lpFees0, lpFees1);
         (mgmtFees0, mgmtFees1) = _accrueManagementFees(vs, registry);
     }
 
-    function _collectFees(
-        ALMVault storage vault,
-        address collector
-    ) internal returns (uint256 fees0, uint256 fees1) {
+    function _collectFees(ALMVault storage vault, address collector) internal returns (uint256 fees0, uint256 fees1) {
         // Get the pending fees for this vault
         fees0 = vault.pendingFees[vault.token0];
         fees1 = vault.pendingFees[vault.token1];
@@ -906,22 +800,20 @@ library LibALM {
         emit Events.FeesCollected(vault.id, address(vault.token0), address(vault.token1), fees0, fees1);
     }
 
-    function collectFees(
-        uint32 vaultId
-    ) internal returns (uint256 fees0, uint256 fees1) {
+    function collectFees(uint32 vaultId) internal returns (uint256 fees0, uint256 fees1) {
         return _collectFees(vaultId.getVault(), S.treasury().treasury);
     }
 
     function _processSwap(address router, bytes memory swapData) internal {
         // Execute swap through the router
-        (bool success, ) = router.delegatecall(swapData);
+        (bool success,) = router.delegatecall(swapData);
         if (!success) revert Errors.SwapFailed();
     }
 
-    function rebalance(
-        uint32 vaultId,
-        Rebalance memory rebalanceData
-    ) internal returns (uint256 protocolFees0, uint256 protocolFees1) {
+    function rebalance(uint32 vaultId, Rebalance memory rebalanceData)
+        internal
+        returns (uint256 protocolFees0, uint256 protocolFees1)
+    {
         ALMVault storage vs = vaultId.getVault();
         Registry storage registry = S.registry();
 
@@ -931,36 +823,31 @@ library LibALM {
         return _rebalance(vs, registry, rebalanceData);
     }
 
-    function _rebalance(
-        ALMVault storage vs,
-        Registry storage registry,
-        Rebalance memory rebalanceData
-    ) internal returns (uint256 protocolFees0, uint256 protocolFees1) {
+    function _rebalance(ALMVault storage vs, Registry storage registry, Rebalance memory rebalanceData)
+        internal
+        returns (uint256 protocolFees0, uint256 protocolFees1)
+    {
         // Initialize tracking variables
-        (/* uint256 unusedAmount0 */, /* uint256 unusedAmount1 */, uint256 totalLpFees0, uint256 totalLpFees1) = _burnAllRanges(vs, rebalanceData);
-        (protocolFees0, protocolFees1, , ) = _accrueFees(vs, registry, totalLpFees0, totalLpFees1);
+        ( /* uint256 unusedAmount0 */ , /* uint256 unusedAmount1 */, uint256 totalLpFees0, uint256 totalLpFees1) =
+            _burnAllRanges(vs, rebalanceData);
+        (protocolFees0, protocolFees1,,) = _accrueFees(vs, registry, totalLpFees0, totalLpFees1);
         _processSwaps(rebalanceData); // swaps are processed before new ranges are minted
         _mintRanges(vs, rebalanceData);
         return (protocolFees0, protocolFees1);
     }
 
-    function _burnRange(
-        ALMVault storage vs,
-        Registry storage registry,
-        uint256 index
-    ) internal returns (uint256 amount0, uint256 amount1, uint256 lpFees0, uint256 lpFees1) {
+    function _burnRange(ALMVault storage vs, Registry storage registry, uint256 index)
+        internal
+        returns (uint256 amount0, uint256 amount1, uint256 lpFees0, uint256 lpFees1)
+    {
         Range memory range = registry.ranges[vs.ranges[index]];
         address adapterAddress = _getPoolDexAdapter(registry, range.poolId);
         if (range.liquidity > 0) {
-            (bool success, bytes memory data) = adapterAddress.delegatecall(
-                abi.encodeWithSelector(DEXAdapterFacet.burnRange.selector, range.id)
-            );
+            (bool success, bytes memory data) =
+                adapterAddress.delegatecall(abi.encodeWithSelector(DEXAdapterFacet.burnRange.selector, range.id));
             if (!success) revert Errors.DelegateCallFailed();
             // Extract withdrawn amounts and LP fees
-            (amount0, amount1, lpFees0, lpFees1) = abi.decode(
-                data,
-                (uint256, uint256, uint256, uint256)
-            );
+            (amount0, amount1, lpFees0, lpFees1) = abi.decode(data, (uint256, uint256, uint256, uint256));
         }
         delete registry.ranges[range.id];
         registry.rangeCount--;
@@ -982,10 +869,7 @@ library LibALM {
         }
     }
 
-    function _processMints(
-        ALMVault storage vs,
-        Rebalance memory rebalanceData
-    ) internal {
+    function _processMints(ALMVault storage vs, Rebalance memory rebalanceData) internal {
         // Process mints
         uint256 mintLength = rebalanceData.ranges.length;
 
@@ -994,28 +878,18 @@ library LibALM {
         }
     }
 
-    function _processMintRange(
-        ALMVault storage vs,
-        Range memory range
-    ) internal {
+    function _processMintRange(ALMVault storage vs, Range memory range) internal {
         // Ensure vaultId is set
         range.vaultId = vs.id;
 
         if (range.id == bytes32(0)) {
             // Generate a new rangeId based on vault, pool, and ticks
-            range.id = keccak256(
-                abi.encodePacked(
-                    vs.id,
-                    range.poolId,
-                    range.lowerTick,
-                    range.upperTick
-                )
-            );
+            range.id = keccak256(abi.encodePacked(vs.id, range.poolId, range.lowerTick, range.upperTick));
         }
-        
+
         bytes32 rangeId = range.id;
         Registry storage registry = S.registry();
-        
+
         // Get the DEX adapter for this pool
         address adapterAddress = _getPoolDexAdapter(registry, range.poolId);
 
@@ -1026,27 +900,23 @@ library LibALM {
         vs.ranges.push(rangeId);
 
         // Execute delegate call to mint liquidity
-        (bool success, bytes memory data) = adapterAddress.delegatecall(
-            abi.encodeWithSelector(DEXAdapterFacet.mintRange.selector, rangeId)
-        );
+        (bool success, bytes memory data) =
+            adapterAddress.delegatecall(abi.encodeWithSelector(DEXAdapterFacet.mintRange.selector, rangeId));
         if (!success) revert Errors.DelegateCallFailed();
 
         // Update the range with the liquidity amount
         Range storage storedRange = registry.ranges[rangeId];
-        (storedRange.liquidity, , ) = abi.decode(data, (uint128, uint256, uint256));
+        (storedRange.liquidity,,) = abi.decode(data, (uint128, uint256, uint256));
     }
 
-    function _previewWithdraw(
-        ALMVault storage vs,
-        uint256 sharesBurnt
-    ) internal returns (uint256 amount0, uint256 amount1, uint256 fee0, uint256 fee1) {
+    function _previewWithdraw(ALMVault storage vs, uint256 sharesBurnt)
+        internal
+        returns (uint256 amount0, uint256 amount1, uint256 fee0, uint256 fee1)
+    {
         return _sharesToAmounts(vs, S.registry(), sharesBurnt, FeeType.EXIT);
     }
 
-    function _mintRanges(
-        ALMVault storage vs,
-        Rebalance memory rebalanceData
-    ) internal {
+    function _mintRanges(ALMVault storage vs, Rebalance memory rebalanceData) internal {
         // Process mints
         uint256 mintLength = rebalanceData.ranges.length;
 

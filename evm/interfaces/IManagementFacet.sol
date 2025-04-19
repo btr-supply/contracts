@@ -7,7 +7,7 @@ interface IManagementFacet {
     // Pause-related functions
     function isPaused() external view returns (bool);
     function isPaused(uint32 vaultId) external view returns (bool);
-    
+
     // Account status functions
     function getAccountStatus(address account) external view returns (AS);
     function isWhitelisted(address account) external view returns (bool);
@@ -23,10 +23,10 @@ interface IManagementFacet {
     function isBridgeRouterRestricted(address router) external view returns (bool);
     function isApproveMax() external view returns (bool);
     function isAutoRevoke() external view returns (bool);
-    
+
     // Vault management functions
     function getVersion() external view returns (uint8);
     function getMaxSupply(uint32 vaultId) external view returns (uint256);
     function isRestrictedMint(uint32 vaultId) external view returns (bool);
     function isRestrictedMinter(uint32 vaultId, address minter) external view returns (bool);
-} 
+}

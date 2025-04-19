@@ -21,7 +21,7 @@ contract BTR is ERC20Bridgeable {
     // Supply limits
     uint256 public maxSupply;
     bool public genesisMinted;
-    
+
     /**
      * @dev Constructor
      * @param name Token name
@@ -29,17 +29,14 @@ contract BTR is ERC20Bridgeable {
      * @param _diamond Address of the diamond contract for access control
      * @param _maxSupply Maximum token supply that can be minted
      */
-    constructor(
-        string memory name,
-        string memory symbol,
-        address _diamond,
-        uint256 _maxSupply
-    ) ERC20Bridgeable(name, symbol, _diamond) {
+    constructor(string memory name, string memory symbol, address _diamond, uint256 _maxSupply)
+        ERC20Bridgeable(name, symbol, _diamond)
+    {
         if (_maxSupply == 0) revert InvalidMaxSupply();
-        
+
         maxSupply = _maxSupply;
         genesisMinted = false;
-        
+
         // Emit event for initialization
         emit MaxSupplyUpdated(_maxSupply);
     }
@@ -51,7 +48,7 @@ contract BTR is ERC20Bridgeable {
     function setMaxSupply(uint256 _newMaxSupply) external onlyAdmin {
         if (_newMaxSupply == 0) revert InvalidMaxSupply();
         if (_newMaxSupply < totalSupply()) revert InvalidMaxSupply();
-        
+
         maxSupply = _newMaxSupply;
         emit MaxSupplyUpdated(_newMaxSupply);
     }
@@ -74,15 +71,15 @@ contract BTR is ERC20Bridgeable {
         if (genesisMinted) revert GenesisAlreadyMinted();
         if (amount == 0) revert InvalidAmount();
         if (amount > maxSupply) revert MaxSupplyExceeded();
-        
+
         address treasuryAddr = treasury(); // Will revert if no treasury found
-        
+
         // Perform the genesis mint
         _mint(treasuryAddr, amount);
-        
+
         // Mark genesis as completed
         genesisMinted = true;
-        
+
         emit GenesisMint(treasuryAddr, amount);
     }
 
@@ -92,10 +89,10 @@ contract BTR is ERC20Bridgeable {
      */
     function mintToTreasury(uint256 amount) external onlyAdmin {
         if (amount == 0) revert InvalidAmount();
-        
+
         // Use inherited function to check supply
         if (_wouldExceedMaxSupply(amount)) revert MaxSupplyExceeded();
-        
+
         address treasuryAddr = treasury(); // Will revert if no treasury found
         _mint(treasuryAddr, amount);
     }

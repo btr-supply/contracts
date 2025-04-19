@@ -10,30 +10,23 @@ library BTRUtils {
     ║                             UTILS                              ║
     ╚═══════════════════════════════════════════════════════════════*/
 
-    function getCoreStorageIfVaultExists(
-        uint32 vaultId
-    ) internal view returns (CoreStorage storage cs) {
+    function getCoreStorageIfVaultExists(uint32 vaultId) internal view returns (CoreStorage storage cs) {
         cs = S.core();
-        if (vaultId >= cs.registry.vaultCount)
+        if (vaultId >= cs.registry.vaultCount) {
             revert Errors.NotFound(ErrorType.VAULT);
+        }
     }
 
-    function getRestrictionsStorageIfVaultExists(
-        uint32 vaultId
-    ) internal view returns (Restrictions storage rs) {
+    function getRestrictionsStorageIfVaultExists(uint32 vaultId) internal view returns (Restrictions storage rs) {
         return getCoreStorageIfVaultExists(vaultId).restrictions;
     }
 
-    function getVault(
-        uint32 vaultId
-    ) internal view returns (ALMVault storage vs) {
+    function getVault(uint32 vaultId) internal view returns (ALMVault storage vs) {
         vs = getCoreStorageIfVaultExists(vaultId).registry.vaults[vaultId];
         if (vs.id == 0) revert Errors.NotFound(ErrorType.VAULT);
     }
 
-    function getRange(
-        bytes32 rangeId
-    ) internal view returns (Range storage rs) {
+    function getRange(bytes32 rangeId) internal view returns (Range storage rs) {
         rs = S.registry().ranges[rangeId];
         if (rs.id == bytes32(0)) revert Errors.NotFound(ErrorType.RANGE);
     }
@@ -47,7 +40,7 @@ library BTRUtils {
     }
 
     function isValidDEX(DEX dex) internal pure returns (bool) {
-        return uint(dex) <= uint(DEX.STELLASWAP);
+        return uint256(dex) <= uint256(DEX.STELLASWAP);
     }
 
     function toBytes32(address addr) internal pure returns (bytes32 result) {

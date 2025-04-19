@@ -15,16 +15,19 @@ interface ICamelotGauge {
     function disableDistributedToken(address token) external;
     function distributedToken(uint256 index) external view returns (address);
     function distributedTokensLength() external view returns (uint256);
-    function dividendsInfo(address token) external view returns (
-        uint256 currentDistributionAmount,
-        uint256 currentCycleDistributedAmount,
-        uint256 pendingAmount,
-        uint256 distributedAmount,
-        uint256 accDividendsPerShare,
-        uint256 lastUpdateTime,
-        uint256 cycleDividendsPercent,
-        bool distributionDisabled
-    );
+    function dividendsInfo(address token)
+        external
+        view
+        returns (
+            uint256 currentDistributionAmount,
+            uint256 currentCycleDistributedAmount,
+            uint256 pendingAmount,
+            uint256 distributedAmount,
+            uint256 accDividendsPerShare,
+            uint256 lastUpdateTime,
+            uint256 cycleDividendsPercent,
+            bool distributionDisabled
+        );
     function emergencyWithdraw(address token) external;
     function emergencyWithdrawAll() external;
     function enableDistributedToken(address token) external;

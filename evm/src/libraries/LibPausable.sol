@@ -7,7 +7,6 @@ import {ALMVault, ErrorType, Restrictions} from "@/BTRTypes.sol";
 import {BTRErrors as Errors, BTREvents as Events} from "@libraries/BTREvents.sol";
 
 library LibPausable {
-
     using BTRUtils for uint32;
 
     /*═══════════════════════════════════════════════════════════════╗

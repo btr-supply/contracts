@@ -13,7 +13,6 @@ import {NonReentrantFacet} from "@facets/abstract/NonReentrantFacet.sol";
  * @notice Diamond facet for role-based access control
  */
 contract AccessControlFacet is PermissionedFacet, NonReentrantFacet, IERC173 {
-
     /*═══════════════════════════════════════════════════════════════╗
     ║                      ERC-173 COMPLIANCE                        ║
     ╚═══════════════════════════════════════════════════════════════*/
@@ -49,7 +48,11 @@ contract AccessControlFacet is PermissionedFacet, NonReentrantFacet, IERC173 {
     }
 
     /// @notice Get pending role acceptance details for an account
-    function getPendingAcceptance(address account) external view returns (bytes32 pendingRole, address replacing, uint64 timestamp) {
+    function getPendingAcceptance(address account)
+        external
+        view
+        returns (bytes32 pendingRole, address replacing, uint64 timestamp)
+    {
         PendingAcceptance memory acceptance = AC.getPendingAcceptance(account);
         return (acceptance.role, acceptance.replacing, acceptance.timestamp);
     }

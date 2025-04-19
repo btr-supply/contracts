@@ -5,7 +5,13 @@ import {IThenaV3Pool} from "@interfaces/dexs/IThenaV3Pool.sol";
 import {AlgebraV3AdapterFacet} from "@facets/adapters/dexs/AlgebraV3AdapterFacet.sol";
 
 contract ThenaV3AdapterFacet is AlgebraV3AdapterFacet {
-    function _getPoolSqrtPriceAndTick(address pool) internal view virtual override returns (uint160 sqrtPriceX96, int24 tick) {
+    function _getPoolSqrtPriceAndTick(address pool)
+        internal
+        view
+        virtual
+        override
+        returns (uint160 sqrtPriceX96, int24 tick)
+    {
         (sqrtPriceX96, tick,,,,,) = IThenaV3Pool(pool).globalState();
     }
 }

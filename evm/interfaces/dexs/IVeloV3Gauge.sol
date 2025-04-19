@@ -24,7 +24,17 @@ interface IVeloV3Gauge {
     function rewardToken() external view returns (address);
     function isPool() external view returns (bool);
     function rewardGrowthInside(uint256 tokenId) external view returns (uint256);
-    function initialize(address _pool, address _feesVotingReward, address _rewardToken, address _voter, address _nft, address _token0, address _token1, int24 _tickSpacing, bool _isPool) external;
+    function initialize(
+        address _pool,
+        address _feesVotingReward,
+        address _rewardToken,
+        address _voter,
+        address _nft,
+        address _token0,
+        address _token1,
+        int24 _tickSpacing,
+        bool _isPool
+    ) external;
     function earned(address token, uint256 tokenId) external view returns (uint256);
     function getReward(address account) external;
     function getReward(uint256 tokenId) external;

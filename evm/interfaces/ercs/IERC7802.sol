@@ -14,7 +14,7 @@ interface IERC7802 {
      * @param bridge The address of the bridge contract that triggered the mint
      */
     event CrosschainMint(address indexed to, uint256 amount, address indexed bridge);
-    
+
     /**
      * @dev Emitted when tokens are burned as part of a cross-chain operation
      * @param from The address whose tokens were burned
@@ -22,14 +22,14 @@ interface IERC7802 {
      * @param bridge The address of the bridge contract that triggered the burn
      */
     event CrosschainBurn(address indexed from, uint256 amount, address indexed bridge);
-    
+
     /**
      * @dev Mint tokens as part of a cross-chain transfer
      * @param to The address to mint tokens to
      * @param amount The amount of tokens to mint
      */
     function crosschainMint(address to, uint256 amount) external;
-    
+
     /**
      * @dev Burn tokens as part of a cross-chain transfer
      * @param from The address to burn tokens from

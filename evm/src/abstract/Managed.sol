@@ -8,7 +8,6 @@ import {IManagementFacet} from "@interfaces/IManagementFacet.sol";
 /// @title Managed
 /// @notice Abstract contract for external contracts to use management functionality from the Diamond
 abstract contract Managed is Permissioned {
-    
     /// @dev Access to management functions via interface
     function management() internal view returns (IManagementFacet) {
         return IManagementFacet(diamond);

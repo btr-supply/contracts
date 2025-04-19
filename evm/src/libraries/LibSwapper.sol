@@ -11,7 +11,6 @@ import {LibMaths} from "@libraries/LibMaths.sol";
 import {LibManagement as M} from "@libraries/LibManagement.sol";
 
 library LibSwapper {
-
     using SafeERC20 for IERC20;
     using LibMaths for uint256;
 
@@ -24,7 +23,6 @@ library LibSwapper {
     /// @param _router Router address to execute the swap
     /// @param _callData Encoded swap calldata for the router
     function swap(address _input, address _router, bytes memory _callData) internal {
-
         if (M.isSwapRouterRestricted(_router)) {
             revert Errors.Unauthorized(ErrorType.ROUTER);
         }
@@ -62,10 +60,10 @@ library LibSwapper {
         address _caller
     ) internal returns (uint256 received, uint256 spent) {
         // Validate access
-        if (M.isSwapCallerRestricted(_caller) ||
-            M.isSwapRouterRestricted(_router) ||
-            M.isSwapInputRestricted(_input) ||
-            M.isSwapOutputRestricted(_output)) {
+        if (
+            M.isSwapCallerRestricted(_caller) || M.isSwapRouterRestricted(_router) || M.isSwapInputRestricted(_input)
+                || M.isSwapOutputRestricted(_output)
+        ) {
             revert Errors.Unauthorized(ErrorType.ADDRESS);
         }
 
@@ -79,8 +77,7 @@ library LibSwapper {
 
         // Approve router if needed
         if (input.allowance(address(this), _router) < _amountIn) {
-            input.forceApprove(_router, 
-                M.isApproveMax() ? type(uint256).max : _amountIn);
+            input.forceApprove(_router, M.isApproveMax() ? type(uint256).max : _amountIn);
         }
 
         // Execute swap
@@ -100,7 +97,7 @@ library LibSwapper {
         // Return leftover tokens to caller
         uint256 leftover = _amountIn.subMax0(spent);
         if (leftover > 0) input.safeTransfer(_caller, leftover);
-        
+
         // Revoke allowance if configured
         if (M.isAutoRevoke()) {
             input.forceApprove(_router, 0);
@@ -127,15 +124,7 @@ library LibSwapper {
     ) internal returns (uint256 received, uint256 spent) {
         uint256 balance = IERC20(_input).balanceOf(_caller);
         if (balance == 0) revert Errors.ZeroValue();
-        return swap(
-            _input,
-            _output,
-            balance,
-            _minAmountOut,
-            _router,
-            _callData,
-            _caller
-        );
+        return swap(_input, _output, balance, _minAmountOut, _router, _callData, _caller);
     }
 
     /// @notice Decode swap parameters and execute a swap
@@ -146,28 +135,13 @@ library LibSwapper {
     /// @param _caller Address of the caller (tokens will be taken from and sent to this address)
     /// @return received Amount of output tokens received
     /// @return spent Amount of input tokens spent
-    function decodeAndSwap(
-        address _input,
-        address _output,
-        uint256 _amount,
-        bytes memory _params,
-        address _caller
-    ) internal returns (uint256 received, uint256 spent) {
-        (
-            address router,
-            uint256 minAmountOut,
-            bytes memory callData
-        ) = decodeSwapParams(_params);
+    function decodeAndSwap(address _input, address _output, uint256 _amount, bytes memory _params, address _caller)
+        internal
+        returns (uint256 received, uint256 spent)
+    {
+        (address router, uint256 minAmountOut, bytes memory callData) = decodeSwapParams(_params);
 
-        return swap(
-            _input,
-            _output,
-            _amount,
-            minAmountOut,
-            router,
-            callData,
-            _caller
-        );
+        return swap(_input, _output, _amount, minAmountOut, router, callData, _caller);
     }
 
     /// @notice Decode swap parameters and execute a swap using the caller's full balance
@@ -177,28 +151,14 @@ library LibSwapper {
     /// @param _caller Address of the caller (tokens will be taken from and sent to this address)
     /// @return received Amount of output tokens received
     /// @return spent Amount of input tokens spent
-    function decodeAndSwapBalance(
-        address _input,
-        address _output,
-        bytes memory _params,
-        address _caller
-    ) internal returns (uint256 received, uint256 spent) {
+    function decodeAndSwapBalance(address _input, address _output, bytes memory _params, address _caller)
+        internal
+        returns (uint256 received, uint256 spent)
+    {
         uint256 balance = IERC20(_input).balanceOf(_caller);
         if (balance == 0) revert Errors.ZeroValue();
-        (
-            address router,
-            uint256 minAmountOut,
-            bytes memory callData
-        ) = decodeSwapParams(_params);
-        return swap(
-            _input,
-            _output,
-            balance,
-            minAmountOut,
-            router,
-            callData,
-            _caller
-        );
+        (address router, uint256 minAmountOut, bytes memory callData) = decodeSwapParams(_params);
+        return swap(_input, _output, balance, minAmountOut, router, callData, _caller);
     }
 
     /// @notice Decode swap parameters from encoded bytes
@@ -206,11 +166,11 @@ library LibSwapper {
     /// @return router Router address to use for the swap
     /// @return minAmount Minimum amount of output tokens to receive
     /// @return callData Encoded swap calldata for the router
-    function decodeSwapParams(bytes memory _params) internal pure returns (
-        address router,
-        uint256 minAmount,
-        bytes memory callData
-    ) {
+    function decodeSwapParams(bytes memory _params)
+        internal
+        pure
+        returns (address router, uint256 minAmount, bytes memory callData)
+    {
         return abi.decode(_params, (address, uint256, bytes));
     }
 }

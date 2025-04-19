@@ -8,7 +8,7 @@ import {IPermissioned} from "@interfaces/IPermissioned.sol";
 abstract contract Permissioned {
     /// @dev The diamond contract address that handles role validation
     address public immutable diamond;
-    
+
     /// @notice Constructor to set the diamond address
     /// @param _diamond Address of the diamond contract for role validation
     constructor(address _diamond) {
@@ -27,25 +27,25 @@ abstract contract Permissioned {
         permissioned().checkRole(role, msg.sender);
         _;
     }
-    
+
     /// @notice Modifier for admin-only functions
     modifier onlyAdmin() virtual {
         permissioned().isAdmin(msg.sender);
         _;
     }
-    
+
     /// @notice Modifier for manager-only functions
     modifier onlyManager() virtual {
         permissioned().isManager(msg.sender);
         _;
     }
-    
+
     /// @notice Modifier for keeper-only functions
     modifier onlyKeeper() virtual {
         permissioned().isKeeper(msg.sender);
         _;
     }
-    
+
     /// @notice Modifier for treasury-only functions
     modifier onlyTreasury() virtual {
         permissioned().isTreasury(msg.sender);
@@ -59,41 +59,41 @@ abstract contract Permissioned {
     function hasRole(bytes32 role, address account) public view virtual returns (bool) {
         return permissioned().hasRole(role, account);
     }
-    
+
     /// @notice Verify that an account has a specific role, reverting if not
     /// @param role The role to check
     /// @param account The account to validate
     function checkRole(bytes32 role, address account) public view virtual {
         permissioned().checkRole(role, account);
     }
-    
+
     /// @notice Verify that the caller has a specific role
     /// @param role The role to check
     function checkRole(bytes32 role) public view virtual {
         permissioned().checkRole(role, msg.sender);
     }
-    
+
     /// @notice Check if an account is an admin
     /// @param account The account to check
     /// @return True if the account has the admin role
     function isAdmin(address account) external view virtual returns (bool) {
         return permissioned().isAdmin(account);
     }
-    
+
     /// @notice Check if an account is a manager
     /// @param account The account to check
     /// @return True if the account has the manager role
     function isManager(address account) external view virtual returns (bool) {
         return permissioned().isManager(account);
     }
-    
+
     /// @notice Check if an account is a keeper
     /// @param account The account to check
     /// @return True if the account has the keeper role
     function isKeeper(address account) external view virtual returns (bool) {
         return permissioned().isKeeper(account);
     }
-    
+
     /// @notice Check if an account is a treasury
     /// @param account The account to check
     /// @return True if the account has the treasury role

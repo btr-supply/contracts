@@ -10,19 +10,21 @@ import {EnumerableSet} from "@openzeppelin/contracts/utils/structs/EnumerableSet
 
 // Token type bits for rescue operations
 enum TokenType {
-    NATIVE,      // Native/gas token (eg. ETH, BNB, etc.)
-    ERC20,       // ERC20 comliant tokens (including ERC777, ERC3643, ERC4626, ERC7540)
-    ERC721,      // NFTs (ERC721)
-    ERC1155      // Multi-token standard (ERC1155)
+    NATIVE, // Native/gas token (eg. ETH, BNB, etc.)
+    ERC20, // ERC20 comliant tokens (including ERC777, ERC3643, ERC4626, ERC7540)
+    ERC721, // NFTs (ERC721)
+    ERC1155 // Multi-token standard (ERC1155)
+
 }
 
 // Used for blacklisting/whitelisting addresses
 enum AddressType {
-    NONE,    // Not blacklisted
-    USER,    // User/address blacklisted
-    POOL,    // Pool blacklisted
-    TOKEN,   // Token blacklisted
-    ROUTER   // Router blacklisted
+    NONE, // Not blacklisted
+    USER, // User/address blacklisted
+    POOL, // Pool blacklisted
+    TOKEN, // Token blacklisted
+    ROUTER // Router blacklisted
+
 }
 
 enum AccountStatus {
@@ -119,12 +121,12 @@ enum FeeType {
 ╚═══════════════════════════════════════════════════════════════*/
 
 struct Range {
-    bytes32 id;              // keccak256(abi.encodePacked(poolId, positionId))
-    bytes32 positionId;      // id of the underlying position
+    bytes32 id; // keccak256(abi.encodePacked(poolId, positionId))
+    bytes32 positionId; // id of the underlying position
     uint32 vaultId;
     bytes32 poolId;
-    uint256 weightBps;       // % weight of the position total
-    uint128 liquidity;       // liquidity of the position (LP tokens)
+    uint256 weightBps; // % weight of the position total
+    uint128 liquidity; // liquidity of the position (LP tokens)
     int24 lowerTick;
     int24 upperTick;
 }
@@ -196,9 +198,9 @@ struct PendingAcceptance {
 struct AccessControl {
     mapping(address => PendingAcceptance) pendingAcceptance;
     mapping(bytes32 => RoleData) roles;
-    uint256 grantDelay;       // Delay before a role grant can be accepted
-    uint256 acceptWindow;     // Window of time during which a role grant can be accepted
-    bytes32[16] __gap;        // upgradeable storage padding
+    uint256 grantDelay; // Delay before a role grant can be accepted
+    uint256 acceptWindow; // Window of time during which a role grant can be accepted
+    bytes32[16] __gap; // upgradeable storage padding
 }
 
 /*═══════════════════════════════════════════════════════════════╗
@@ -206,8 +208,8 @@ struct AccessControl {
 ╚═══════════════════════════════════════════════════════════════*/
 
 struct Restrictions {
-    bool entered;                                   // Reentrancy guard
-    bool paused;                                    // Pause state for vault operations
+    bool entered; // Reentrancy guard
+    bool paused; // Pause state for vault operations
     // Restriction bitmask:
     // 0 = restrictSwapCaller
     // 1 = restrictSwapRouter
@@ -218,9 +220,9 @@ struct Restrictions {
     // 6 = restrictBridgeRouter
     // 7 = approveMax
     // 8 = autoRevoke
-    uint256 restrictionMask;                           // Bit flags for various restrictions
-    mapping(address => AccountStatus) accountStatus;   // whitelist/blacklist (index 0 is used for protocol level)
-    bytes32[16] __gap;                                 // upgradeable storage padding
+    uint256 restrictionMask; // Bit flags for various restrictions
+    mapping(address => AccountStatus) accountStatus; // whitelist/blacklist (index 0 is used for protocol level)
+    bytes32[16] __gap; // upgradeable storage padding
 }
 
 /*═══════════════════════════════════════════════════════════════╗
@@ -228,9 +230,9 @@ struct Restrictions {
 ╚═══════════════════════════════════════════════════════════════*/
 
 struct Oracles {
-    uint32 lookback;                         // TWAP interval in seconds for price validation
-    uint256 maxDeviation;                    // Maximum allowed deviation between current price and TWAP (in basis points)
-    bytes32[32] __gap;                       // upgradeable storage padding
+    uint32 lookback; // TWAP interval in seconds for price validation
+    uint256 maxDeviation; // Maximum allowed deviation between current price and TWAP (in basis points)
+    bytes32[32] __gap; // upgradeable storage padding
 }
 
 /*═══════════════════════════════════════════════════════════════╗
@@ -238,18 +240,18 @@ struct Oracles {
 ╚═══════════════════════════════════════════════════════════════*/
 
 struct Fees {
-    uint16 entry;     // Fee charged when entering the vault (minting)
-    uint16 exit;      // Fee charged when exiting the vault (burning)
-    uint16 mgmt;      // Ongoing management fee
-    uint16 perf;      // Fee on profits
-    uint16 flash;     // Fee for flash loan operations
-    bytes32[8] __gap;        // upgradeable storage padding
+    uint16 entry; // Fee charged when entering the vault (minting)
+    uint16 exit; // Fee charged when exiting the vault (burning)
+    uint16 mgmt; // Ongoing management fee
+    uint16 perf; // Fee on profits
+    uint16 flash; // Fee for flash loan operations
+    bytes32[8] __gap; // upgradeable storage padding
 }
 
 struct Treasury {
-    address treasury;         // address to receive fees
-    Fees defaultFees;         // default protocol fees
-    bytes32[32] __gap;        // upgradeable storage padding
+    address treasury; // address to receive fees
+    Fees defaultFees; // default protocol fees
+    bytes32[32] __gap; // upgradeable storage padding
 }
 
 /*═══════════════════════════════════════════════════════════════╗
@@ -265,52 +267,47 @@ struct TimePoints {
 
 // Main vault storage structure
 struct ALMVault {
-
     uint32 id;
     // ERC20 properties
     string name;
     string symbol;
     uint8 decimals;
     uint256 totalSupply;
-    uint256 maxSupply;           // Maximum supply of vault shares
+    uint256 maxSupply; // Maximum supply of vault shares
     mapping(address => uint256) balances; // user balances
     mapping(address => mapping(address => uint256)) allowances; // user allowances
-
     // Vault positions
     IERC20 token0;
     IERC20 token1;
     bytes32[] ranges;
-
     // Fee management
-    uint64 feesCollectedAt;                      // Last time fees were collected
-    uint64 feeAccruedAt;                         // Last time fees were accrued
-    Fees fees;                                   // Fee configuration
-    mapping(IERC20 => uint256) accruedFees;      // Accrued fees per token
-    mapping(IERC20 => uint256) pendingFees;      // Pending fees per token
-    TimePoints timePoints;                       // Time points for fees
-    uint256 initAmount0;                         // Initial amount for token0 in the vault
-    uint256 initAmount1;                         // Initial amount for token1 in the vault
-    uint256 initShares;                          // Initial share amount for the first deposit (sets share price)
-
+    uint64 feesCollectedAt; // Last time fees were collected
+    uint64 feeAccruedAt; // Last time fees were accrued
+    Fees fees; // Fee configuration
+    mapping(IERC20 => uint256) accruedFees; // Accrued fees per token
+    mapping(IERC20 => uint256) pendingFees; // Pending fees per token
+    TimePoints timePoints; // Time points for fees
+    uint256 initAmount0; // Initial amount for token0 in the vault
+    uint256 initAmount1; // Initial amount for token1 in the vault
+    uint256 initShares; // Initial share amount for the first deposit (sets share price)
     // Price protection
-    uint32 lookback;                         // TWAP interval in seconds for price validation
-    uint256 maxDeviation;                   // Maximum allowed deviation between current price and TWAP (in basis points)
-    
+    uint32 lookback; // TWAP interval in seconds for price validation
+    uint256 maxDeviation; // Maximum allowed deviation between current price and TWAP (in basis points)
     // Restriction state
-    bool paused;                                 // Pause state for vault operations
-    bool restrictedMint;                         // Uses whitelist if true
-    bytes32[16] __gap;                           // upgradeable storage padding
+    bool paused; // Pause state for vault operations
+    bool restrictedMint; // Uses whitelist if true
+    bytes32[16] __gap; // upgradeable storage padding
 }
 
 // Vault initialization parameters
 struct VaultInitParams {
-    string name;                 // Vault name
-    string symbol;               // Vault symbol
-    address token0;              // First token in the pair (lower address)
-    address token1;              // Second token in the pair (higher address)
-    uint256 initAmount0;         // Initial amount for token0
-    uint256 initAmount1;         // Initial amount for token1
-    uint256 initShares;          // Initial share amount for the first deposit (sets share price)
+    string name; // Vault name
+    string symbol; // Vault symbol
+    address token0; // First token in the pair (lower address)
+    address token1; // Second token in the pair (higher address)
+    uint256 initAmount0; // Initial amount for token0
+    uint256 initAmount1; // Initial amount for token1
+    uint256 initShares; // Initial share amount for the first deposit (sets share price)
 }
 
 /*═══════════════════════════════════════════════════════════════╗
@@ -318,16 +315,16 @@ struct VaultInitParams {
 ╚═══════════════════════════════════════════════════════════════*/
 
 struct Registry {
-    uint32 vaultCount;                          // Number of vaults
-    uint32 rangeCount;                          // Number of ranges
-    EnumerableSet.UintSet dexs;                 // Set of supported DEX types (using uint for enum)
-    mapping(bytes32 => PoolInfo) poolInfo;      // Pool info by poolId
-    mapping(uint32 => ALMVault) vaults;         // Vaults by id
-    mapping(bytes32 => Range) ranges;           // Protocol-level storage of ranges by rangeId
-    mapping(uint8 => address) dexAdapters;      // Dex adapters by dex type
-    mapping(IERC20 => address) oracleAdapters;  // Oracle adapters by token address
+    uint32 vaultCount; // Number of vaults
+    uint32 rangeCount; // Number of ranges
+    EnumerableSet.UintSet dexs; // Set of supported DEX types (using uint for enum)
+    mapping(bytes32 => PoolInfo) poolInfo; // Pool info by poolId
+    mapping(uint32 => ALMVault) vaults; // Vaults by id
+    mapping(bytes32 => Range) ranges; // Protocol-level storage of ranges by rangeId
+    mapping(uint8 => address) dexAdapters; // Dex adapters by dex type
+    mapping(IERC20 => address) oracleAdapters; // Oracle adapters by token address
     mapping(bytes32 => address) bridgeAdapters; // Bridge adapters by chainId
-    bytes32[32] __gap;                          // upgradeable storage padding
+    bytes32[32] __gap; // upgradeable storage padding
 }
 
 /*═══════════════════════════════════════════════════════════════╗
@@ -337,13 +334,13 @@ struct Registry {
 // Core protocol storage
 struct CoreStorage {
     // Version control
-    uint8 version;                             // protocol version
-    AccessControl accessControl;               // Access control storage
-    Restrictions restrictions;                 // Restriction storage
-    Treasury treasury;                         // Treasury storage
-    Registry registry;                         // Registry storage (vaults, pools, dexs)
-    Oracles oracles;                           // Oracles storage
-    bytes32[64] __gap;                         // upgradeable storage padding
+    uint8 version; // protocol version
+    AccessControl accessControl; // Access control storage
+    Restrictions restrictions; // Restriction storage
+    Treasury treasury; // Treasury storage
+    Registry registry; // Registry storage (vaults, pools, dexs)
+    Oracles oracles; // Oracles storage
+    bytes32[64] __gap; // upgradeable storage padding
 }
 
 /*═══════════════════════════════════════════════════════════════╗
@@ -352,17 +349,17 @@ struct CoreStorage {
 
 // Request for rescuing stuck tokens
 struct RescueRequest {
-    uint64 timestamp;        // When the rescue was requested
-    address receiver;        // Address to receive the rescued tokens
-    TokenType tokenType;     // Type of token (bitmask of TokenType enum)
-    address tokenAddress;    // Address of the token
-    bytes32[] tokenIds;      // Token IDs (encoded as bytes32)
+    uint64 timestamp; // When the rescue was requested
+    address receiver; // Address to receive the rescued tokens
+    TokenType tokenType; // Type of token (bitmask of TokenType enum)
+    address tokenAddress; // Address of the token
+    bytes32[] tokenIds; // Token IDs (encoded as bytes32)
 }
 
 // Storage for rescue operations
 struct Rescue {
     mapping(address => mapping(TokenType => RescueRequest)) rescueRequests;
-    uint64 rescueTimelock;   // Time that must pass before a rescue can be executed
-    uint64 rescueValidity;   // Time window during which a rescue request is valid
-    bytes32[32] __gap;       // upgradeable storage padding
+    uint64 rescueTimelock; // Time that must pass before a rescue can be executed
+    uint64 rescueValidity; // Time window during which a rescue request is valid
+    bytes32[32] __gap; // upgradeable storage padding
 }

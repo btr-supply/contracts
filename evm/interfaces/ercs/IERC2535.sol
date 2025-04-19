@@ -2,5 +2,5 @@
 pragma solidity 0.8.28;
 
 interface IERC2535 {
-    // Diamond standard interface
+// Diamond standard interface
 }

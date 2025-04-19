@@ -31,11 +31,7 @@ contract UniV3AdapterFacet is V3AdapterFacet {
      * @param amount1Owed Amount of token1 to pay
      * @param data Callback data containing pool and minimum amounts
      */
-    function uniswapV3MintCallback(
-        uint256 amount0Owed,
-        uint256 amount1Owed,
-        bytes calldata data
-    ) external {
+    function uniswapV3MintCallback(uint256 amount0Owed, uint256 amount1Owed, bytes calldata data) external {
         _mintCallback(amount0Owed, amount1Owed, data);
     }
 }
