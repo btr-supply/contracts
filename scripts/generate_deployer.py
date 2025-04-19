@@ -1,12 +1,19 @@
 #!/usr/bin/env python3
-import json, sys, glob, re
+import json
+import sys
+import glob
+import re
 from pathlib import Path
 
 # Paths
 ROOT = Path(__file__).parent.parent
 FACETS_CFG = ROOT / 'scripts' / 'facets.json'
 TEMPLATE = Path(__file__).parent / 'templates' / 'DiamondDeployer.sol.tpl'
-OUT_DIR = lambda b: Path(b).parent / 'utils' / 'generated'
+
+
+def OUT_DIR(b):
+  """Calculates the output directory based on the build directory."""
+  return Path(b).parent / 'utils' / 'generated'
 
 
 def load_facets():
@@ -16,8 +23,9 @@ def load_facets():
     sys.exit(f"Error loading facets config: {e}")
 
 
-find_artifact = lambda f, b: next(
-    iter(glob.glob(f"{b}/**/{f}.json", recursive=True)), None)
+def find_artifact(f, b):
+  """Finds the build artifact for a given facet name."""
+  return next(iter(glob.glob(f"{b}/**/{f}.json", recursive=True)), None)
 
 
 def generate_parts(cfg, build):
@@ -29,29 +37,49 @@ def generate_parts(cfg, build):
   imports = "\n".join(f'import {{{f}}} from "@facets/{f}.sol";'
                       for f in facets)
   # initializers
-  inits = [(f, i + 1) for i, f in enumerate(facets)
-           if cfg[f].get('initializable')]
+  inits = []
+  for i, f in enumerate(facets):
+    if cfg[f].get('initializable'):
+      # Skip AccessControlFacet as it's handled by diamond constructor
+      if f == "AccessControlFacet":
+        continue
+
+      # Apply the consistent naming pattern
+      init_func_name = f"initialize{f.replace('Facet', '')}"
+      inits.append((f, i + 1, init_func_name))  # Store function name
+
   sel_specs = "\n    ".join(
-      f"bytes4 init{f}Selector = {f}.initialize{f}.selector;"
-      for f, _ in inits)
+      f"bytes4 init{f}Selector = {f}.{init_func}.selector;"
+      for f, _, init_func in inits  # Use the stored function name
+  )
   calls = "\n    ".join(
-      f"(bool success{i},) = address(this).call(abi.encodePacked(init{f}Selector));\n    if(!success{i}){{}}"
-      for f, i in inits)
+      f"(bool success{i},) = address(this).call(abi.encodePacked(init{f}Selector));\n    if(!success{i}){{}}"  # Use the selector variable name
+      for f, i, _ in inits  # Index i is still correct
+  )
+
   # fields & salts
-  field = lambda f: re.sub(r'(.)([A-Z])', lambda m: m.group(1) + '_' + m.group(
-      2), f).lower().replace('_facet', '')
-  addrs = "\n    ".join(f"address {field(f)};" for f in facets)
-  salts = "\n    ".join(f"bytes32 {field(f)};" for f in facets)
+  def field_name(f):
+    """Converts facet name (CamelCase) to a snake_case field name."""
+    # Add underscore before capital letters (except the first one)
+    s1 = re.sub(r'(.)([A-Z][a-z]+)', r'\1_\2', f)
+    # Handle cases like DAO -> d_a_o, then ensure lowercase
+    s2 = re.sub(r'([a-z0-9])([A-Z])', r'\1_\2', s1).lower()
+    # Remove _facet suffix if present
+    return s2.replace('_facet', '')
+
+  addrs = "\n    ".join(f"address {field_name(f)};" for f in facets)
+  salts = "\n    ".join(f"bytes32 {field_name(f)};" for f in facets)
   # selector functions
   owned = {
       sel: fac
-      for fac, cfg in cfg.items()
-      for sel in cfg.get('ownedSelectors', [])
+      for fac, cfg_item in cfg.items()
+      for sel in cfg_item.get('ownedSelectors', [])
   }
   funcs = []
   for f in facets:
     art = find_artifact(f, build)
-    if not art: continue
+    if not art:
+      continue
     mids = json.loads(Path(art).read_text()).get('methodIdentifiers', {})
     sels = [
         p for m, p in mids.items() if not m.startswith('constructor') and (
@@ -75,7 +103,7 @@ def generate_parts(cfg, build):
   cuts_code = f"IDiamondCut.FacetCut[] memory cuts = new IDiamondCut.FacetCut[]({len(cuts)});" + "".join(
       f" cuts[{i}] = IDiamondCut.FacetCut({{facetAddress: address(_{f}), action: IDiamondCut.FacetCutAction.Add, functionSelectors: get{f}Selectors()}});"
       for i, f in enumerate(cuts))
-  diamond = f"BTRDiamond diamond = new BTRDiamond(admin, treasury, address(_DiamondCutFacet));" if 'DiamondCutFacet' in facets else ''
+  diamond_creation_code = "BTRDiamond diamond = new BTRDiamond(admin, treasury, address(_DiamondCutFacet));" if 'DiamondCutFacet' in facets else ''
   # returns
   fac_addrs = "\n    ".join(f"facets[{i}] = address(_{f});"
                             for i, f in enumerate(facets))
@@ -83,7 +111,7 @@ def generate_parts(cfg, build):
                             for i, f in enumerate(facets))
   ret = f"address[] memory facets = new address[]({len(facets)});\n    {fac_addrs}\n    string[] memory facetNames = new string[]({len(facets)});\n    {fac_names}"
   det = "\n      ".join(
-      f"{field(f)}: address(0){',' if i < len(facets)-1 else ''}"
+      f"{field_name(f)}: address(0){',' if i < len(facets)-1 else ''}"
       for i, f in enumerate(facets))
   return {
       'facet_imports': imports,
@@ -94,7 +122,7 @@ def generate_parts(cfg, build):
       'get_selectors_for_facet_conditions': conds,
       'deploy_facets': deploys,
       'facet_cuts': cuts_code,
-      'diamond_creation': diamond,
+      'diamond_creation': diamond_creation_code,
       'deployment_return': ret,
       'deterministic_return_fields': det,
       'deterministic_addresses_return_fields': det,
@@ -104,17 +132,17 @@ def generate_parts(cfg, build):
 def main():
   if len(sys.argv) < 2:
     sys.exit("Usage: python generate_deployer.py <build_directory>")
-  build = sys.argv[1]
+  build_dir = sys.argv[1]
   cfg = load_facets()
-  parts = generate_parts(cfg, build)
-  tpl = TEMPLATE.read_text() if TEMPLATE.exists() else sys.exit(
+  parts = generate_parts(cfg, build_dir)
+  tpl_content = TEMPLATE.read_text() if TEMPLATE.exists() else sys.exit(
       "Template not found")
   for k, v in parts.items():
-    tpl = tpl.replace(f"{{{{ {k} }}}}", v)
-  out = OUT_DIR(build)
-  out.mkdir(parents=True, exist_ok=True)
-  (out / 'DiamondDeployer.gen.sol').write_text(tpl)
-  print(f"✔️ Generated DiamondDeployer.gen.sol at {out}")
+    tpl_content = tpl_content.replace(f"{{{{ {k} }}}}", v)
+  output_dir = OUT_DIR(build_dir)
+  output_dir.mkdir(parents=True, exist_ok=True)
+  (output_dir / 'DiamondDeployer.gen.sol').write_text(tpl_content)
+  print(f"✔️ Generated DiamondDeployer.gen.sol at {output_dir}")
 
 
 if __name__ == '__main__':

@@ -17,14 +17,10 @@ python-lint-fix:
 	@echo "Linting and fixing Python files with Ruff..."
 	uv run ruff check . --fix
 
-build: python-lint-fix format
-	@echo "Linting+Building contracts..."
-	bash scripts/build.sh
-
 test:
 	bash scripts/test.sh
 
-pre-commit: format python-lint-fix build
+pre-commit: format python-lint-fix
 
 # Git Hook Validations (can be integrated with pre-commit tool or run manually)
 validate-commit-msg:

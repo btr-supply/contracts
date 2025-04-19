@@ -2,7 +2,7 @@
   "AccessControlFacet": {
     "required": false,
     "payable": false,
-    "initializable": true,
+    "initializable": false,
     "ownedSelectors": [
       "admin()",
       "checkRole(bytes32)",
@@ -84,4 +84,4 @@
       "setTreasury(address)"
     ]
   }
-} 
+}
