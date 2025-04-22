@@ -192,11 +192,6 @@ evm:
             desc: Implements SwapX specific DEX operations
             dev_comment:
         bridges:
-          LayerZeroAdapterFacet.sol:
-            title: LayerZero Bridge
-            short_desc: Cross-chain messaging
-            desc: Handles cross-chain communications via LayerZero
-            dev_comment: Implements ULNv2 for message verification
           LayerZeroAdapterFacet.sol.wip:
             title: LayerZero Bridge (WIP)
             short_desc: Cross-chain messaging (Work In Progress)
@@ -347,26 +342,11 @@ evm:
         short_desc: Deterministic deployment verification
         desc: Validates CREATE2 address generation and deployment
         dev_comment: Tests deterministic deployment logic
-      RescuableTest.t.sol:
-        title: Rescue Functions Test
-        short_desc: Asset recovery validation
-        desc: Verifies emergency asset recovery functionality
-        dev_comment: Tests multisig approval workflows
       DiamondTest.t.sol:
         title: Diamond Test
         short_desc: Proxy upgrade validation
         desc: Verifies diamond proxy functionality and facet management
         dev_comment: Tests EIP-2535 compliance
-      DeterministicDiamondTest.t.sol:
-        title: Deterministic Diamond Test
-        short_desc: Predictable deployment verification
-        desc: Validates deterministic diamond deployment process
-        dev_comment: Tests CREATE2 address predictability
-      StorageUpgradeTest.t.sol:
-        title: Storage Upgrade Test
-        short_desc: Storage layout validation
-        desc: Verifies storage compatibility across upgrades
-        dev_comment: Tests upgrade safety checks
       AccessControlTest.t.sol:
         title: Access Control Test
         short_desc: Permission validation
