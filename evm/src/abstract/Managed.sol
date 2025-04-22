@@ -13,16 +13,12 @@ abstract contract Managed is Permissioned {
         return IManagementFacet(diamond);
     }
 
-    // ========== Account Status ==========
-
     /// @notice Get the status of an account
     /// @param account The account to check
     /// @return The account status
     function getAccountStatus(address account) public view returns (AS) {
         return management().getAccountStatus(account);
     }
-
-    // ========== System State ==========
 
     /// @notice Check if the system is paused
     /// @return True if the system is paused
