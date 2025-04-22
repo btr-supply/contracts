@@ -64,7 +64,7 @@ main     ← production-ready, version bumps + releases triggered via Make comma
 1.  Create a new branch from `dev` with the appropriate prefix (see [Naming Conventions](#naming-conventions)).
 2.  Make your changes.
 3.  Ensure code quality and build success by running `make build`. This typically includes formatting, linting, and compiling contracts.
-4.  Commit your changes with a properly formatted commit message (see [Naming Conventions](#naming-conventions)).
+3. Commit your changes (single, atomic feature or fix + associated formatting, no more. See [Naming Conventions](#naming-conventions))
 5.  Create a pull request to merge your changes into the `dev` branch.
 6.  After review and approval, your changes will be merged into `dev`.
 7.  Periodically, the `dev` branch is merged (linearly) into `main` for releases using the `make release-*` commands.
