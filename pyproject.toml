@@ -1,13 +1,11 @@
 [project]
 name = "btr-supply-contracts"
-version = "0.2.0"
+version = "0.3.0"
 description = "BTR Supply smart contracts: EVM, Solana, Sui"
 readme = "README.md"
 changelog = "CHANGELOG.md"
 requires-python = ">=3.9"
-dependencies = [
-  "pyyaml>=6.0",
-]
+dependencies = [ "pyyaml>=6.0",]
 [[project.authors]]
 name = "BTR Supply"
 email = "contact@btr.supply"

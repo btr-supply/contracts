@@ -5,6 +5,27 @@ See [CONTRIBUTING.md](./CONTRIBUTING.md) for details.
 
 NB: [Auto-generated from commits](./scripts/release.py) - DO NOT EDIT.
 
+
+## [0.3.0] - 2025-04-23
+
+### Features
+- [feat] Add integration tests for BTR swap functionality
+
+### Refactors
+- [refac] Install pre-commit hooks, replace header script
+- [refac] Migrate header formatting from shell script to Python implementation
+- [refac] Move CakeV3 interfaces to dexs/ and update desc.yml
+- [refac] Remove redundant comments in Managed.sol
+- [refac] Standardize Solidity file formatting and headers across all contracts
+
+### Ops
+- [ops] Generalize format-headers.sh to process all desc.yml files
+- [ops] Move get-swap-data.sh script to shared scripts directory
+
+### Docs
+- [docs] Clarify commit guidelines in Development Workflow
+
+
 ## [0.2.0] - 2025-04-19
 
 ### Features
