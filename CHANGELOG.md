@@ -26,7 +26,7 @@ NB: [Auto-generated from commits](./scripts/release.py) - DO NOT EDIT.
 
 ### Ops
 - [ops] Generalize format-headers.sh to process all desc.yml files
-- [ops] Move get-swap-data.sh script to shared scripts directory
+- [ops] Move get_swap_data.sh script to shared scripts directory
 
 ### Docs
 - [docs] Clarify commit guidelines in Development Workflow

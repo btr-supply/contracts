@@ -14,7 +14,7 @@ contract BTRSwapTest is Test, BNBChainMeta {
     }
 
     function testSwapQuoteCSV() public {
-        // Prepare CLI parameters for get-swap-data.sh
+        // Prepare CLI parameters for get_swap_data.sh
         string memory input = "56:0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c:WBNB:18";
         string memory output = "56:0x8AC76a51cc950d9822D68b83fE1Ad97B32Cd580d:USDC:18";
         string memory amountIn = "1e17"; // 0.1 WBNB
@@ -23,7 +23,7 @@ contract BTRSwapTest is Test, BNBChainMeta {
         // Construct FFI command array
         string[] memory cmd = new string[](6);
         cmd[0] = "bash";
-        cmd[1] = "../scripts/get-swap-data.sh";
+        cmd[1] = "../scripts/get_swap_data.sh";
         cmd[2] = input;
         cmd[3] = output;
         cmd[4] = amountIn;

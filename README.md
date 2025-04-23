@@ -15,6 +15,21 @@
 
 ---
 
+## Table of Contents
+
+- [Introduction](#introduction)
+- [Key Features & Innovations](#key-features--innovations)
+- [Repository Overview](#repository-overview)
+- [EVM Architecture (Diamond Standard)](#evm-architecture-diamond-standard)
+- [Getting Started](#getting-started)
+- [Development Workflow](#development-workflow)
+- [Testing](#testing)
+- [Releasing](#releasing)
+- [Key Scripts](#key-scripts)
+- [Contributing](#contributing)
+- [Project Evolution & Inspirations](#project-evolution--inspirations)
+- [License](#license)
+
 ## Introduction
 
 **BTR** (Bayesian True Range), or simply 'Better', is the first open and market-aware Automated Liquidity Manager (ALM) designed for concentrated liquidity AMMs like Uniswap V3/V4, Algebra DEX, Raydium, Orca, and more.
@@ -125,7 +140,7 @@ Ensure code conforms to project standards:
 ```bash
 make format
 ```
-This runs `forge fmt` for Solidity and custom formatters ([`scripts/format-code.sh`](./scripts/format-code.sh), [`scripts/format_headers.py`](./scripts/format_headers.py)).
+This runs `forge fmt` for Solidity and custom formatters ([`scripts/format_code.sh`](./scripts/format_code.sh), [`scripts/format_headers.py`](./scripts/format_headers.py)).
 
 ### Linting
 
@@ -139,8 +154,8 @@ make python-lint-fix
 
 The `pre-commit` hooks installed via `make install-deps` automatically run checks before certain git actions. The configured hooks include:
 *   **pre-commit:** Runs formatters (`forge fmt`, custom scripts) and linters (`ruff`).
-*   **commit-msg:** Validates commit message format using [`scripts/check-name.py -c`](./scripts/check-name.py).
-*   **pre-push:** Validates branch name and commit messages before pushing using [`scripts/check-name.py -p`](./scripts/check-name.py).
+*   **commit-msg:** Validates commit message format using [`scripts/check_name.py -c`](./scripts/check_name.py).
+*   **pre-push:** Validates branch name and commit messages before pushing using [`scripts/check_name.py -p`](./scripts/check_name.py).
 *   **post-checkout:** Can be used for environment synchronization after switching branches.
 
 These ensure code quality and consistency.
@@ -189,9 +204,9 @@ Make sure your commit messages follow the convention expected by [`scripts/relea
 Beyond testing and releasing, several utility scripts exist in [`./scripts`](./scripts):
 
 *   [`generate_deployer.py`](./scripts/generate_deployer.py): Generates the [`DiamondDeployer.gen.sol`](./evm/utils/generated/DiamondDeployer.gen.sol) contract used in deployment scripts based on [`facets.json`](./scripts/facets.json).
-*   [`get-swap-data.sh`](./scripts/get-swap-data.sh): Example script demonstrating how to use an external `btr-swap` tool to fetch optimal swap data from aggregators.
-*   [`check-name.py`](./scripts/check-name.py): Validates branch names and commit messages (used by pre-commit hooks).
-*   [`format-code.sh`](./scripts/format-code.sh) / [`format_headers.py`](./scripts/format_headers.py): Code formatting utilities.
+*   [`get_swap_data.sh`](./scripts/get_swap_data.sh): Example script demonstrating how to use an external `btr-swap` tool to fetch optimal swap data from aggregators.
+*   [`check_name.py`](./scripts/check_name.py): Validates branch names and commit messages (used by pre-commit hooks).
+*   [`format_code.sh`](./scripts/format_code.sh) / [`format_headers.py`](./scripts/format_headers.py): Code formatting utilities.
 
 
 ## Project Evolution & Inspirations

@@ -15,7 +15,7 @@ install-deps:
 
 format:
 	@echo "Formatting code..."
-	bash scripts/format-code.sh
+	bash scripts/format_code.sh
 	@echo "Formatting headers..."
 	uv run python scripts/format_headers.py
 
@@ -31,19 +31,19 @@ pre-commit: format python-lint-fix
 # Git Hook Validations (can be integrated with pre-commit tool or run manually)
 validate-commit-msg:
 	@echo "Validating commit message format"
-	uv run python scripts/check-name.py -c
+	uv run python scripts/check_name.py -c
 
 validate-branch-name:
 	@echo "Validating current branch name format..."
-	uv run python scripts/check-name.py -b
+	uv run python scripts/check_name.py -b
 
 pre-push:
 	@echo "Validating format of commits+branch name to be pushed..."
-	uv run python scripts/check-name.py -p
+	uv run python scripts/check_name.py -p
 
 check-branch-main:
 	@echo "Checking if current branch is main..."
-	bash scripts/check-branch.sh main
+	bash scripts/check_branch.sh main
 
 publish-major: check-branch-main
 	bash scripts/release.sh major

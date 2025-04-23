@@ -117,10 +117,10 @@ We enforce coding standards through configuration files and `make` commands:
 
 -   **General**: `.editorconfig` defines basic settings like indentation (2 spaces) and line endings.
 -   **Python**:
-    -   Formatting: `yapf` enforces style. Run `make format` (which executes `scripts/format-code.sh`). Configuration is in `.style.yapf`.
+    -   Formatting: `yapf` enforces style. Run `make format` (which executes `scripts/format_code.sh`). Configuration is in `.style.yapf`.
     -   Linting: `ruff` checks for errors and style issues. Run `make python-lint-fix` or `make build`. Configuration is in `pyproject.toml`.
 -   **Solidity (EVM)**:
-    -   Formatting: `forge fmt` enforces style. Run `make format` (which executes `scripts/format-code.sh`). Configuration is in `foundry.toml`.
+    -   Formatting: `forge fmt` enforces style. Run `make format` (which executes `scripts/format_code.sh`). Configuration is in `foundry.toml`.
 -   **Solana (Rust)**:
     -   Formatting: Use `cargo fmt` within the `./solana` directory.
     -   Linting: Use `cargo clippy` within the `./solana` directory.
