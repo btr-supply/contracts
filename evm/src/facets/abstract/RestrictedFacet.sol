@@ -1,6 +1,22 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.28;
 
+/**
+@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+@@@@@@@@@/         '@@@@/            /@@@/         '@@@@@@@@
+@@@@@@@@/    /@@@    @@@@@@/    /@@@@@@@/    /@@@    @@@@@@@
+@@@@@@@/           _@@@@@@/    /@@@@@@@/    /.     _@@@@@@@@
+@@@@@@/    /@@@    '@@@@@/    /@@@@@@@/    /@@    @@@@@@@@@@
+@@@@@/            ,@@@@@/    /@@@@@@@/    /@@@,    @@@@@@@@@
+@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+ *
+ * @title Restricted Functions - Access-controlled operations
+ * @copyright 2025
+ * @notice Contains permissioned protocol administration functions
+ * @dev Integrates with AccessControlFacet for permissions
+ * @author BTR Team
+ */
+
 import {BTRStorage as S} from "@libraries/BTRStorage.sol";
 import {BTRUtils} from "@libraries/BTRUtils.sol";
 import {BTRErrors as Errors} from "@libraries/BTREvents.sol";

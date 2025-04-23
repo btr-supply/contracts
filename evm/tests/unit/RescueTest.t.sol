@@ -1,6 +1,22 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.28;
 
+/**
+@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+@@@@@@@@@/         '@@@@/            /@@@/         '@@@@@@@@
+@@@@@@@@/    /@@@    @@@@@@/    /@@@@@@@/    /@@@    @@@@@@@
+@@@@@@@/           _@@@@@@/    /@@@@@@@/    /.     _@@@@@@@@
+@@@@@@/    /@@@    '@@@@@/    /@@@@@@@/    /@@    @@@@@@@@@@
+@@@@@/            ,@@@@@/    /@@@@@@@/    /@@@,    @@@@@@@@@
+@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+ *
+ * @title Rescue Test - Asset recovery validation
+ * @copyright 2025
+ * @notice Verifies emergency asset recovery functionality
+ * @dev Tests the RescueFacet logic and permissions
+ * @author BTR Team
+ */
+
 import {Test} from "forge-std/Test.sol";
 import {BaseDiamondTest} from "../BaseDiamondTest.t.sol";
 import {RescueFacet} from "@facets/RescueFacet.sol";

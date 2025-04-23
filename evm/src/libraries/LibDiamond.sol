@@ -1,6 +1,22 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.28;
 
+/**
+@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+@@@@@@@@@/         '@@@@/            /@@@/         '@@@@@@@@
+@@@@@@@@/    /@@@    @@@@@@/    /@@@@@@@/    /@@@    @@@@@@@
+@@@@@@@/           _@@@@@@/    /@@@@@@@/    /.     _@@@@@@@@
+@@@@@@/    /@@@    '@@@@@/    /@@@@@@@/    /@@    @@@@@@@@@@
+@@@@@/            ,@@@@@/    /@@@@@@@/    /@@@,    @@@@@@@@@
+@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+ *
+ * @title Diamond Library - Diamond pattern helpers
+ * @copyright 2025
+ * @notice Provides functions for interacting with diamond storage and facets
+ * @dev Core library for EIP-2535 implementation
+ * @author BTR Team
+ */
+
 import {IDiamondCut} from "@interfaces/IDiamond.sol";
 import {BTRStorage as S} from "@libraries/BTRStorage.sol";
 import {Diamond, FacetAddressAndPosition, FacetFunctionSelectors, ErrorType} from "@/BTRTypes.sol";

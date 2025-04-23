@@ -1,6 +1,22 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.28;
 
+/**
+@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+@@@@@@@@@/         '@@@@/            /@@@/         '@@@@@@@@
+@@@@@@@@/    /@@@    @@@@@@/    /@@@@@@@/    /@@@    @@@@@@@
+@@@@@@@/           _@@@@@@/    /@@@@@@@/    /.     _@@@@@@@@
+@@@@@@/    /@@@    '@@@@@/    /@@@@@@@/    /@@    @@@@@@@@@@
+@@@@@/            ,@@@@@/    /@@@@@@@/    /@@@,    @@@@@@@@@
+@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+ *
+ * @title Mock ERC1155 - Mock implementation of ERC1155 token
+ * @copyright 2025
+ * @notice Test utility contract providing a basic ERC1155 implementation
+ * @dev Used for testing ERC1155 interactions
+ * @author BTR Team
+ */
+
 import "@openzeppelin/contracts/token/ERC1155/ERC1155.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 

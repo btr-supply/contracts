@@ -1,6 +1,22 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.28;
 
+/**
+@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+@@@@@@@@@/         '@@@@/            /@@@/         '@@@@@@@@
+@@@@@@@@/    /@@@    @@@@@@/    /@@@@@@@/    /@@@    @@@@@@@
+@@@@@@@/           _@@@@@@/    /@@@@@@@/    /.     _@@@@@@@@
+@@@@@@/    /@@@    '@@@@@/    /@@@@@@@/    /@@    @@@@@@@@@@
+@@@@@/            ,@@@@@/    /@@@@@@@/    /@@@,    @@@@@@@@@
+@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+ *
+ * @title Swapper Facet - Handles token swaps via DEX adapters
+ * @copyright 2025
+ * @notice Provides unified interface for executing swaps across different DEXs
+ * @dev Routes swaps through registered DEX adapters
+ * @author BTR Team
+ */
+
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {LibDiamond} from "@libraries/LibDiamond.sol";

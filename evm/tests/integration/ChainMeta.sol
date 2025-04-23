@@ -2,10 +2,21 @@
 pragma solidity 0.8.28;
 
 /**
- * @title ChainMeta
- * @notice Contains metadata for different chains used in tests
- * @dev Structured by chain to allow easy switching between test environments
+@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+@@@@@@@@@/         '@@@@/            /@@@/         '@@@@@@@@
+@@@@@@@@/    /@@@    @@@@@@/    /@@@@@@@/    /@@@    @@@@@@@
+@@@@@@@/           _@@@@@@/    /@@@@@@@/    /.     _@@@@@@@@
+@@@@@@/    /@@@    '@@@@@/    /@@@@@@@/    /@@    @@@@@@@@@@
+@@@@@/            ,@@@@@/    /@@@@@@@/    /@@@,    @@@@@@@@@
+@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+ *
+ * @title Chain Metadata Library (Test) - Provides chain-specific constants for tests
+ * @copyright 2025
+ * @notice Defines constants like block numbers or RPC URLs for specific chains used in integration tests
+ * @dev Helper library for fork testing setup
+ * @author BTR Team
  */
+
 abstract contract EthereumChainMeta {}
 
 abstract contract BNBChainMeta {

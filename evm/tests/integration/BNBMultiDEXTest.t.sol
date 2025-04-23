@@ -1,6 +1,22 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.28;
 
+/**
+@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+@@@@@@@@@/         '@@@@/            /@@@/         '@@@@@@@@
+@@@@@@@@/    /@@@    @@@@@@/    /@@@@@@@/    /@@@    @@@@@@@
+@@@@@@@/           _@@@@@@/    /@@@@@@@/    /.     _@@@@@@@@
+@@@@@@/    /@@@    '@@@@@/    /@@@@@@@/    /@@    @@@@@@@@@@
+@@@@@/            ,@@@@@/    /@@@@@@@/    /@@@,    @@@@@@@@@
+@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+ *
+ * @title BNB Multi-DEX Test - Integration tests for swapping across multiple DEXs on BNB
+ * @copyright 2025
+ * @notice Verifies the SwapperFacet's ability to route trades across different DEX adapters on BNB Chain
+ * @dev Tests aggregation or multi-hop swap logic
+ * @author BTR Team
+ */
+
 import {BNBALMTest} from "./BNBALMTest.t.sol";
 import {ALMVault, Range, Rebalance, DEX} from "@/BTRTypes.sol";
 import {BTRUtils} from "@libraries/BTRUtils.sol";

@@ -50,3 +50,6 @@ uv.lock
 arrakis-v2
 *.old
 **/*.old/
+
+# Ruff cache
+.ruff_cache

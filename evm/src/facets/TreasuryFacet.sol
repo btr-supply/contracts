@@ -1,6 +1,22 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.28;
 
+/**
+@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+@@@@@@@@@/         '@@@@/            /@@@/         '@@@@@@@@
+@@@@@@@@/    /@@@    @@@@@@/    /@@@@@@@/    /@@@    @@@@@@@
+@@@@@@@/           _@@@@@@/    /@@@@@@@/    /.     _@@@@@@@@
+@@@@@@/    /@@@    '@@@@@/    /@@@@@@@/    /@@    @@@@@@@@@@
+@@@@@/            ,@@@@@/    /@@@@@@@/    /@@@,    @@@@@@@@@
+@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+ *
+ * @title Treasury Facet - Manages protocol treasury funds
+ * @copyright 2025
+ * @notice Handles collection and distribution of protocol fees and revenues
+ * @dev Integrates with fee management and access control
+ * @author BTR Team
+ */
+
 import {LibDiamond} from "@libraries/LibDiamond.sol";
 import {LibAccessControl} from "@libraries/LibAccessControl.sol";
 import {LibTreasury as T} from "@libraries/LibTreasury.sol";

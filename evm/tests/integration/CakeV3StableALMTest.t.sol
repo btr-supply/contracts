@@ -1,6 +1,22 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.28;
 
+/**
+@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+@@@@@@@@@/         '@@@@/            /@@@/         '@@@@@@@@
+@@@@@@@@/    /@@@    @@@@@@/    /@@@@@@@/    /@@@    @@@@@@@
+@@@@@@@/           _@@@@@@/    /@@@@@@@/    /.     _@@@@@@@@
+@@@@@@/    /@@@    '@@@@@/    /@@@@@@@/    /@@    @@@@@@@@@@
+@@@@@/            ,@@@@@/    /@@@@@@@/    /@@@,    @@@@@@@@@
+@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+ *
+ * @title CakeV3 Stable ALM Test - Integration tests for ALM on PancakeSwap V3 stable pools
+ * @copyright 2025
+ * @notice Verifies ALM functionality specifically for stablecoin pairs on PancakeSwap V3
+ * @dev Inherits from ALMBaseTest
+ * @author BTR Team
+ */
+
 import {BNBALMTest} from "./BNBALMTest.t.sol";
 import "forge-std/console.sol";
 import {ALMFacet} from "@facets/ALMFacet.sol";
@@ -12,17 +28,17 @@ import {CakeV3AdapterFacet} from "@facets/adapters/dexs/CakeV3AdapterFacet.sol";
 
 /**
  * @title CakeV3StableALMTest
- * @notice Integration test for PancakeSwap V3 stable pools
- * @dev Tests range creation, rebalancing with swaps
+ * @notice Integration test for ALM on PancakeSwap V3 stable pools
+ * @dev Inherits from BNBALMTest to cover full vault lifecycle
  */
 contract CakeV3StableALMTest is BNBALMTest {
     address public cakeV3Adapter;
 
     function setUp() public override {
-        // Deploy CakeV3 adapter before calling parent setup
+        // Deploy CakeV3 adapter
         cakeV3Adapter = address(new CakeV3AdapterFacet());
 
-        // Call parent setup
+        // Base setup: diamond, fork, token balances, pool registration
         super.setUp();
 
         // Register CakeV3 adapter
@@ -31,7 +47,15 @@ contract CakeV3StableALMTest is BNBALMTest {
         vm.stopPrank();
     }
 
-    // Override base test abstract functions
+    /// @notice Lifecycle test: create vault, init range, deposit, rebalance, withdraw
+    function testCakeV3Lifecycle() public {
+        runLifecycleTest(true);
+    }
+
+    /// @notice Fee collection test
+    function testCakeV3FeeCollection() public {
+        runFeeCollectionTest(true);
+    }
 
     function getTestStablePool() internal view override returns (address) {
         return CAKEV3_USDT_USDC_POOL;
@@ -43,15 +67,5 @@ contract CakeV3StableALMTest is BNBALMTest {
 
     function getTestDEX() internal view override returns (DEX) {
         return DEX.PANCAKESWAP;
-    }
-
-    // PancakeSwap-specific tests
-
-    function testCakeV3Lifecycle() public {
-        runLifecycleTest(true);
-    }
-
-    function testCakeV3FeeCollection() public {
-        runFeeCollectionTest(true);
     }
 }

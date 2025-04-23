@@ -1,6 +1,22 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.28;
 
+/**
+@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+@@@@@@@@@/         '@@@@/            /@@@/         '@@@@@@@@
+@@@@@@@@/    /@@@    @@@@@@/    /@@@@@@@/    /@@@    @@@@@@@
+@@@@@@@/           _@@@@@@/    /@@@@@@@/    /.     _@@@@@@@@
+@@@@@@/    /@@@    '@@@@@/    /@@@@@@@/    /@@    @@@@@@@@@@
+@@@@@/            ,@@@@@/    /@@@@@@@/    /@@@,    @@@@@@@@@
+@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+ *
+ * @title ERC20 Bridgeable - Abstract contract for bridgeable ERC20 tokens
+ * @copyright 2025
+ * @notice Provides base functionality for tokens that can be bridged cross-chain
+ * @dev Intended for inheritance by specific bridgeable token implementations
+ * @author BTR Team
+ */
+
 import "@interfaces/ercs/IERC7802.sol";
 import "@interfaces/ercs/IXERC20.sol";
 import "./Permissioned.sol";

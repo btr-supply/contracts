@@ -1,6 +1,22 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.28;
 
+/**
+@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+@@@@@@@@@/         '@@@@/            /@@@/         '@@@@@@@@
+@@@@@@@@/    /@@@    @@@@@@/    /@@@@@@@/    /@@@    @@@@@@@
+@@@@@@@/           _@@@@@@/    /@@@@@@@/    /.     _@@@@@@@@
+@@@@@@/    /@@@    '@@@@@/    /@@@@@@@/    /@@    @@@@@@@@@@
+@@@@@/            ,@@@@@/    /@@@@@@@/    /@@@,    @@@@@@@@@
+@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+ *
+ * @title BTR Core Test - Tests core BTR contract interactions (if any)
+ * @copyright 2025
+ * @notice Verifies functionality related to the core BTR.sol or BTRDiamond.sol contracts
+ * @dev May test basic setup or interactions not covered by facet tests
+ * @author BTR Team
+ */
+
 import "../BaseDiamondTest.t.sol";
 import {BTR} from "@/BTR.sol";
 import {TreasuryFacet} from "@facets/TreasuryFacet.sol";

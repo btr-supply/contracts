@@ -1,4 +1,6 @@
 // SPDX-License-Identifier: {{ licence }}
+pragma solidity {{ sol_version }};
+
 /**
 @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 @@@@@@@@@/         '@@@@/            /@@@/         '@@@@@@@@
@@ -14,5 +16,3 @@
  * @dev {{ dev_comment }}
  * @author {{ author }}
  */
-
-pragma solidity {{ sol_version }};

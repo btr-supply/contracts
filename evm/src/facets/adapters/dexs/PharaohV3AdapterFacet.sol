@@ -1,6 +1,22 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.28;
 
+/**
+@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+@@@@@@@@@/         '@@@@/            /@@@/         '@@@@@@@@
+@@@@@@@@/    /@@@    @@@@@@/    /@@@@@@@/    /@@@    @@@@@@@
+@@@@@@@/           _@@@@@@/    /@@@@@@@/    /.     _@@@@@@@@
+@@@@@@/    /@@@    '@@@@@/    /@@@@@@@/    /@@    @@@@@@@@@@
+@@@@@/            ,@@@@@/    /@@@@@@@/    /@@@,    @@@@@@@@@
+@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+ *
+ * @title Pharaoh V3 Adapter - Pharaoh V3 integration
+ * @copyright 2025
+ * @notice Implements Pharaoh V3 specific DEX operations
+ * @dev 
+ * @author BTR Team
+ */
+
 import {IPharaohV3Pool} from "@interfaces/dexs/IPharaohV3Pool.sol";
 import {RamsesV3AdapterFacet} from "@facets/adapters/dexs/RamsesV3AdapterFacet.sol";
 

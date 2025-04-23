@@ -1,6 +1,22 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.28;
 
+/**
+@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+@@@@@@@@@/         '@@@@/            /@@@/         '@@@@@@@@
+@@@@@@@@/    /@@@    @@@@@@/    /@@@@@@@/    /@@@    @@@@@@@
+@@@@@@@/           _@@@@@@/    /@@@@@@@/    /.     _@@@@@@@@
+@@@@@@/    /@@@    '@@@@@/    /@@@@@@@/    /@@    @@@@@@@@@@
+@@@@@/            ,@@@@@/    /@@@@@@@/    /@@@,    @@@@@@@@@
+@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+ *
+ * @title BTR Utilities Library - General utility functions
+ * @copyright 2025
+ * @notice Contains various helper functions used across the protocol
+ * @dev Includes type conversions, common checks, etc.
+ * @author BTR Team
+ */
+
 import {BTRStorage as S} from "@libraries/BTRStorage.sol";
 import {ALMVault, ErrorType, CoreStorage, DEX, Range, Restrictions, Registry} from "@/BTRTypes.sol";
 import {BTRErrors as Errors} from "@libraries/BTREvents.sol";

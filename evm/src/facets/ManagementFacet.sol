@@ -1,6 +1,22 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.28;
 
+/**
+@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+@@@@@@@@@/         '@@@@/            /@@@/         '@@@@@@@@
+@@@@@@@@/    /@@@    @@@@@@/    /@@@@@@@/    /@@@    @@@@@@@
+@@@@@@@/           _@@@@@@/    /@@@@@@@/    /.     _@@@@@@@@
+@@@@@@/    /@@@    '@@@@@/    /@@@@@@@/    /@@    @@@@@@@@@@
+@@@@@/            ,@@@@@/    /@@@@@@@/    /@@@,    @@@@@@@@@
+@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+ *
+ * @title Management Facet - Protocol parameter management
+ * @copyright 2025
+ * @notice Allows authorized addresses to update protocol settings and parameters
+ * @dev Works with AccessControl for permissions
+ * @author BTR Team
+ */
+
 import {LibDiamond} from "@libraries/LibDiamond.sol";
 import {LibAccessControl} from "@libraries/LibAccessControl.sol";
 import {LibManagement as M} from "@libraries/LibManagement.sol";

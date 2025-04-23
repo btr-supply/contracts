@@ -1,6 +1,22 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.28;
 
+/**
+@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+@@@@@@@@@/         '@@@@/            /@@@/         '@@@@@@@@
+@@@@@@@@/    /@@@    @@@@@@/    /@@@@@@@/    /@@@    @@@@@@@
+@@@@@@@/           _@@@@@@/    /@@@@@@@/    /.     _@@@@@@@@
+@@@@@@/    /@@@    '@@@@@/    /@@@@@@@/    /@@    @@@@@@@@@@
+@@@@@/            ,@@@@@/    /@@@@@@@/    /@@@,    @@@@@@@@@
+@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+ *
+ * @title Access Control Facet - Role-based access control management
+ * @copyright 2025
+ * @notice Manages roles, permissions, and grants/revokes access for protocol functions
+ * @dev Implements standard access control logic using diamond storage
+ * @author BTR Team
+ */
+
 import {IERC173} from "@interfaces/ercs/IERC173.sol";
 import {AccessControl, PendingAcceptance, ErrorType} from "@/BTRTypes.sol";
 import {BTRErrors as Errors} from "@libraries/BTREvents.sol";

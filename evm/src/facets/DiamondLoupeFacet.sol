@@ -1,6 +1,22 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.28;
 
+/**
+@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+@@@@@@@@@/         '@@@@/            /@@@/         '@@@@@@@@
+@@@@@@@@/    /@@@    @@@@@@/    /@@@@@@@/    /@@@    @@@@@@@
+@@@@@@@/           _@@@@@@/    /@@@@@@@/    /.     _@@@@@@@@
+@@@@@@/    /@@@    '@@@@@/    /@@@@@@@/    /@@    @@@@@@@@@@
+@@@@@/            ,@@@@@/    /@@@@@@@/    /@@@,    @@@@@@@@@
+@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+ *
+ * @title Diamond Loupe - Diamond introspection
+ * @copyright 2025
+ * @notice Implements EIP-2535 DiamondLoupe standard for querying facets and functions
+ * @dev Standard facet for diamond introspection
+ * @author BTR Team
+ */
+
 import {LibDiamond} from "@libraries/LibDiamond.sol";
 import {IDiamondLoupe} from "@interfaces/IDiamond.sol";
 import {IERC165} from "@openzeppelin/contracts/utils/introspection/IERC165.sol";

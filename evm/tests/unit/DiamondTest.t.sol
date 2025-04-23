@@ -1,6 +1,22 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.28;
 
+/**
+@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+@@@@@@@@@/         '@@@@/            /@@@/         '@@@@@@@@
+@@@@@@@@/    /@@@    @@@@@@/    /@@@@@@@/    /@@@    @@@@@@@
+@@@@@@@/           _@@@@@@/    /@@@@@@@/    /.     _@@@@@@@@
+@@@@@@/    /@@@    '@@@@@/    /@@@@@@@/    /@@    @@@@@@@@@@
+@@@@@/            ,@@@@@/    /@@@@@@@/    /@@@,    @@@@@@@@@
+@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+ *
+ * @title Diamond Test - Proxy upgrade validation
+ * @copyright 2025
+ * @notice Verifies diamond proxy functionality and facet management
+ * @dev Tests EIP-2535 compliance
+ * @author BTR Team
+ */
+
 import {BaseDiamondTest} from "../BaseDiamondTest.t.sol";
 import {IDiamondCut, IDiamondLoupe, IDiamond} from "@interfaces/IDiamond.sol";
 import {IERC165} from "@openzeppelin/contracts/utils/introspection/IERC165.sol";

@@ -1,6 +1,22 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.28;
 
+/**
+@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+@@@@@@@@@/         '@@@@/            /@@@/         '@@@@@@@@
+@@@@@@@@/    /@@@    @@@@@@/    /@@@@@@@/    /@@@    @@@@@@@
+@@@@@@@/           _@@@@@@/    /@@@@@@@/    /.     _@@@@@@@@
+@@@@@@/    /@@@    '@@@@@/    /@@@@@@@/    /@@    @@@@@@@@@@
+@@@@@/            ,@@@@@/    /@@@@@@@/    /@@@,    @@@@@@@@@
+@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+ *
+ * @title Treasury Library - Treasury management logic
+ * @copyright 2025
+ * @notice Contains internal functions for managing treasury funds and distributions
+ * @dev Helper library for TreasuryFacet
+ * @author BTR Team
+ */
+
 import {BTRErrors as Errors, BTREvents as Events} from "@libraries/BTREvents.sol";
 import {BTRStorage as S} from "@libraries/BTRStorage.sol";
 import {LibAccessControl as AC} from "@libraries/LibAccessControl.sol";

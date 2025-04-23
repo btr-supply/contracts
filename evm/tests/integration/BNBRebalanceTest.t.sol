@@ -1,6 +1,22 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.28;
 
+/**
+@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+@@@@@@@@@/         '@@@@/            /@@@/         '@@@@@@@@
+@@@@@@@@/    /@@@    @@@@@@/    /@@@@@@@/    /@@@    @@@@@@@
+@@@@@@@/           _@@@@@@/    /@@@@@@@/    /.     _@@@@@@@@
+@@@@@@/    /@@@    '@@@@@/    /@@@@@@@/    /@@    @@@@@@@@@@
+@@@@@/            ,@@@@@/    /@@@@@@@/    /@@@,    @@@@@@@@@
+@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+ *
+ * @title BNB Rebalance Test - Integration tests for rebalancing on BNB Chain context
+ * @copyright 2025
+ * @notice Verifies the rebalancing logic within the ALM system on BNB Chain
+ * @dev Tests triggers and outcomes of rebalance operations
+ * @author BTR Team
+ */
+
 import {BNBALMTest} from "./BNBALMTest.t.sol";
 import "forge-std/console.sol";
 import {ALMFacet} from "@facets/ALMFacet.sol";

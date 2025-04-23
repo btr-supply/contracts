@@ -1,18 +1,22 @@
 // SPDX-License-Identifier: MIT
+pragma solidity 0.8.28;
+
 /**
- * @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
- * @@@@@@@@@/         '@@@@/            /@@@/         '@@@@@@@@
- * @@@@@@@@/    /@@@    @@@@@@/    /@@@@@@@/    /@@@    @@@@@@@
- * @@@@@@@/           _@@@@@@/    /@@@@@@@/    /.     _@@@@@@@@
- * @@@@@@/    /@@@    '@@@@@/    /@@@@@@@/    /@@    @@@@@@@@@@
- * @@@@@/            ,@@@@@/    /@@@@@@@/    /@@@,    @@@@@@@@@
- * @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+@@@@@@@@@/         '@@@@/            /@@@/         '@@@@@@@@
+@@@@@@@@/    /@@@    @@@@@@/    /@@@@@@@/    /@@@    @@@@@@@
+@@@@@@@/           _@@@@@@/    /@@@@@@@/    /.     _@@@@@@@@
+@@@@@@/    /@@@    '@@@@@/    /@@@@@@@/    /@@    @@@@@@@@@@
+@@@@@/            ,@@@@@/    /@@@@@@@/    /@@@,    @@@@@@@@@
+@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
  *
- * @title BTRDiamond - Implementation of the Diamond Pattern (EIP-2535)
- * @notice The Diamond Pattern is used to manage BTR protocol's code
- * @dev Implements facets and function selectors as per EIP-2535
+ * @title BTR Diamond Contract - Main diamond proxy contract implementation
+ * @copyright 2025
+ * @notice The main entry point for the BTR protocol, implementing the EIP-2535 diamond standard
+ * @dev Inherits from LibDiamond and uses BTRStorage
  * @author BTR Team
  */
+
 pragma solidity 0.8.28;
 
 import {EnumerableSet} from "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";

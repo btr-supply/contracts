@@ -1,6 +1,22 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.28;
 
+/**
+@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+@@@@@@@@@/         '@@@@/            /@@@/         '@@@@@@@@
+@@@@@@@@/    /@@@    @@@@@@/    /@@@@@@@/    /@@@    @@@@@@@
+@@@@@@@/           _@@@@@@/    /@@@@@@@/    /.     _@@@@@@@@
+@@@@@@/    /@@@    '@@@@@/    /@@@@@@@/    /@@    @@@@@@@@@@
+@@@@@/            ,@@@@@/    /@@@@@@@/    /@@@,    @@@@@@@@@
+@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+ *
+ * @title ALM Library - Core logic for Automated Liquidity Management
+ * @copyright 2025
+ * @notice Contains functions for calculating positions, handling rebalances, and managing vaults
+ * @dev Maths related to ticks/concentrated liquidity
+ * @author BTR Team
+ */
+
 import {LibDiamond} from "@libraries/LibDiamond.sol";
 import {LibAccessControl} from "@libraries/LibAccessControl.sol";
 import {LibTreasury as T} from "@libraries/LibTreasury.sol";

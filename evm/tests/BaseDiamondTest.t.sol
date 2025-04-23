@@ -1,6 +1,22 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.28;
 
+/**
+@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+@@@@@@@@@/         '@@@@/            /@@@/         '@@@@@@@@
+@@@@@@@@/    /@@@    @@@@@@/    /@@@@@@@/    /@@@    @@@@@@@
+@@@@@@@/           _@@@@@@/    /@@@@@@@/    /.     _@@@@@@@@
+@@@@@@/    /@@@    '@@@@@/    /@@@@@@@/    /@@    @@@@@@@@@@
+@@@@@/            ,@@@@@/    /@@@@@@@/    /@@@,    @@@@@@@@@
+@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+ *
+ * @title Base Diamond Test - Base contract for diamond-related tests
+ * @copyright 2025
+ * @notice Provides common setup logic for deploying the diamond and initializing facets for testing
+ * @dev Inherited by most unit and integration tests
+ * @author BTR Team
+ */
+
 import "forge-std/Test.sol";
 import "forge-std/console.sol";
 import {DiamondDeployer, DiamondInit} from "@utils/generated/DiamondDeployer.gen.sol";

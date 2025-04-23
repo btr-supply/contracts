@@ -3,6 +3,7 @@ set -euo pipefail
 
 die() { echo "$1"; exit 1; }
 ENV_PATH="$(dirname "$(cd "$(dirname "${BASH_SOURCE[0]}")" &> /dev/null && pwd)")/evm/.env"
+LOG_PATH="$(dirname "$(cd "$(dirname "${BASH_SOURCE[0]}")" &> /dev/null && pwd)")/logs/btr-swap"
 
 [ -f "$ENV_PATH" ] || die "Error: .env required for btr-swap"
 source "$ENV_PATH"
@@ -19,7 +20,10 @@ BEST_COMPACT_CSV=$(btr-swap quote \
   --payer "$PAYER" \
   --aggregators SOCKET,UNIZEN,LIFI \
   --display BEST_COMPACT \
-  --serialization CSV --env-file "$ENV_PATH") || die "btr-swap failed: $BEST_COMPACT_CSV"
+  --serialization CSV \
+  --env-file "$ENV_PATH" \
+  --log-file "$LOG_PATH" \
+  --log-mode JSON) || die "btr-swap failed: $BEST_COMPACT_CSV"
 
 # Remove header line if present before checking comma count
 ACTUAL_DATA=$(echo "$BEST_COMPACT_CSV" | sed '1d')

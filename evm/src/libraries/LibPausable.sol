@@ -1,6 +1,22 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.28;
 
+/**
+@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+@@@@@@@@@/         '@@@@/            /@@@/         '@@@@@@@@
+@@@@@@@@/    /@@@    @@@@@@/    /@@@@@@@/    /@@@    @@@@@@@
+@@@@@@@/           _@@@@@@/    /@@@@@@@/    /.     _@@@@@@@@
+@@@@@@/    /@@@    '@@@@@/    /@@@@@@@/    /@@    @@@@@@@@@@
+@@@@@/            ,@@@@@/    /@@@@@@@/    /@@@,    @@@@@@@@@
+@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+ *
+ * @title Pausable Library - Shared pause functionality logic
+ * @copyright 2025
+ * @notice Provides internal functions for pause/unpause checks using diamond storage
+ * @dev Helper library for PausableFacet and abstract Pausable
+ * @author BTR Team
+ */
+
 import {BTRStorage as S} from "@libraries/BTRStorage.sol";
 import {BTRUtils} from "@libraries/BTRUtils.sol";
 import {ALMVault, ErrorType, Restrictions} from "@/BTRTypes.sol";

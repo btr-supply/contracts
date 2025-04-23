@@ -16,11 +16,6 @@ evm:
         short_desc: Abstract contract for bridgeable ERC20 tokens
         desc: Provides base functionality for tokens that can be bridged cross-chain
         dev_comment: Intended for inheritance by specific bridgeable token implementations
-      Pausable.sol:
-        title: Pausable Base
-        short_desc: Base pausable contract pattern
-        desc: Abstract contract providing basic pause/unpause functionality using diamond storage
-        dev_comment: Based on OpenZeppelin Pausable but adapted for diamond storage
       Managed.sol:
         title: Managed Base
         short_desc: Base contract for managed ownership
@@ -208,11 +203,6 @@ evm:
         short_desc: Core logic for Automated Liquidity Management
         desc: Contains functions for calculating positions, handling rebalances, and managing vaults
         dev_comment: Maths related to ticks/concentrated liquidity
-      LibFee.sol:
-        title: Fee Library
-        short_desc: Protocol fee calculation and management
-        desc: Contains functions for calculating, collecting, and distributing protocol fees
-        dev_comment: Separates fee logic for clarity
       LibPausable.sol:
         title: Pausable Library
         short_desc: Shared pause functionality logic
@@ -283,22 +273,21 @@ evm:
         short_desc: Fixed-point math library (Q96)
         desc: Provides fixed-point arithmetic operations with 96 fractional bits
         dev_comment: Based on Uniswap V3 library for price calculations
-    core:
-      BTRTypes.sol:
-        title: BTR Types
-        short_desc: Custom data structures and types
-        desc: Defines custom structs, enums, and constants used throughout the BTR protocol
-        dev_comment: Central definition for shared data types
-      BTR.sol:
-        title: BTR Main Contract (Placeholder)
-        short_desc: Placeholder for potential core logic
-        desc: Currently serves as a placeholder or entry point, may be removed or expanded
-        dev_comment: Defines basic contract structure, potentially for non-diamond parts
-      BTRDiamond.sol:
-        title: BTR Diamond Contract
-        short_desc: Main diamond proxy contract implementation
-        desc: The main entry point for the BTR protocol, implementing the EIP-2535 diamond standard
-        dev_comment: Inherits from LibDiamond and uses BTRStorage
+    BTRTypes.sol:
+      title: BTR Types
+      short_desc: Custom data structures and types
+      desc: Defines custom structs, enums, and constants used throughout the BTR protocol
+      dev_comment: Central definition for shared data types
+    BTR.sol:
+      title: BTR Main Contract (Placeholder)
+      short_desc: Placeholder for potential core logic
+      desc: Currently serves as a placeholder or entry point, may be removed or expanded
+      dev_comment: Defines basic contract structure, potentially for non-diamond parts
+    BTRDiamond.sol:
+      title: BTR Diamond Contract
+      short_desc: Main diamond proxy contract implementation
+      desc: The main entry point for the BTR protocol, implementing the EIP-2535 diamond standard
+      dev_comment: Inherits from LibDiamond and uses BTRStorage
   tests:
     mocks:
       MockERC1155.sol:

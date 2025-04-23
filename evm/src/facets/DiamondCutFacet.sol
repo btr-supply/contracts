@@ -1,6 +1,22 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.28;
 
+/**
+@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+@@@@@@@@@/         '@@@@/            /@@@/         '@@@@@@@@
+@@@@@@@@/    /@@@    @@@@@@/    /@@@@@@@/    /@@@    @@@@@@@
+@@@@@@@/           _@@@@@@/    /@@@@@@@/    /.     _@@@@@@@@
+@@@@@@/    /@@@    '@@@@@/    /@@@@@@@/    /@@    @@@@@@@@@@
+@@@@@/            ,@@@@@/    /@@@@@@@/    /@@@,    @@@@@@@@@
+@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+ *
+ * @title Diamond Cut - Upgrade functionality
+ * @copyright 2025
+ * @notice Handles diamond proxy upgrades and facet management
+ * @dev Implements EIP-2535 diamond standard
+ * @author BTR Team
+ */
+
 import {LibDiamond as D} from "@libraries/LibDiamond.sol";
 import {IDiamondCut} from "@interfaces/IDiamond.sol";
 import {PermissionedFacet} from "@facets/abstract/PermissionedFacet.sol";

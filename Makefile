@@ -10,8 +10,8 @@ install-deps:
 format:
 	@echo "Formatting code..."
 	bash scripts/format-code.sh
-	# @echo "Formatting headers..."
-	# bash scripts/format-headers.sh
+	@echo "Formatting headers..."
+	uv run python scripts/format_headers.py
 
 python-lint-fix:
 	@echo "Linting and fixing Python files with Ruff..."

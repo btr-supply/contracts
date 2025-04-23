@@ -1,6 +1,22 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.28;
 
+/**
+@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+@@@@@@@@@/         '@@@@/            /@@@/         '@@@@@@@@
+@@@@@@@@/    /@@@    @@@@@@/    /@@@@@@@/    /@@@    @@@@@@@
+@@@@@@@/           _@@@@@@/    /@@@@@@@/    /.     _@@@@@@@@
+@@@@@@/    /@@@    '@@@@@/    /@@@@@@@/    /@@    @@@@@@@@@@
+@@@@@/            ,@@@@@/    /@@@@@@@/    /@@@,    @@@@@@@@@
+@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+ *
+ * @title BNB ALM Test - Integration tests for ALM on BNB Chain context
+ * @copyright 2025
+ * @notice Verifies ALM functionality using BNB Chain specific pools/adapters (e.g., PancakeSwap)
+ * @dev Inherits from ALMBaseTest
+ * @author BTR Team
+ */
+
 import {ALMBaseTest} from "../integration/ALMBaseTest.sol";
 import {BNBChainMeta} from "./ChainMeta.sol";
 import {Test, console} from "forge-std/Test.sol";
@@ -134,6 +150,9 @@ abstract contract BNBALMTest is ALMBaseTest, BNBChainMeta {
         // Deposit into the vault
         uint256 depositAmount = getDepositAmount();
         depositToVault(vaultId, depositAmount, depositAmount);
+
+        // Rebalance with the same range to test position reuse without swaps
+        createBasicRange(useStableRange);
 
         // Verify ranges
         verifyRanges("BNB ALM Test");
