@@ -6,6 +6,12 @@ See [CONTRIBUTING.md](./CONTRIBUTING.md) for details.
 NB: [Auto-generated from commits](./scripts/release.py) - DO NOT EDIT.
 
 
+## [0.4.0] - 2025-04-23
+
+### Docs
+- [docs] README updated
+
+
 ## [0.3.0] - 2025-04-23
 
 ### Features
@@ -24,6 +30,7 @@ NB: [Auto-generated from commits](./scripts/release.py) - DO NOT EDIT.
 
 ### Docs
 - [docs] Clarify commit guidelines in Development Workflow
+
 
 
 ## [0.2.0] - 2025-04-19

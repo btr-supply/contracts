@@ -1,6 +1,6 @@
 [project]
 name = "btr-supply-contracts"
-version = "0.3.0"
+version = "0.4.0"
 description = "BTR Supply smart contracts: EVM, Solana, Sui"
 readme = "README.md"
 changelog = "CHANGELOG.md"
