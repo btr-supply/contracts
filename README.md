@@ -28,10 +28,20 @@ Concentrated Liquidity AMMs offer superior capital efficiency but require active
 
 BTR aims to solve these issues through a two-part system:
 
-1.  **BTR Markets (External Data Layer):** A transparent, high-frequency data aggregator tracking prices, volumes, and depth across numerous CEXs and DEXs. It provides open statistical estimators for trend, volatility, and momentum.
-2.  **BTR Supply (On-Chain ALM - This Repository):** The smart contract layer that utilizes insights from BTR Markets to execute an adaptive, transparent market-making strategy. It focuses on providing robust, auto-compounding vaults with a simplified user experience across multiple blockchains.
+1.  **BTR Markets (Data Layer):** A transparent, high-frequency data aggregator tracking prices, volumes, and depth across numerous CEXs and DEXs. It provides open statistical estimators for trend, volatility, and momentum.
+2.  **BTR Supply (On-Chain ALM):** The smart contract layer that utilizes insights from BTR Markets to execute an adaptive, transparent market-making strategy. It focuses on providing robust, auto-compounding vaults with a simplified user experience across multiple blockchains.
 
 This repository contains the smart contracts for **BTR Supply**.
+
+## Key Features & Innovations
+
+BTR Supply incorporates several unique features designed to maximize efficiency and yield:
+
+*   **Predictive Range Optimization:** Liquidity ranges are determined by a perpetually optimized, market-specific predictive algorithm trained on high-fidelity tick and depth data from BTR Markets. The precise triggering rules for rebalancing remain off-chain for strategic reasons but are designed for future verifiability by liquidity providers.
+*   **MEV Protection:** All protocol swaps and upkeep operations are shielded from MEV (Maximal Extractable Value) through techniques like pseudo-random execution timing, non-deterministic rule application, and the use of MEV-protecting relays/RPC nodes.
+*   **Swapping via BTR Swap:** All swaps leverage [BTR Swap's aggregator](https://github.com/btr-supply/btr-swap), which routes orders across DEXs, and RFQ/intent-based systems to guarantee minimal slippage and fees, directly enhancing LP returns. Historical swapping performance data will be publicly available for audit.
+*   **DEX-Agnostic Vaults:** BTR Vaults operate across multiple compatible DEXs simultaneously. For instance, a single USDC-USDT vault on BNB Chain can manage liquidity positions across Uniswap V3, Uniswap V4, PancakeSwap V3, and Thena pools for that pair, automatically arbitraging and rebalancing liquidity between them. This significantly simplifies the user experience, as LPs deposit into a single vault per pair per chain.
+*   **Gas-Efficient ERC-1155 Vaults:** Vaults are implemented as ERC-1155 token instances rather than standalone contracts (similar to Uniswap V4 pools). This minimizes deployment overhead and reduces operational gas costs for actions like deposits, withdrawals, and rebalancing.
 
 ## Repository Overview
 
@@ -182,6 +192,18 @@ Beyond testing and releasing, several utility scripts exist in [`./scripts`](./s
 *   [`get-swap-data.sh`](./scripts/get-swap-data.sh): Example script demonstrating how to use an external `btr-swap` tool to fetch optimal swap data from aggregators.
 *   [`check-name.py`](./scripts/check-name.py): Validates branch names and commit messages (used by pre-commit hooks).
 *   [`format-code.sh`](./scripts/format-code.sh) / [`format_headers.py`](./scripts/format_headers.py): Code formatting utilities.
+
+
+## Project Evolution & Inspirations
+
+BTR Supply originated as a fork of [Arrakis V2](https://github.com/ArrakisFinance/v2-core), subsequently extended to support a wider range of DEXs including Uniswap V3 forks and Algebra DEX deployments. Over time, it has evolved into a largely re-implemented, optimized, and more comprehensive liquidity management solution.
+
+While now distinct, BTR Supply draws inspiration from pioneering work in the ALM space, including:
+
+*   [Arrakis Finance (V2 & V3/Modular)](https://arrakis.finance/)
+*   [Maverick Protocol](https://www.mav.xyz/)
+*   [Steer Protocol](https://app.steer.finance/)
+*   [Kamino Liquidity](https://kamino.finance)
 
 ## Contributing
 
