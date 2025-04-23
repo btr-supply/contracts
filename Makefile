@@ -5,6 +5,12 @@ install-deps:
 	@command -v uv >/dev/null 2>&1 || { echo >&2 "Error: uv command not found. Please install uv first: https://github.com/astral-sh/uv"; exit 1; }
 	@echo "Syncing Python environment and dependencies with uv..."
 	uv sync
+	@echo "Installing git hooks..."
+	@command -v pre-commit >/dev/null 2>&1 || { echo >&2 "Error: pre-commit command not found. Please install pre-commit first: https://pre-commit.com/#install"; exit 1; }
+	pre-commit install
+	pre-commit install --hook-type commit-msg
+	pre-commit install --hook-type pre-push
+	pre-commit install --hook-type post-checkout
 	@echo "Python dependencies installed successfully."
 
 format:
