@@ -1,66 +1,192 @@
-## Foundry
+<div align="center">
+  <img border-radius="25px" max-height="250px" src="./banner.png" /> <!-- Assuming banner exists at this path -->
+  <h1>BTR Supply Contracts</h1>
+  <p>
+    <strong>Concentrated Liquidity Position Manager</strong>
+  </p>
+  <p>
+    <!-- Placeholder for relevant badge, e.g., build status if available -->
+    <!-- <a href="https://btr.supply/docs"><img alt="Docs" src="https://img.shields.io/badge/Docs-212121?style=flat-square&logo=readthedocs&logoColor=white" width="auto"/></a> -->
+    <a href="https://opensource.org/licenses/MIT"><img alt="License" src="https://img.shields.io/badge/license-MIT-000000?style=flat-square&logo=open-source-initiative&logoColor=white&labelColor=4c9c3d" width="auto"/></a>
+    <a href="https://t.me/BTRSupply"><img alt="Telegram" src="https://img.shields.io/badge/Telegram-24b3e3?style=flat-square&logo=telegram&logoColor=white" width="auto"/></a>
+    <a href="https://twitter.com/BTRSupply"><img alt="X (Twitter)" src="https://img.shields.io/badge/@BTRSupply-000000?style=flat-square&logo=x&logoColor=white" width="auto"/></a>
+    </p>
+</div>
 
-**Foundry is a blazing fast, portable and modular toolkit for Ethereum application development written in Rust.**
+---
 
-Foundry consists of:
+## Introduction
 
--   **Forge**: Ethereum testing framework (like Truffle, Hardhat and DappTools).
--   **Cast**: Swiss army knife for interacting with EVM smart contracts, sending transactions and getting chain data.
--   **Anvil**: Local Ethereum node, akin to Ganache, Hardhat Network.
--   **Chisel**: Fast, utilitarian, and verbose solidity REPL.
+**BTR** (Bayesian True Range), or simply 'Better', is the first open and market-aware Automated Liquidity Manager (ALM) designed for concentrated liquidity AMMs like Uniswap V3/V4, Algebra DEX, Raydium, Orca, and more.
 
-## Documentation
+Concentrated Liquidity AMMs offer superior capital efficiency but require active management, similar to traditional market-making. Existing ALM solutions often fall short due to:
 
-https://book.getfoundry.sh/
+*   Lagging market data and overlooked volatility.
+*   Inefficient or opaque rebalancing strategies.
+*   Lack of true market awareness beyond a single pool.
+*   Complex user experiences.
 
-## Usage
+BTR aims to solve these issues through a two-part system:
 
-### Build
+1.  **BTR Markets (External Data Layer):** A transparent, high-frequency data aggregator tracking prices, volumes, and depth across numerous CEXs and DEXs. It provides open statistical estimators for trend, volatility, and momentum.
+2.  **BTR Supply (On-Chain ALM - This Repository):** The smart contract layer that utilizes insights from BTR Markets to execute an adaptive, transparent market-making strategy. It focuses on providing robust, auto-compounding vaults with a simplified user experience across multiple blockchains.
 
-```shell
-$ forge build
+This repository contains the smart contracts for **BTR Supply**.
+
+## Repository Overview
+
+This repository houses the smart contract implementations for the BTR Supply ALM system, targeting:
+
+*   **EVM Chains:** Primarily developed using Foundry ([`./evm`](./evm)).
+*   **Solana:** Code located in [`./solana`](./solana).
+*   **Sui:** Code located in [`./sui`](./sui).
+
+Key top-level directories:
+*   [`./scripts`](./scripts): Project-wide scripts for tasks like releasing, formatting, and utility functions.
+*   [`./assets`](./assets): Contains project metadata, descriptions ([`desc.yml`](./assets/desc.yml)), and potentially other assets like images.
+
+## EVM Architecture (Diamond Standard)
+
+The EVM implementation utilizes the **Diamond Standard (EIP-2535)** for modularity, upgradability, and gas efficiency. The core diamond proxy is implemented in [`./evm/src/BTRDiamond.sol`](./evm/src/BTRDiamond.sol).
+
+Key components within `./evm/src`:
+
+*   **Facets ([`./facets`](./evm/src/facets)):** Individual units of logic plugged into the diamond. Examples include:
+    *   `ALMFacet.sol`: Core Automated Liquidity Management logic (position calculation, rebalancing).
+    *   `ERC1155VaultsFacet.sol`: Manages LP positions represented as ERC1155 tokens.
+    *   `DEXAdapterFacet.sol` (and specific implementations like `UniV3AdapterFacet.sol`, `CakeV3AdapterFacet.sol`): Interfaces with different DEX protocols.
+    *   `SwapperFacet.sol`: Handles token swaps via registered DEX adapters.
+    *   `ManagementFacet.sol`: Protocol parameter management (e.g., pausing).
+    *   `AccessControlFacet.sol`: Role-based access control.
+    *   `DiamondCutFacet.sol` / `DiamondLoupeFacet.sol`: Standard diamond upgrade and introspection logic.
+    *   *(Refer to [`assets/desc.yml`](./assets/desc.yml) for a full list and descriptions)*
+*   **Libraries ([`./libraries`](./evm/src/libraries)):** Reusable code modules used by facets. Examples include:
+    *   `LibALM.sol`: Core ALM calculations.
+    *   `LibDEXMaths.sol`: DEX-specific math (tick calculations, price conversions).
+    *   `LibDiamond.sol`: Diamond storage interaction helpers.
+    *   `BTRStorage.sol`: Defines the diamond's storage layout (AppStorage pattern).
+    *   *(Refer to [`assets/desc.yml`](./assets/desc.yml) for a full list and descriptions)*
+*   **Scripts ([`../scripts`](./evm/scripts)):** Foundry scripts for deployment and contract interaction ([`DeployDiamond.s.sol`](./evm/scripts/DeployDiamond.s.sol), etc.).
+*   **Tests ([`../tests`](./evm/tests)):** Unit and integration tests.
+
+## Getting Started
+
+### Prerequisites
+
+*   **Git:** [Installation Guide](https://git-scm.com/book/en/v2/Getting-Started-Installing-Git)
+*   **Foundry:** [Installation Guide](https://book.getfoundry.sh/getting-started/installation) (Installs `forge`, `cast`, `anvil`)
+*   **Python:** >= 3.10 recommended.
+*   **uv:** Fast Python package installer/resolver. [Installation Guide](https://github.com/astral-sh/uv#installation)
+*   **pre-commit:** Git hook manager. [Installation Guide](https://pre-commit.com/#install)
+
+### Installation
+
+1.  **Clone the repository:**
+    ```bash
+    git clone <repository_url>
+    cd contracts # Or your cloned directory name
+    ```
+
+2.  **Install dependencies and setup hooks:**
+    ```bash
+    make install-deps
+    ```
+    This command will:
+    *   Run `scripts/install_deps.sh` to ensure necessary system dependencies are present.
+    *   Use `uv sync` to create a virtual environment (if needed) and install Python packages listed in [`pyproject.toml`](./pyproject.toml).
+    *   Install git hooks using `pre-commit` for automated formatting, linting, and commit checks.
+
+### Environment Configuration
+
+Certain operations, particularly integration tests involving chain forks or deployments, require environment variables (e.g., RPC URLs, private keys).
+
+*   Copy the example environment file:
+    ```bash
+    cp evm/.env.example evm/.env
+    ```
+*   Edit [`evm/.env`](./evm/.env) and populate it with your specific values. **Never commit your `.env` file.**
+
+## Development Workflow
+
+### Formatting
+
+Ensure code conforms to project standards:
+
+```bash
+make format
+```
+This runs `forge fmt` for Solidity and custom formatters ([`scripts/format-code.sh`](./scripts/format-code.sh), [`scripts/format_headers.py`](./scripts/format_headers.py)).
+
+### Linting
+
+Check and fix Python code style using Ruff:
+
+```bash
+make python-lint-fix
 ```
 
-### Test
+### Git Hooks (Pre-commit)
 
-```shell
-$ forge test
+The `pre-commit` hooks installed via `make install-deps` automatically run checks before certain git actions. The configured hooks include:
+*   **pre-commit:** Runs formatters (`forge fmt`, custom scripts) and linters (`ruff`).
+*   **commit-msg:** Validates commit message format using [`scripts/check-name.py -c`](./scripts/check-name.py).
+*   **pre-push:** Validates branch name and commit messages before pushing using [`scripts/check-name.py -p`](./scripts/check-name.py).
+*   **post-checkout:** Can be used for environment synchronization after switching branches.
+
+These ensure code quality and consistency.
+
+## Testing
+
+Run the test suite using Foundry:
+
+```bash
+make test
+```
+This command typically executes [`scripts/test.sh`](./scripts/test.sh), which runs `forge test`.
+
+*   **Unit Tests:** Located in [`evm/tests/unit`](./evm/tests/unit), focusing on isolated contract logic.
+*   **Integration Tests:** Located in [`evm/tests/integration`](./evm/tests/integration), verifying interactions between facets and external contracts, often using mainnet forks (configured via [`evm/.env`](./evm/.env)). See [`evm/tests/integration/spec.md`](./evm/tests/integration/spec.md) for detailed test scenarios.
+
+## Releasing
+
+The release process is automated using Make commands:
+
+```bash
+# For a new patch version (e.g., 0.1.0 -> 0.1.1)
+make publish-patch
+
+# For a new minor version (e.g., 0.1.1 -> 0.2.0)
+make publish-minor
+
+# For a new major version (e.g., 0.2.0 -> 1.0.0)
+make publish-major
 ```
 
-### Format
+These commands execute [`scripts/release.sh`](./scripts/release.sh), which in turn runs [`scripts/release.py`](./scripts/release.py). The process involves:
 
-```shell
-$ forge fmt
-```
+1.  Checking if the current branch is `main`.
+2.  Calculating the next version number.
+3.  Updating the version in [`pyproject.toml`](./pyproject.toml).
+4.  Generating/updating [`CHANGELOG.md`](./CHANGELOG.md) based on commit messages since the last tag (using prefixes like `[feat]`, `[fix]`, `[refac]`, etc.).
+5.  Committing the version bump and changelog changes (`[ops] Release vX.Y.Z`).
+6.  Creating a Git tag (`vX.Y.Z`).
+7.  Pushing the commit and tag to the `origin` remote.
 
-### Gas Snapshots
+Make sure your commit messages follow the convention expected by [`scripts/release.py`](./scripts/release.py) (see `COMMIT_PREFIX_MAP` in the script) for accurate changelog generation.
 
-```shell
-$ forge snapshot
-```
+## Key Scripts
 
-### Anvil
+Beyond testing and releasing, several utility scripts exist in [`./scripts`](./scripts):
 
-```shell
-$ anvil
-```
+*   [`generate_deployer.py`](./scripts/generate_deployer.py): Generates the [`DiamondDeployer.gen.sol`](./evm/utils/generated/DiamondDeployer.gen.sol) contract used in deployment scripts based on [`facets.json`](./scripts/facets.json).
+*   [`get-swap-data.sh`](./scripts/get-swap-data.sh): Example script demonstrating how to use an external `btr-swap` tool to fetch optimal swap data from aggregators.
+*   [`check-name.py`](./scripts/check-name.py): Validates branch names and commit messages (used by pre-commit hooks).
+*   [`format-code.sh`](./scripts/format-code.sh) / [`format_headers.py`](./scripts/format_headers.py): Code formatting utilities.
 
-### Deploy
+## Contributing
 
-```shell
-$ forge script script/Counter.s.sol:CounterScript --rpc-url <your_rpc_url> --private-key <your_private_key>
-```
+Please follow standard development practices: lint code, ensure tests pass, and adhere to commit message conventions for automated changelog generation. Refer to the project's contribution guidelines in [`./CONTRIBUTING.md`](./CONTRIBUTING.md) for more details.
 
-### Cast
+## License
 
-```shell
-$ cast <subcommand>
-```
-
-### Help
-
-```shell
-$ forge --help
-$ anvil --help
-$ cast --help
-```
+This project is licensed under the MIT License - see the [`./LICENSE`](./LICENSE) file for details.
