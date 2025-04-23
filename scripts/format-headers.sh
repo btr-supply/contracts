@@ -1,20 +1,26 @@
-#!/bin/bash
+#!/usr/bin/env bash
+# Exit on errors and require defined variables
 set -euo pipefail
 cd "$(dirname "${BASH_SOURCE[0]}")/.." || { echo "Error: Cannot cd to project root"; exit 1; }
 
+# Require yq (mikefarah v4) installed and use yq eval
+if ! command -v yq >/dev/null 2>&1; then
+  echo "Error: 'yq' not found. Please install mikefarah yq v4: brew install mikefarah/tap/yq" >&2
+  exit 1
+fi
+YQ_CMD="yq eval"
+
 # Load default metadata into shell variables (defaults_licence, defaults_author, defaults_sol_version, ...)
-eval "$(yq '.defaults | with_entries(.key = "defaults_" + .key)' -o sh assets/desc.yml)"
+eval "$( $YQ_CMD '.defaults | with_entries(.key = "defaults_" + .key)' -o sh assets/desc.yml )"
 TEMPLATE="assets/headers/sol.txt"
 
 echo "Formatting Solidity file headers based on assets/desc.yml..."
 
-# Iterate over all paths in desc.yml that end with a key matching *.sol
-yq 'paths(scalars) | select(.[-1] | test("\.sol$")) | join(".")' assets/desc.yml | while read -r yaml_path; do
+# Iterate over all keys in desc.yml that end with '.sol'
+$YQ_CMD '.paths(scalars) | select(.[-1] | endswith(".sol")) | join(".")' assets/desc.yml | while read -r yaml_path; do
   # Construct file system path from YAML path (e.g., evm.src.libs.Utils.sol -> evm/src/libs/Utils.sol)
-  # This simple substitution works as long as no directory names contain '.'
   target_file=$(echo "$yaml_path" | sed 's#\.#/#g')
 
-  # Check if the target file actually exists
   if [ ! -f "$target_file" ]; then
     printf "🟡 Skipping %-40s (File not found, but listed in desc.yml)\n" "$target_file"
     continue
@@ -22,11 +28,11 @@ yq 'paths(scalars) | select(.[-1] | test("\.sol$")) | join(".")' assets/desc.yml
 
   printf "Processing %-40s" "$target_file"
 
-  # Extract metadata fields using the full YAML path. Handle nulls gracefully.
-  title=$(yq -r ".$yaml_path.title // """ assets/desc.yml)
-  sdesc=$(yq -r ".$yaml_path.short_desc // """ assets/desc.yml)
-  desc=$(yq -r ".$yaml_path.desc // """ assets/desc.yml)
-  dev=$(yq -r ".$yaml_path.dev_comment // """ assets/desc.yml)
+  # Extract metadata fields
+  title=$($YQ_CMD -r ".$yaml_path.title // \"\"" assets/desc.yml)
+  sdesc=$($YQ_CMD -r ".$yaml_path.short_desc // \"\"" assets/desc.yml)
+  desc=$($YQ_CMD -r ".$yaml_path.desc // \"\"" assets/desc.yml)
+  dev=$($YQ_CMD -r ".$yaml_path.dev_comment // \"\"" assets/desc.yml)
 
   # Apply header template with substitutions
   sed \
@@ -47,7 +53,6 @@ yq 'paths(scalars) | select(.[-1] | test("\.sol$")) | join(".")' assets/desc.yml
     printf "\r✔️  Processed %-40s\n" "$target_file"
   else
     printf "\r❌ Error processing %-40s\n" "$target_file"
-    # Optionally remove the temp file on error: rm -f "$target_file.tmp"
   fi
 
 done
