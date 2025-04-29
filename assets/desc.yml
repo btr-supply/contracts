@@ -42,7 +42,11 @@ evm:
           title: DEX Adapter
           short_desc: Base contract for DEX integrations
           desc: Abstract base contract for decentralized exchange integrations
-          dev_comment: Implements common DEX interface and safety checks
+          dev_comment: >
+            Core base for DEX adapter facets.
+            - Defines pool registration (`setPoolInfo`), swap routing and safety checks.
+            - Used by all V3 adapter facets (Uniswap, PancakeSwap, Thena, etc.).
+            - Key modifiers: `onlyAdmin`, internal `nonReentrant` guards.
         RestrictedFacet.sol:
           title: Restricted Functions
           short_desc: Access-controlled operations
@@ -52,7 +56,11 @@ evm:
           title: V3 DEX Adapter Base
           short_desc: Abstract base for V3-style DEX adapters
           desc: Defines the interface and common logic for V3 DEX interactions
-          dev_comment: Handles common V3 pool interactions like position minting and collecting fees
+          dev_comment: >
+            Provides reusable V3-specific functions (mintRange, burnRange, collectFees).
+            - Converts ticks and liquidity units via `LibDEXMaths`.
+            - Ensures token ordering and safety checks.
+            - Inherited by specific adapters: UniV3, CakeV3, ThenaV3.
         NonReentrantFacet.sol:
           title: Non-Reentrant Facet
           short_desc: Prevents reentrancy attacks
@@ -67,17 +75,28 @@ evm:
         title: Diamond Cut
         short_desc: Upgrade functionality
         desc: Handles diamond proxy upgrades and facet management
-        dev_comment: Implements EIP-2535 diamond standard
+        dev_comment: >
+          Implements EIP-2535 diamond standard core upgrade logic.
+          - Security Critical: Controls contract logic upgrades. Requires `onlyOwner` (implicitly admin via LibDiamond/initial setup).
+          - Tested in: `DiamondTest.t.sol`
       RescueFacet.sol:
         title: Asset Rescue
         short_desc: Emergency asset recovery
         desc: Allows recovery of stuck/lost assets in emergency situations
-        dev_comment: Requires admin multisig approval for executions
+        dev_comment: >
+          Emergency function to recover ERC20/721/1155/Native tokens sent directly to the diamond address.
+          - Security Critical: Direct access to contract balances. Uses a request -> execute pattern with timelock.
+          - Modifiers: `requestRescue*` use `onlyAdmin`, `rescue` uses `onlyManager`. Check `LibRescue` for timelock logic.
+          - Tested in: `RescueTest.t.sol`
       TreasuryFacet.sol:
         title: Treasury Facet
         short_desc: Manages protocol treasury funds
         desc: Handles collection and distribution of protocol fees and revenues
-        dev_comment: Integrates with fee management and access control
+        dev_comment: >
+          Manages vault fees and protocol revenue collection.
+          - Security Sensitive: Controls fee parameters and treasury address.
+          - Modifiers: `setFees`/`setDefaultFees`/`setTreasury` use `onlyAdmin` or `onlyManager`. `collectFees` uses `onlyTreasury`.
+          - Tested in: `TreasuryTest.t.sol`, implicitly in ALM lifecycle tests (`BaseALMTest.t.sol` children).
       DiamondLoupeFacet.sol:
         title: Diamond Loupe
         short_desc: Diamond introspection
@@ -87,27 +106,50 @@ evm:
         title: Management Facet
         short_desc: Protocol parameter management
         desc: Allows authorized addresses to update protocol settings and parameters
-        dev_comment: Works with AccessControl for permissions
+        dev_comment: >
+          Governs protocol configuration (pauses, whitelists, restrictions).
+          - Security Critical: Controls pausing, account status, minting restrictions, swap parameters.
+          - Modifiers: Primarily uses `onlyManager` to secure parameter changes. `initializeManagement` uses `onlyAdmin`.
+          - Manages swap/bridge restrictions and vault-level settings.
+          - Tested in: `ManagementTest.t.sol`
       SwapperFacet.sol:
         title: Swapper Facet
         short_desc: Handles token swaps via DEX adapters
         desc: Provides unified interface for executing swaps across different DEXs
-        dev_comment: Routes swaps through registered DEX adapters
+        dev_comment: >
+          Routes swaps through registered DEX adapters via `LibSwapper`.
+          - Security Sensitive: Handles external calls to DEXs. Relies on adapter security and input validation.
+          - Modifiers: `swap` implicitly checks restrictions set in `ManagementFacet`. `initializeSwapper` uses `onlyAdmin`.
+          - Tested in: `BTRSwapTest.t.sol`, `BNBMultiDEXTest.t.sol`. Tested implicitly in full rebalances (`BNBRebalanceTest.t.sol`).
       ERC1155VaultsFacet.sol:
         title: ERC1155 Vaults Facet
         short_desc: Manages ERC1155-based liquidity vaults
         desc: Handles creation, deposits, withdrawals, and management of ERC1155 LP vaults
-        dev_comment: Core logic for LP token representation and vault accounting
+        dev_comment: >
+          Implements NFT-based vault share model.
+          - Security Sensitive: Core vault share accounting.
+          - `mint` and `burn` of vault shares, secured by `onlyUnrestrictedMinter`.
+          - Tracks per-vault balances and interacts with ALM logic.
+          - Tested implicitly via ALM flows (`BaseALMTest.t.sol` children).
       ALMFacet.sol:
         title: ALM Facet
         short_desc: Automated Liquidity Management logic
         desc: Implements strategies for managing and rebalancing liquidity positions on DEXs
-        dev_comment: Interacts with DEX adapters and ERC1155 Vaults
+        dev_comment: >
+          Central facet for ALM: vault lifecycle and liquidity rebalances.
+          - Security Critical: Handles user deposits/withdrawals and rebalancing logic involving significant funds.
+          - Functions: `createVault`, `deposit`, `withdraw`, `rebalance`, `collectFees`.
+          - Modifiers: `onlyManager` (`createVault`), `onlyKeeper` (`rebalance`), `onlyTreasury` (`collectFees`), `whenVaultNotPaused`, `nonReentrant` (on `deposit`, `withdraw`, `rebalance`). `initializeALM`, `updateDexAdapter`, `setPoolInfo` use `onlyAdmin`.
+          - Delegates core logic to `LibALM`; tested via `BaseALMTest` and chain-specific tests.
       AccessControlFacet.sol:
         title: Access Control Facet
         short_desc: Role-based access control management
         desc: Manages roles, permissions, and grants/revokes access for protocol functions
-        dev_comment: Implements standard access control logic using diamond storage
+        dev_comment: >
+          Implements role-based access control using `LibAccessControl`.
+          - Security Critical: Foundation of permission system (`ADMIN_ROLE`, `MANAGER_ROLE`, `KEEPER_ROLE`, `TREASURY_ROLE`).
+          - Modifiers: `setRoleAdmin`, `grantRole`, `revokeRole`, `renounceRole` typically require `DEFAULT_ADMIN_ROLE` (or role's admin). `transferOwnership` uses `onlyAdmin`.
+          - Tested in: `AccessControlTest.t.sol`
       adapters:
         oracles: {}
         dexs:
@@ -202,7 +244,10 @@ evm:
         title: ALM Library
         short_desc: Core logic for Automated Liquidity Management
         desc: Contains functions for calculating positions, handling rebalances, and managing vaults
-        dev_comment: Maths related to ticks/concentrated liquidity
+        dev_comment: >
+          Implements core ALM routines: `_burnAllRanges`, `_accrueFees`, `_processSwaps`, `_mintRanges`.
+          - Calculates tick boundaries via `LibDEXMaths`.
+          - Tracks per-vault and protocol fees; supports preview APIs.
       LibPausable.sol:
         title: Pausable Library
         short_desc: Shared pause functionality logic
@@ -212,7 +257,9 @@ evm:
         title: BTR Utilities Library
         short_desc: General utility functions
         desc: Contains various helper functions used across the protocol
-        dev_comment: Includes type conversions, common checks, etc.
+        dev_comment: >
+          Utility routines (e.g., bytes32↔uint32 conversions, ID helpers).
+          - Facilitates diamond storage access and event encoding.
       LibMaths.sol:
         title: Maths Library
         short_desc: General mathematical functions
@@ -232,7 +279,9 @@ evm:
         title: Swapper Library
         short_desc: Token swapping logic
         desc: Contains internal functions for executing swaps via DEX adapters
-        dev_comment: Helper library for SwapperFacet
+        dev_comment: >
+          Executes and aggregates swap calls across registered adapter facets.
+          - Exposed via `SwapperFacet`; supports multi-hop, cross-DEX routing.
       LibTreasury.sol:
         title: Treasury Library
         short_desc: Treasury management logic
@@ -247,7 +296,9 @@ evm:
         title: DEX Maths Library
         short_desc: Mathematical functions for DEX interactions
         desc: Provides calculations specific to DEX pools (e.g., tick math, price conversions)
-        dev_comment: Used by ALM and DEX adapter components
+        dev_comment: >
+          Provides price↔tick conversions and liquidity math (e.g., `getTickAtSqrtPrice`).
+          - Used in `LibALM` and V3 adapters for accurate range calculations.
       LibAccessControl.sol:
         title: Access Control Library
         short_desc: Role-based access control logic
@@ -319,13 +370,13 @@ evm:
       ManagementTest.t.sol:
         title: Management Test
         short_desc: Unit tests for ManagementFacet
-        desc: Verifies the functionality of protocol parameter management
-        dev_comment: Tests setting and getting parameters with access control
+        desc: Verifies ManagementFacet functions like pausing, setting restrictions, and whitelisting.
+        dev_comment: Tests setting and getting parameters with access control. Validates `onlyManager` modifier checks.
       TreasuryTest.t.sol:
         title: Treasury Test
         short_desc: Unit tests for TreasuryFacet
-        desc: Verifies the functionality of fee collection and distribution
-        dev_comment: Tests treasury operations and accounting
+        desc: Verifies TreasuryFacet functions like setting fees, treasury address, and collecting fees.
+        dev_comment: Tests treasury operations and accounting. Validates `onlyAdmin`/`onlyManager`/`onlyTreasury` modifiers.
       SaltMinerTest.t.sol:
         title: Salt Miner Test
         short_desc: Deterministic deployment verification
@@ -334,13 +385,13 @@ evm:
       DiamondTest.t.sol:
         title: Diamond Test
         short_desc: Proxy upgrade validation
-        desc: Verifies diamond proxy functionality and facet management
-        dev_comment: Tests EIP-2535 compliance
+        desc: Verifies diamond proxy functionality and facet management (add/remove/replace).
+        dev_comment: Tests EIP-2535 compliance and core upgrade security via DiamondCutFacet.
       AccessControlTest.t.sol:
         title: Access Control Test
         short_desc: Permission validation
-        desc: Verifies role-based access control functionality
-        dev_comment: Tests permission escalation prevention
+        desc: Verifies role-based access control functionality (granting, revoking, checking roles).
+        dev_comment: Tests role administration, admin roles, and modifier access via AccessControlFacet/LibAccessControl.
       BTRTest.t.sol:
         title: BTR Core Test
         short_desc: Tests core BTR contract interactions (if any)
@@ -349,34 +400,34 @@ evm:
       RescueTest.t.sol:
         title: Rescue Test
         short_desc: Asset recovery validation
-        desc: Verifies emergency asset recovery functionality
-        dev_comment: Tests the RescueFacet logic and permissions
+        desc: Verifies RescueFacet request -> timelock -> execute flow for asset recovery.
+        dev_comment: Tests the RescueFacet logic, permissions (`onlyAdmin`, `onlyManager`), and timelock mechanism.
     integration:
       BNBALMTest.t.sol:
         title: BNB ALM Test
         short_desc: Integration tests for ALM on BNB Chain context
         desc: Verifies ALM functionality using BNB Chain specific pools/adapters (e.g., PancakeSwap)
-        dev_comment: Inherits from ALMBaseTest
+        dev_comment: Inherits from BaseALMTest
       CakeV3StableALMTest.t.sol:
         title: CakeV3 Stable ALM Test
         short_desc: Integration tests for ALM on PancakeSwap V3 stable pools
         desc: Verifies ALM functionality specifically for stablecoin pairs on PancakeSwap V3
-        dev_comment: Inherits from ALMBaseTest
+        dev_comment: Inherits from BaseALMTest
       UniV3StableALMTest.t.sol:
         title: UniV3 Stable ALM Test
         short_desc: Integration tests for ALM on Uniswap V3 stable pools
         desc: Verifies ALM functionality specifically for stablecoin pairs on Uniswap V3
-        dev_comment: Inherits from ALMBaseTest
+        dev_comment: Inherits from BaseALMTest
       ThenaV3StableALMTest.t.sol:
         title: ThenaV3 Stable ALM Test
         short_desc: Integration tests for ALM on Thena V3 stable pools
         desc: Verifies ALM functionality specifically for stablecoin pairs on Thena V3
-        dev_comment: Inherits from ALMBaseTest
+        dev_comment: Inherits from BaseALMTest
       BNBRebalanceTest.t.sol:
         title: BNB Rebalance Test
         short_desc: Integration tests for rebalancing on BNB Chain context
-        desc: Verifies the rebalancing logic within the ALM system on BNB Chain
-        dev_comment: Tests triggers and outcomes of rebalance operations
+        desc: Verifies the rebalancing logic within the ALM system on BNB Chain, including swaps.
+        dev_comment: Tests `ALMFacet.rebalance` including `_processSwaps` path with external calls via SwapperFacet. Checks `onlyKeeper` access.
       ChainMeta.sol:
         title: Chain Metadata Library (Test)
         short_desc: Provides chain-specific constants for tests
@@ -387,11 +438,15 @@ evm:
         short_desc: Integration tests for swapping across multiple DEXs on BNB
         desc: Verifies the SwapperFacet's ability to route trades across different DEX adapters on BNB Chain
         dev_comment: Tests aggregation or multi-hop swap logic
-      ALMBaseTest.sol:
+      BaseALMTest.t.sol:
         title: ALM Base Test
         short_desc: Base contract for ALM integration tests
         desc: Provides common setup and helper functions for ALM integration testing across different DEXs/chains
-        dev_comment: Abstract contract to be inherited by specific test implementations
+        dev_comment: >
+          Abstract base for ALM integration tests:
+          - Deploys diamond, registers adapters/pools, and initializes vaults.
+          - Defines virtual methods: `getWeights()`, `getRanges()`, `getToken0()`, `getToken1()`, `getPools()`.
+          - Extended by CakeV3, UniV3, ThenaV3, and BNB-specific tests. Covers core user flows (`deposit`, `withdraw`) and equal rebalance path. Validates `nonReentrant` and `whenNotPaused` modifiers implicitly.
       CreateXTest.t.sol:
         title: CreateX Test
         short_desc: Tests for CreateX factory usage
@@ -427,13 +482,63 @@ evm:
         dev_comment: Do not edit manually; generated by ./scripts/generate_deployer.py
 
 scripts:
-  generate_deployer.py:
-    title: Generate Diamond Deployer Script
-    short_desc: Generates the DiamondDeployer.sol contract
-    desc: Python script that reads facet configurations and artifacts to generate a Solidity contract responsible for deploying the diamond proxy and its initial facets.
-    dev_comment: Reads facets.json and build artifacts, uses templates/DiamondDeployer.sol.tpl
+  build.sh:
+    title: Build Script
+    short_desc: Compiles Solidity contracts using Foundry
+    desc: Executes the Foundry build process for the EVM contracts.
+    dev_comment: Wrapper around `forge build`. Part of the standard build flow.
+  get_swap_data_test.sh:
+    title: Get Swap Data Test Script
+    short_desc: Tests fetching swap data for a specific pool
+    desc: Executes a dry run or test call to retrieve swap data, likely for integration testing or debugging swap logic.
+    dev_comment: Calls `get_swap_data.sh` with test parameters.
+  format_code.sh:
+    title: Code Formatter Script
+    short_desc: Formats Solidity and Python code
+    desc: Runs configured code formatters (e.g., forge fmt, black, isort) across the codebase.
+    dev_comment: Ensures consistent code style.
   release.py:
     title: Release Helper Script
     short_desc: Automates version bumping and changelog generation
     desc: Python script to increment the project version in uv.toml, update CHANGELOG.md based on commit messages since the last tag, and clean up local git tags.
     dev_comment: Requires specific commit message prefixes (e.g., [feat], [fix]) for changelog generation.
+  release.sh:
+    title: Release Runner Script
+    short_desc: Orchestrates the release process
+    desc: Executes the release helper Python script (`release.py`) and potentially other release tasks like tagging.
+    dev_comment: Top-level script for creating a new release.
+  format_headers.py:
+    title: Format Source Headers Script
+    short_desc: Updates file headers using templates and descriptions
+    desc: Python script that reads descriptions from assets/desc.yml and applies them to source file headers (.sol, .py, .sh) using templates from assets/headers/.
+    dev_comment: Maintains consistency in file headers across the project.
+  get_swap_data.sh:
+    title: Get Swap Data Script
+    short_desc: Fetches swap parameters for a given pool
+    desc: Retrieves necessary data (e.g., tick spacing, pool address) for executing a swap on a specific DEX pool, likely using cast or another CLI tool.
+    dev_comment: Used by ALM or testing scripts to prepare swap transactions.
+  test.sh:
+    title: Test Runner Script
+    short_desc: Executes Foundry tests
+    desc: Runs the Solidity test suite using `forge test`.
+    dev_comment: Standard script for running unit and integration tests.
+  install_deps.sh:
+    title: Install Dependencies Script
+    short_desc: Installs project dependencies
+    desc: Sets up the development environment by installing necessary tools and libraries (e.g., Foundry, Python packages via uv).
+    dev_comment: Essential script for onboarding and CI/CD setup.
+  check_branch.sh:
+    title: Check Branch Script
+    short_desc: Verifies the current Git branch name
+    desc: Checks if the current Git branch matches an expected name (e.g., 'main'). Used in CI/CD or pre-commit hooks.
+    dev_comment: Simple Git utility script.
+  check_name.py:
+    title: Check Naming Conventions Script
+    short_desc: Validates Git branch and commit message formats
+    desc: Python script to enforce specific naming conventions for Git branches (e.g., type/scope) and commit messages (e.g., [type] summary). Used in Git hooks.
+    dev_comment: Enforces development workflow standards via pre-commit or pre-push hooks.
+  generate_deployer.py:
+    title: Generate Diamond Deployer Script
+    short_desc: Generates the DiamondDeployer.sol contract
+    desc: Python script that reads facet configurations (facets.json) and artifacts to generate a Solidity contract responsible for deploying the diamond proxy and its initial facets.
+    dev_comment: Reads facets.json and build artifacts, uses templates/DiamondDeployer.sol.tpl. Part of the build process.

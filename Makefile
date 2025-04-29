@@ -16,12 +16,15 @@ install-deps:
 format:
 	@echo "Formatting code..."
 	bash scripts/format_code.sh
-	@echo "Formatting headers..."
-	uv run python scripts/format_headers.py
+	# @echo "Formatting headers..."
+	# uv run python scripts/format_headers.py
 
 python-lint-fix:
 	@echo "Linting and fixing Python files with Ruff..."
 	uv run ruff check . --fix
+
+build:
+	bash scripts/build.sh --sizes
 
 test:
 	bash scripts/test.sh
