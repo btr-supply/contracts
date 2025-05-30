@@ -13,7 +13,15 @@ install-deps:
 	pre-commit install --hook-type post-checkout
 	@echo "Python dependencies installed successfully."
 
-format:
+organize-imports:
+	@echo "Organizing Solidity imports..."
+	uv run python scripts/organize_imports.py
+
+strip-headers:
+	@echo "Stripping Solidity headers..."
+	uv run python scripts/strip_headers.py
+
+format: organize-imports
 	@echo "Formatting code..."
 	bash scripts/format_code.sh
 	# @echo "Formatting headers..."

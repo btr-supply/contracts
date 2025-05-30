@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: MIT
-// cf. https://github.com/code-423n4/2024-10-ramses-exchange/blob/main/contracts
-pragma solidity 0.8.28;
+pragma solidity 0.8.29;
 
 interface IRamsesV3Voter {
     function BASIS() external view returns (uint256);
@@ -35,7 +34,7 @@ interface IRamsesV3Voter {
     function gaugeForPool(address _pool) external view returns (address _gauge);
     function gaugefactory() external view returns (address _gaugeFactory);
     function getAllCustomPools() external view returns (address[] memory _customPools);
-    function getAllFeeDistributors() external view returns (address[] memory _feeDistributors);
+    function getAllFeeDistributorst() external view returns (address[] memory _feeDistributors);
     function getAllGauges() external view returns (address[] memory _gauges);
     function getAllPools() external view returns (address[] memory _pools);
     function getPeriod() external view returns (uint256 period);

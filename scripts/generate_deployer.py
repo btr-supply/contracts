@@ -1,3 +1,22 @@
+"""
+SPDX-License-Identifier: MIT
+@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+@@@@@@@@@/         '@@@@/            /@@@/         '@@@@@@@@
+@@@@@@@@/    /@@@    @@@@@@/    /@@@@@@@/    /@@@    @@@@@@@
+@@@@@@@/           _@@@@@@/    /@@@@@@@/    /.     _@@@@@@@@
+@@@@@@/    /@@@    '@@@@@/    /@@@@@@@/    /@@    @@@@@@@@@@
+@@@@@/            ,@@@@@/    /@@@@@@@/    /@@@,    @@@@@@@@@
+@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+
+@title Generate Diamond Deployer Script - Generates the DiamondDeployer.sol contract
+@copyright 2025
+@notice Python script that reads facet configurations (facets.json) and artifacts to generate a Solidity contract responsible
+for deploying the diamond proxy and its initial facets
+
+@dev Reads facets.json and build artifacts, uses templates/DiamondDeployer.sol.tpl. Part of the build process.
+@author BTR Team
+"""
+
 #!/usr/bin/env python3
 import json
 import sys
@@ -25,7 +44,7 @@ def load_facets():
 
 def find_artifact(f, b):
   """Finds the build artifact for a given facet name."""
-  return next(iter(glob.glob(f"{b}/**/{f}.json", recursive=True)), None)
+  return next(iter(glob.glob(f"{b}/*/{f}.json", recursive=True)), None)
 
 
 def generate_parts(cfg, build):
@@ -86,7 +105,7 @@ def generate_parts(cfg, build):
             m not in owned or owned[m] == f)
     ]
     prefix = [
-        f"function get{f}Selectors() public pure returns(bytes4[] memory) {{",
+        f"function get{f}Selectorst() public pure returns(bytes4[] memory) {{",
         f"  bytes4[] memory selectors = new bytes4[]({len(sels)});",
     ]
     middle = [f"  selectors[{i}] = 0x{p};" for i, p in enumerate(sels)]
@@ -95,13 +114,13 @@ def generate_parts(cfg, build):
     funcs.append("  ".join(lines))
   sel_funcs = "\n  ".join(funcs)
   conds = "\n    ".join(
-      f'if(nameHash == keccak256(bytes("{f}"))) return get{f}Selectors();'
+      f'if(nameHash == keccak256(bytes("{f}"))) return get{f}Selectorst();'
       for f in facets)
   # deployments
   deploys = "\n    ".join(f"{f} _{f} = new {f}();" for f in facets)
   cuts = [f for f in facets if f != 'DiamondCutFacet']
   cuts_code = f"IDiamondCut.FacetCut[] memory cuts = new IDiamondCut.FacetCut[]({len(cuts)});" + "".join(
-      f" cuts[{i}] = IDiamondCut.FacetCut({{facetAddress: address(_{f}), action: IDiamondCut.FacetCutAction.Add, functionSelectors: get{f}Selectors()}});"
+      f" cuts[{i}] = IDiamondCut.FacetCut({{facetAddress: address(_{f}), action: IDiamondCut.FacetCutAction.Add, functionSelectors: get{f}Selectorst()}});"
       for i, f in enumerate(cuts))
   diamond_creation_code = "BTRDiamond diamond = new BTRDiamond(admin, treasury, address(_DiamondCutFacet));" if 'DiamondCutFacet' in facets else ''
   # returns

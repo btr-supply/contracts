@@ -1,33 +1,16 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.28;
+pragma solidity 0.8.29;
 
 // Core imports
 import {BTRDiamond} from "@/BTRDiamond.sol";
-import {IDiamondCut, IDiamondLoupe, IDiamondInit, IDiamondCutCallback} from "@interfaces/IDiamond.sol";
+import {IDiamondCut, IDiamondLoupe, IDiamondCutCallback} from "@interfaces/IDiamond.sol";
 import {IERC173} from "@interfaces/ercs/IERC173.sol";
 import {IERC165} from "@interfaces/ercs/IERC165.sol";
 import {ICreateX} from "@interfaces/ICreateX.sol";
-import {LibAccessControl} from "@libraries/LibAccessControl.sol";
+import {LibAccessControl as AC} from "@libraries/LibAccessControl.sol";
 
 // Facet imports
 {{ facet_imports }}
-
-// Diamond initializer contract to avoid stack too deep errors
-contract DiamondInit {
-    function init(address admin) external {
-        // Since we'll be using delegatecall from the admin account via the diamond, 
-        // we need to grant all necessary roles to the admin first to ensure they have permissions
-        
-        // Direct access to storage to grant roles 
-        // These functions directly interact with storage so they don't use onlyAdmin checks
-        LibAccessControl.grantRole(LibAccessControl.ADMIN_ROLE, admin);
-        LibAccessControl.grantRole(LibAccessControl.MANAGER_ROLE, admin);
-        LibAccessControl.grantRole(LibAccessControl.TREASURY_ROLE, admin);
-        
-        // Now that the admin has all roles, we can initialize all the facets
-        {{ facet_initializations }}
-    }
-}
 
 contract DiamondDeployer is IDiamondCutCallback {
     // Store admin address for diamondCutCallback
@@ -54,31 +37,31 @@ contract DiamondDeployer is IDiamondCutCallback {
 
     {{ selector_functions }}
 
-    /**
+    /*
      * @notice Get function selectors for a specific facet by name
      * @param facetName The name of the facet to get selectors for
      * @return Array of function selectors for the facet
      */
     function getSelectorsForFacet(string memory facetName) public pure returns (bytes4[] memory) {
         bytes32 nameHash = keccak256(bytes(facetName));
-        
+
         {{ get_selectors_for_facet_conditions }}
-        
+
         return new bytes4[](0);
     }
 
-    /**
+    /*
      * @notice Extract all facet cuts except DiamondCutFacet from deployed facets
      * @param deployment Deployment containing facets and facet names
      * @return Array of FacetCut structs without DiamondCutFacet
      */
-    function getCutsWithoutDiamondCutFacet(Deployment memory deployment) 
-        public pure returns (IDiamondCut.FacetCut[] memory) 
+    function getFunctionalCuts(Deployment memory deployment)
+        public pure returns (IDiamondCut.FacetCut[] memory)
     {
         // Create cuts array for all facets except DiamondCutFacet (already added)
         IDiamondCut.FacetCut[] memory cuts = new IDiamondCut.FacetCut[](deployment.facets.length - 1);
         uint256 cutCount = 0;
-        
+
         // Add all facets except DiamondCutFacet
         for (uint i = 0; i < deployment.facetNames.length; i++) {
             if (keccak256(bytes(deployment.facetNames[i])) != keccak256(bytes("DiamondCutFacet"))) {
@@ -90,18 +73,18 @@ contract DiamondDeployer is IDiamondCutCallback {
                 cutCount++;
             }
         }
-        
+
         return cuts;
     }
 
-    /**
+    /*
      * @notice Diamond Cut Callback for authorization in diamond cut operations
      * @dev This function is implemented for compatibility with both tests and production
      */
     function diamondCutCallback(
-        address _diamond, 
-        IDiamondCut.FacetCut[] memory _cuts, 
-        address _init, 
+        address _diamond,
+        IDiamondCut.FacetCut[] memory _cuts,
+        address _init,
         bytes memory _calldata
     ) external override {
         // Direct call to the diamond
@@ -113,7 +96,7 @@ contract DiamondDeployer is IDiamondCutCallback {
                 _calldata
             )
         );
-        
+
         // Handle errors properly
         if (!success) {
             assembly {
@@ -125,12 +108,12 @@ contract DiamondDeployer is IDiamondCutCallback {
     function deployDiamond(address admin, address treasury) public returns (Deployment memory) {
         // Store admin for diamondCutCallback
         _admin = admin;
-        
+
         // Deploy facets
         {{ deploy_facets }}
 
-        // Deploy DiamondInit
-        DiamondInit diamondInit = new DiamondInit();
+        // Now that the admin has all roles, we can initialize all the facets
+        {{ facet_initializations }}
 
         // Create FacetCut array for diamond constructor
         {{ facet_cuts }}
@@ -179,4 +162,4 @@ contract DiamondDeployer is IDiamondCutCallback {
             {{ deterministic_addresses_return_fields }}
         });
     }
-} 
+}

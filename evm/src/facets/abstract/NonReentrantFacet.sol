@@ -1,14 +1,18 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.28;
+pragma solidity 0.8.29;
 
-/**
-@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
-@@@@@@@@@/         '@@@@/            /@@@/         '@@@@@@@@
-@@@@@@@@/    /@@@    @@@@@@/    /@@@@@@@/    /@@@    @@@@@@@
-@@@@@@@/           _@@@@@@/    /@@@@@@@/    /.     _@@@@@@@@
-@@@@@@/    /@@@    '@@@@@/    /@@@@@@@/    /@@    @@@@@@@@@@
-@@@@@/            ,@@@@@/    /@@@@@@@/    /@@@,    @@@@@@@@@
-@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+import {BTRErrors as Errors} from "@libraries/BTREvents.sol";
+import {Restrictions, ErrorType} from "@/BTRTypes.sol";
+import {BTRStorage as S} from "@libraries/BTRStorage.sol";
+
+/*
+ * @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+ * @@@@@@@@@/         '@@@@/            /@@@/         '@@@@@@@@
+ * @@@@@@@@/    /@@@    @@@@@@/    /@@@@@@@/    /@@@    @@@@@@@
+ * @@@@@@@/           _@@@@@@/    /@@@@@@@/    /.     _@@@@@@@@
+ * @@@@@@/    /@@@    '@@@@@/    /@@@@@@@/    /@@    @@@@@@@@@@
+ * @@@@@/            ,@@@@@/    /@@@@@@@/    /@@@,    @@@@@@@@@
+ * @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
  *
  * @title Non-Reentrant Facet - Prevents reentrancy attacks
  * @copyright 2025
@@ -17,13 +21,9 @@ pragma solidity 0.8.28;
  * @author BTR Team
  */
 
-import {BTRStorage as S} from "@libraries/BTRStorage.sol";
-import {BTRErrors as Errors} from "@libraries/BTREvents.sol";
-import {Restrictions, ErrorType} from "@/BTRTypes.sol";
-
 abstract contract NonReentrantFacet {
     modifier nonReentrant() {
-        Restrictions storage rs = S.restrictions();
+        Restrictions storage rs = S.rst();
         if (rs.entered) revert Errors.Unauthorized(ErrorType.REENTRANCY);
         rs.entered = true;
         _;

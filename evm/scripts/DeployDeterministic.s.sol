@@ -1,14 +1,21 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.28;
+pragma solidity 0.8.29;
 
-/**
-@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
-@@@@@@@@@/         '@@@@/            /@@@/         '@@@@@@@@
-@@@@@@@@/    /@@@    @@@@@@/    /@@@@@@@/    /@@@    @@@@@@@
-@@@@@@@/           _@@@@@@/    /@@@@@@@/    /.     _@@@@@@@@
-@@@@@@/    /@@@    '@@@@@/    /@@@@@@@/    /@@    @@@@@@@@@@
-@@@@@/            ,@@@@@/    /@@@@@@@/    /@@@,    @@@@@@@@@
-@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+import {ICreateX} from "@interfaces/ICreateX.sol";
+import "forge-std/console.sol";
+import {BTRDiamond} from "@/BTRDiamond.sol";
+import {DiamondCutFacet} from "@facets/DiamondCutFacet.sol";
+import {DiamondDeployer} from "@utils/generated/DiamondDeployer.gen.sol";
+import {Script} from "forge-std/Script.sol";
+
+/*
+ * @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+ * @@@@@@@@@/         '@@@@/            /@@@/         '@@@@@@@@
+ * @@@@@@@@/    /@@@    @@@@@@/    /@@@@@@@/    /@@@    @@@@@@@
+ * @@@@@@@/           _@@@@@@/    /@@@@@@@/    /.     _@@@@@@@@
+ * @@@@@@/    /@@@    '@@@@@/    /@@@@@@@/    /@@    @@@@@@@@@@
+ * @@@@@/            ,@@@@@/    /@@@@@@@/    /@@@,    @@@@@@@@@
+ * @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
  *
  * @title Deploy Deterministic - Salt-based deployment
  * @copyright 2025
@@ -17,17 +24,6 @@ pragma solidity 0.8.28;
  * @author BTR Team
  */
 
-import "forge-std/console.sol";
-import {Script} from "forge-std/Script.sol";
-import {ICreateX} from "@interfaces/ICreateX.sol";
-import {BTRDiamond} from "@/BTRDiamond.sol";
-import {DiamondCutFacet} from "@facets/DiamondCutFacet.sol";
-import {DiamondDeployer} from "@utils/generated/DiamondDeployer.gen.sol";
-
-/**
- * @title DeployDeterministic
- * @notice Example script showing how to use DiamondDeployer for deterministic deployment
- */
 contract DeployDeterministic is Script {
     // CreateX contract on mainnet
     ICreateX createX = ICreateX(vm.envAddress("CREATEX"));

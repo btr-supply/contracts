@@ -1,41 +1,36 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.28;
+pragma solidity 0.8.29;
 
-/**
-@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
-@@@@@@@@@/         '@@@@/            /@@@/         '@@@@@@@@
-@@@@@@@@/    /@@@    @@@@@@/    /@@@@@@@/    /@@@    @@@@@@@
-@@@@@@@/           _@@@@@@/    /@@@@@@@/    /.     _@@@@@@@@
-@@@@@@/    /@@@    '@@@@@/    /@@@@@@@/    /@@    @@@@@@@@@@
-@@@@@/            ,@@@@@/    /@@@@@@@/    /@@@,    @@@@@@@@@
-@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+import {AccountStatus as AS, AddressType, ErrorType, Fees, CoreStorage, ALMVault, Registry} from "@/BTRTypes.sol";
+import {BTRErrors as Errors, BTREvents as Events} from "@libraries/BTREvents.sol";
+import {LibAccessControl} from "@libraries/LibAccessControl.sol";
+import {LibBitMask} from "@libraries/LibBitMask.sol";
+import {LibManagement} from "@libraries/LibManagement.sol";
+import {LibPausable} from "@libraries/LibPausable.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {BaseDiamondTest} from "../BaseDiamondTest.t.sol";
+import {PausableFacet} from "@facets/abstract/PausableFacet.sol";
+import "forge-std/Test.sol";
+import {AccessControlFacet} from "@facets/AccessControlFacet.sol";
+import {ManagementFacet} from "@facets/ManagementFacet.sol";
+import {MockERC20} from "../mocks/MockERC20.sol";
+
+/*
+ * @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+ * @@@@@@@@@/         '@@@@/            /@@@/         '@@@@@@@@
+ * @@@@@@@@/    /@@@    @@@@@@/    /@@@@@@@/    /@@@    @@@@@@@
+ * @@@@@@@/           _@@@@@@/    /@@@@@@@/    /.     _@@@@@@@@
+ * @@@@@@/    /@@@    '@@@@@/    /@@@@@@@/    /@@    @@@@@@@@@@
+ * @@@@@/            ,@@@@@/    /@@@@@@@/    /@@@,    @@@@@@@@@
+ * @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
  *
  * @title Management Test - Unit tests for ManagementFacet
  * @copyright 2025
- * @notice Verifies the functionality of protocol parameter management
- * @dev Tests setting and getting parameters with access control
+ * @notice Verifies ManagementFacet functions like pausing, setting restrictions, and whitelisting
+ * @dev Tests setting and getting parameters with access control. Validates `onlyManager` modifier checks
  * @author BTR Team
  */
 
-import "forge-std/Test.sol";
-import {BaseDiamondTest} from "../BaseDiamondTest.t.sol";
-import {ManagementFacet} from "@facets/ManagementFacet.sol";
-import {AccessControlFacet} from "@facets/AccessControlFacet.sol";
-import {LibAccessControl} from "@libraries/LibAccessControl.sol";
-import {LibManagement} from "@libraries/LibManagement.sol";
-import {LibPausable} from "@libraries/LibPausable.sol";
-import {BTRErrors as Errors, BTREvents as Events} from "@libraries/BTREvents.sol";
-import {AccountStatus as AS, AddressType, ErrorType, Fees, CoreStorage, ALMVault, Registry} from "@/BTRTypes.sol";
-import {MockERC20} from "../mocks/MockERC20.sol";
-import {PausableFacet} from "@facets/abstract/PausableFacet.sol";
-import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import {LibBitMask} from "@libraries/LibBitMask.sol";
-
-/**
- * @title ManagementTest
- * @notice Tests management functionality including whitelisting, blacklisting, restrictions, and more
- * @dev This test focuses exclusively on management functionality
- */
 contract ManagementTest is BaseDiamondTest {
     ManagementFacet public managementFacet;
     address public user1;
@@ -45,7 +40,7 @@ contract ManagementTest is BaseDiamondTest {
     address public outputToken;
     address public mockTreasury;
     MockERC20 public mockToken;
-    uint32 public vaultId;
+    uint32 public vid;
 
     // Example vault ID for tests
     uint32 constant TEST_VAULT_ID = 1;
@@ -57,7 +52,7 @@ contract ManagementTest is BaseDiamondTest {
         // Store original statuses
         AS[] memory originalStatuses = new AS[](accounts.length);
         for (uint256 i = 0; i < accounts.length; i++) {
-            originalStatuses[i] = managementFacet.getAccountStatus(accounts[i]);
+            originalStatuses[i] = managementFacet.accountStatus(accounts[i]);
         }
 
         // Perform batch operation
@@ -67,9 +62,7 @@ contract ManagementTest is BaseDiamondTest {
         // Verify statuses were updated
         for (uint256 i = 0; i < accounts.length; i++) {
             assertEq(
-                uint256(managementFacet.getAccountStatus(accounts[i])),
-                uint256(status),
-                "Account status should be updated"
+                uint256(managementFacet.accountStatus(accounts[i])), uint256(status), "Account status should be updated"
             );
         }
 
@@ -81,7 +74,7 @@ contract ManagementTest is BaseDiamondTest {
             // Verify reset
             for (uint256 i = 0; i < accounts.length; i++) {
                 assertEq(
-                    uint256(managementFacet.getAccountStatus(accounts[i])),
+                    uint256(managementFacet.accountStatus(accounts[i])),
                     uint256(AS.NONE),
                     "Account status should be reset"
                 );
@@ -126,16 +119,15 @@ contract ManagementTest is BaseDiamondTest {
 
     function testVersionManagement() public {
         // Check initial version
-        assertEq(managementFacet.getVersion(), 0, "Initial version should be 0");
+        assertEq(managementFacet.version(), 0, "Initial version should be 0");
 
         // Update version
         vm.prank(admin);
         managementFacet.setVersion(2);
 
         // Check updated version
-        assertEq(managementFacet.getVersion(), 2, "Version should be updated to 2");
+        assertEq(managementFacet.version(), 2, "Version should be updated to 2");
 
-        // Test unauthorized version update
         vm.prank(user1);
         vm.expectRevert();
         managementFacet.setVersion(3);
@@ -174,14 +166,13 @@ contract ManagementTest is BaseDiamondTest {
         vm.expectRevert(abi.encodeWithSelector(Errors.NotPaused.selector, ErrorType.PROTOCOL));
         managementFacet.unpause();
 
-        // Test unauthorized pause
         vm.prank(user1);
         vm.expectRevert();
         managementFacet.pause();
     }
 
     function testVaultPause() public {
-        // We can't test with a real vaultId which requires complex setup
+        // We can't test with a real vid which requires complex setup
         // But we can still test the function call behavior
 
         // Test pause vault (will revert for non-existent vault, but with auth check first)
@@ -208,8 +199,8 @@ contract ManagementTest is BaseDiamondTest {
 
     function testCountFunctions() public {
         // These will return 0 in tests since we don't actually register vaults/ranges
-        uint32 vaultCount = managementFacet.getVaultCount();
-        uint32 rangeCount = managementFacet.getRangeCount();
+        uint32 vaultCount = managementFacet.vaultCount();
+        uint32 rangeCount = managementFacet.rangeCount();
 
         // Just verify we can call them without errors
         assertEq(vaultCount, 0, "Vault count should be 0 in test environment");
@@ -221,12 +212,10 @@ contract ManagementTest is BaseDiamondTest {
     ==============================================================*/
 
     function testMaxSupply() public {
-        // Test unauthorized max supply update
         vm.prank(user1);
         vm.expectRevert();
         managementFacet.setMaxSupply(TEST_VAULT_ID, 3000000 ether);
 
-        // Test authorized call (might still revert due to non-existent vault, but auth passes)
         vm.prank(manager);
         try managementFacet.setMaxSupply(TEST_VAULT_ID, 3000000 ether) {} catch {}
 
@@ -244,7 +233,7 @@ contract ManagementTest is BaseDiamondTest {
     function testAccountStatus() public {
         // Test initial status
         assertEq(
-            uint256(managementFacet.getAccountStatus(user1)), uint256(AS.NONE), "Initial account status should be NONE"
+            uint256(managementFacet.accountStatus(user1)), uint256(AS.NONE), "Initial account status should be NONE"
         );
 
         // Test status setting
@@ -253,7 +242,7 @@ contract ManagementTest is BaseDiamondTest {
 
         // Verify status
         assertEq(
-            uint256(managementFacet.getAccountStatus(user1)),
+            uint256(managementFacet.accountStatus(user1)),
             uint256(AS.WHITELISTED),
             "Account status should be WHITELISTED"
         );
@@ -261,7 +250,6 @@ contract ManagementTest is BaseDiamondTest {
         // Test batch status setting
         _testBatchStatusOperation(_createAddressArray(user1, user2), AS.BLACKLISTED);
 
-        // Test unauthorized status update
         vm.prank(user1);
         vm.expectRevert();
         managementFacet.setAccountStatus(user2, AS.WHITELISTED);
@@ -301,21 +289,20 @@ contract ManagementTest is BaseDiamondTest {
     ==============================================================*/
 
     function testRestrictedMint() public {
-        // Test unauthorized access
         vm.prank(user1);
         vm.expectRevert();
-        managementFacet.setRestrictedMint(TEST_VAULT_ID, true);
+        managementFacet.restrictMint(TEST_VAULT_ID, true);
     }
 
     function testIsRestrictedMint() public {
         // Mock the call to avoid NotFound errors since the vault doesn't exist
         vm.mockCall(
             address(managementFacet),
-            abi.encodeWithSelector(ManagementFacet.isRestrictedMint.selector, TEST_VAULT_ID),
+            abi.encodeWithSelector(ManagementFacet.isMintRestricted.selector, TEST_VAULT_ID),
             abi.encode(false)
         );
 
-        bool restricted = managementFacet.isRestrictedMint(TEST_VAULT_ID);
+        bool restricted = managementFacet.isMintRestricted(TEST_VAULT_ID);
         assertFalse(restricted, "Non-existent vault should not be restricted by default");
     }
 
@@ -324,31 +311,31 @@ contract ManagementTest is BaseDiamondTest {
         vm.prank(manager);
         managementFacet.addToBlacklist(user1);
 
-        // Mock the call for isRestrictedMinter
+        // Mock the call for isMinterRestricted
         vm.mockCall(
             address(managementFacet),
-            abi.encodeWithSelector(ManagementFacet.isRestrictedMinter.selector, TEST_VAULT_ID, user1),
+            abi.encodeWithSelector(ManagementFacet.isMinterRestricted.selector, TEST_VAULT_ID, user1),
             abi.encode(true)
         );
 
         vm.mockCall(
             address(managementFacet),
-            abi.encodeWithSelector(ManagementFacet.isRestrictedMinter.selector, TEST_VAULT_ID, user2),
+            abi.encodeWithSelector(ManagementFacet.isMinterRestricted.selector, TEST_VAULT_ID, user2),
             abi.encode(false)
         );
 
         // Verify blacklisted user is considered restricted
-        assertTrue(managementFacet.isRestrictedMinter(TEST_VAULT_ID, user1), "Blacklisted user should be restricted");
+        assertTrue(managementFacet.isMinterRestricted(TEST_VAULT_ID, user1), "Blacklisted user should be restricted");
 
         // Verify normal user isn't restricted initially
         assertFalse(
-            managementFacet.isRestrictedMinter(TEST_VAULT_ID, user2),
+            managementFacet.isMinterRestricted(TEST_VAULT_ID, user2),
             "Non-blacklisted user should not be restricted initially"
         );
 
         // Try to set restricted mint (may revert if vault doesn't exist)
         vm.prank(manager);
-        try managementFacet.setRestrictedMint(TEST_VAULT_ID, true) {} catch {}
+        try managementFacet.restrictMint(TEST_VAULT_ID, true) {} catch {}
     }
 
     /*==============================================================
@@ -462,21 +449,19 @@ contract ManagementTest is BaseDiamondTest {
         weights[1] = 4000; // 40%
         weights[2] = 2000; // 20%
 
-        // Test unauthorized access
         vm.prank(user1);
         vm.expectRevert();
-        managementFacet.setRangeWeights(TEST_VAULT_ID, weights);
+        managementFacet.setWeights(TEST_VAULT_ID, weights);
 
         vm.prank(user1);
         vm.expectRevert();
-        managementFacet.zeroOutRangeWeights(TEST_VAULT_ID);
-
-        // Test authorized access (will still revert for non-existent vault, but auth passes)
-        vm.prank(manager);
-        try managementFacet.setRangeWeights(TEST_VAULT_ID, weights) {} catch {}
+        managementFacet.zeroOutWeights(TEST_VAULT_ID);
 
         vm.prank(manager);
-        try managementFacet.zeroOutRangeWeights(TEST_VAULT_ID) {} catch {}
+        try managementFacet.setWeights(TEST_VAULT_ID, weights) {} catch {}
+
+        vm.prank(manager);
+        try managementFacet.zeroOutWeights(TEST_VAULT_ID) {} catch {}
     }
 
     /*==============================================================
@@ -484,11 +469,10 @@ contract ManagementTest is BaseDiamondTest {
     ==============================================================*/
 
     function testTreasuryFunctions() public {
-        // Since we can't directly call the library functions and we don't want to test the actual setTreasury
+        // Since we can't directly call the library functions and we don't want to test the actual setCollector
         // functionality (which requires more setup), we'll just verify the auth checks on related functions
 
         // For completeness, we should at least verify that the management facet has proper auth checks
-        // to prevent unauthorized users from calling treasury-related functions, if there were any exposed
 
         // Unfortunately, there's no treasury function directly in the ManagementFacet that we can test
         // But we can document that the functionality is covered in the test for the facet that does expose
@@ -513,7 +497,6 @@ contract ManagementTest is BaseDiamondTest {
         assertFalse(managementFacet.isApproveMax(), "ApproveMax should still be disabled");
         assertTrue(managementFacet.isAutoRevoke(), "AutoRevoke should still be enabled");
 
-        // Test unauthorized initialization
         vm.prank(user1);
         vm.expectRevert();
         managementFacet.initializeManagement();

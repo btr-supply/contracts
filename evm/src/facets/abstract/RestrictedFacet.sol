@@ -1,14 +1,18 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.28;
+pragma solidity 0.8.29;
 
-/**
-@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
-@@@@@@@@@/         '@@@@/            /@@@/         '@@@@@@@@
-@@@@@@@@/    /@@@    @@@@@@/    /@@@@@@@/    /@@@    @@@@@@@
-@@@@@@@/           _@@@@@@/    /@@@@@@@/    /.     _@@@@@@@@
-@@@@@@/    /@@@    '@@@@@/    /@@@@@@@/    /@@    @@@@@@@@@@
-@@@@@/            ,@@@@@/    /@@@@@@@/    /@@@,    @@@@@@@@@
-@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+import {ErrorType, AccountStatus as AS, Restrictions} from "@/BTRTypes.sol";
+import {BTRStorage as S} from "@libraries/BTRStorage.sol";
+import {LibAccessControl as AC} from "@libraries/LibAccessControl.sol";
+
+/*
+ * @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+ * @@@@@@@@@/         '@@@@/            /@@@/         '@@@@@@@@
+ * @@@@@@@@/    /@@@    @@@@@@/    /@@@@@@@/    /@@@    @@@@@@@
+ * @@@@@@@/           _@@@@@@/    /@@@@@@@/    /.     _@@@@@@@@
+ * @@@@@@/    /@@@    '@@@@@/    /@@@@@@@/    /@@    @@@@@@@@@@
+ * @@@@@/            ,@@@@@/    /@@@@@@@/    /@@@,    @@@@@@@@@
+ * @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
  *
  * @title Restricted Functions - Access-controlled operations
  * @copyright 2025
@@ -17,47 +21,27 @@ pragma solidity 0.8.28;
  * @author BTR Team
  */
 
-import {BTRStorage as S} from "@libraries/BTRStorage.sol";
-import {BTRUtils} from "@libraries/BTRUtils.sol";
-import {BTRErrors as Errors} from "@libraries/BTREvents.sol";
-import {ErrorType, AccountStatus as AS} from "@/BTRTypes.sol";
-
 abstract contract RestrictedFacet {
-    using BTRUtils for uint32;
+    using AC for uint32;
+    using AC for address;
 
-    function checkNotBlacklisted(address account) internal view {
-        if (S.restrictions().accountStatus[account] == AS.BLACKLISTED) revert Errors.Unauthorized(ErrorType.ADDRESS);
-    }
-
-    function checkWhitelisted(address account) internal view {
-        if (S.restrictions().accountStatus[account] != AS.WHITELISTED) revert Errors.Unauthorized(ErrorType.ADDRESS);
-    }
-
-    function checkUnlisted(uint32, /* vaultId */ address account) internal view {
-        if (S.restrictions().accountStatus[account] != AS.NONE) revert Errors.Unauthorized(ErrorType.ADDRESS);
-    }
-
-    function checkUnrestrictedMinter(uint32 vaultId, address account) internal view {
-        vaultId.getVault().restrictedMint ? checkWhitelisted(account) : checkNotBlacklisted(account);
-    }
-
-    modifier onlyNotBlacklisted(uint32 vaultId, address account) {
-        checkNotBlacklisted(account);
+    modifier onlyNotBlacklisted(address _account) {
+        AC.checkNotBlacklisted(S.rst(), _account);
         _;
     }
 
-    modifier onlyWhitelisted(uint32 vaultId, address account) {
-        checkWhitelisted(account);
+    modifier onlyWhitelisted(address _account) {
+        AC.checkWhitelisted(S.rst(), _account);
         _;
     }
 
-    modifier onlyUnlisted(uint32 vaultId, address account) {
-        checkUnlisted(vaultId, account);
+    modifier onlyUnlisted(address _account) {
+        AC.checkUnlisted(S.rst(), _account);
         _;
     }
 
-    modifier onlyUnrestrictedMinter(uint32 vaultId, address account) {
-        checkUnrestrictedMinter(vaultId, account);
+    modifier onlyUnrestrictedMinter(uint32 _vid, address _account) {
+        AC.checkAlmMinterUnrestricted(S.rst(), _vid, _account);
         _;
     }
 }

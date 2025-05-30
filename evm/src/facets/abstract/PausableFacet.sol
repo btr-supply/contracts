@@ -1,14 +1,20 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.28;
+pragma solidity 0.8.29;
 
-/**
-@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
-@@@@@@@@@/         '@@@@/            /@@@/         '@@@@@@@@
-@@@@@@@@/    /@@@    @@@@@@/    /@@@@@@@/    /@@@    @@@@@@@
-@@@@@@@/           _@@@@@@/    /@@@@@@@/    /.     _@@@@@@@@
-@@@@@@/    /@@@    '@@@@@/    /@@@@@@@/    /@@    @@@@@@@@@@
-@@@@@/            ,@@@@@/    /@@@@@@@/    /@@@,    @@@@@@@@@
-@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+import {BTRErrors as Errors} from "@libraries/BTREvents.sol";
+import {ErrorType} from "@/BTRTypes.sol";
+import {BTRStorage as S} from "@libraries/BTRStorage.sol";
+import {BTRUtils as U} from "@libraries/BTRUtils.sol";
+import {LibPausable as P} from "@libraries/LibPausable.sol";
+
+/*
+ * @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+ * @@@@@@@@@/         '@@@@/            /@@@/         '@@@@@@@@
+ * @@@@@@@@/    /@@@    @@@@@@/    /@@@@@@@/    /@@@    @@@@@@@
+ * @@@@@@@/           _@@@@@@/    /@@@@@@@/    /.     _@@@@@@@@
+ * @@@@@@/    /@@@    '@@@@@/    /@@@@@@@/    /@@    @@@@@@@@@@
+ * @@@@@/            ,@@@@@/    /@@@@@@@/    /@@@,    @@@@@@@@@
+ * @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
  *
  * @title Pausable - Emergency pause functionality
  * @copyright 2025
@@ -17,18 +23,29 @@ pragma solidity 0.8.28;
  * @author BTR Team
  */
 
-import {BTRStorage as S} from "@libraries/BTRStorage.sol";
-import {BTRErrors as Errors} from "@libraries/BTREvents.sol";
-import {LibPausable as P} from "@libraries/LibPausable.sol";
-import {ErrorType} from "@/BTRTypes.sol";
-
 abstract contract PausableFacet {
-    function isPaused() external view returns (bool) {
-        return P.isPaused();
+    using U for uint32;
+    // vault level pause
+
+    function isAlmVaultPaused(uint32 _vid) external view returns (bool) {
+        return P.isAlmVaultPaused(_vid.vault());
     }
 
-    function isPaused(uint32 vaultId) external view returns (bool) {
-        return P.isPaused(vaultId);
+    modifier whenVaultNotPaused(uint32 _vid) virtual {
+        if (P.isAlmVaultPaused(_vid.vault()) || P.isPaused()) revert Errors.Paused(ErrorType.VAULT);
+        _;
+    }
+
+    modifier whenVaultPaused(uint32 _vid) virtual {
+        if (!P.isAlmVaultPaused(_vid.vault()) && !P.isPaused()) {
+            revert Errors.NotPaused(ErrorType.VAULT);
+        }
+        _;
+    }
+
+    // protocol level pause
+    function isPaused() external view returns (bool) {
+        return P.isPaused();
     }
 
     modifier whenNotPaused() virtual {
@@ -38,16 +55,6 @@ abstract contract PausableFacet {
 
     modifier whenPaused() virtual {
         if (!P.isPaused()) revert Errors.NotPaused(ErrorType.PROTOCOL);
-        _;
-    }
-
-    modifier whenVaultNotPaused(uint32 vaultId) virtual {
-        if (P.isPaused(vaultId) || P.isPaused()) revert Errors.Paused(ErrorType.VAULT);
-        _;
-    }
-
-    modifier whenVaultPaused(uint32 vaultId) virtual {
-        if (!P.isPaused(vaultId) && !P.isPaused()) revert Errors.NotPaused(ErrorType.VAULT);
         _;
     }
 }

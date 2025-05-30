@@ -1,14 +1,14 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.28;
+pragma solidity 0.8.29;
 
-/**
-@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
-@@@@@@@@@/         '@@@@/            /@@@/         '@@@@@@@@
-@@@@@@@@/    /@@@    @@@@@@/    /@@@@@@@/    /@@@    @@@@@@@
-@@@@@@@/           _@@@@@@/    /@@@@@@@/    /.     _@@@@@@@@
-@@@@@@/    /@@@    '@@@@@/    /@@@@@@@/    /@@    @@@@@@@@@@
-@@@@@/            ,@@@@@/    /@@@@@@@/    /@@@,    @@@@@@@@@
-@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+/*
+ * @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+ * @@@@@@@@@/         '@@@@/            /@@@/         '@@@@@@@@
+ * @@@@@@@@/    /@@@    @@@@@@/    /@@@@@@@/    /@@@    @@@@@@@
+ * @@@@@@@/           _@@@@@@/    /@@@@@@@/    /.     _@@@@@@@@
+ * @@@@@@/    /@@@    '@@@@@/    /@@@@@@@/    /@@    @@@@@@@@@@
+ * @@@@@/            ,@@@@@/    /@@@@@@@/    /@@@,    @@@@@@@@@
+ * @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
  *
  * @title Bit Mask Library - Bit manipulation utilities
  * @copyright 2025
@@ -20,23 +20,23 @@ pragma solidity 0.8.28;
 library LibBitMask {
     uint256 private constant BITS = type(uint256).max;
 
-    function setBit(uint256 bitmask, uint8 position) internal pure returns (uint256) {
-        return bitmask | (1 << position);
+    function setBit(uint256 _bitmask, uint8 _position) internal pure returns (uint256) {
+        return _bitmask | (1 << _position);
     }
 
-    function getBit(uint256 bitmask, uint8 position) internal pure returns (bool) {
-        return (bitmask & (1 << position)) != 0;
+    function getBit(uint256 _bitmask, uint8 _position) internal pure returns (bool) {
+        return (_bitmask & (1 << _position)) != 0;
     }
 
-    function resetBit(uint256 bitmask, uint8 position) internal pure returns (uint256) {
-        return bitmask & ~(1 << position);
+    function resetBit(uint256 _bitmask, uint8 _position) internal pure returns (uint256) {
+        return _bitmask & ~(1 << _position);
     }
 
-    function resetAllBits(uint256) internal pure returns (uint256) {
+    function resetAllBits(uint256 /* _bitmask */ ) internal pure returns (uint256) {
         return 0;
     }
 
-    function allBitsSet(uint256 bitmask) internal pure returns (bool) {
-        return bitmask == BITS;
+    function allBitsSet(uint256 _bitmask) internal pure returns (bool) {
+        return _bitmask == BITS;
     }
 }

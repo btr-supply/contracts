@@ -1,14 +1,17 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.28;
+pragma solidity 0.8.29;
 
-/**
-@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
-@@@@@@@@@/         '@@@@/            /@@@/         '@@@@@@@@
-@@@@@@@@/    /@@@    @@@@@@/    /@@@@@@@/    /@@@    @@@@@@@
-@@@@@@@/           _@@@@@@/    /@@@@@@@/    /.     _@@@@@@@@
-@@@@@@/    /@@@    '@@@@@/    /@@@@@@@/    /@@    @@@@@@@@@@
-@@@@@/            ,@@@@@/    /@@@@@@@/    /@@@,    @@@@@@@@@
-@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+import "@/BTRTypes.sol";
+import {IDiamondCut} from "@interfaces/IDiamond.sol";
+
+/*
+ * @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+ * @@@@@@@@@/         '@@@@/            /@@@/         '@@@@@@@@
+ * @@@@@@@@/    /@@@    @@@@@@/    /@@@@@@@/    /@@@    @@@@@@@
+ * @@@@@@@/           _@@@@@@/    /@@@@@@@/    /.     _@@@@@@@@
+ * @@@@@@/    /@@@    '@@@@@/    /@@@@@@@/    /@@    @@@@@@@@@@
+ * @@@@@/            ,@@@@@/    /@@@@@@@/    /@@@,    @@@@@@@@@
+ * @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
  *
  * @title BTR Events Library - Centralized event definitions
  * @copyright 2025
@@ -17,142 +20,144 @@ pragma solidity 0.8.28;
  * @author BTR Team
  */
 
-import "@/BTRTypes.sol";
-import {IDiamondCut} from "@interfaces/IDiamond.sol";
-
-/**
- * @title BTREvents
- * @notice Library for BTR error messages and events
- * @dev Centralizes all error codes and events for BTR contracts
- */
 library BTRErrors {
-    // Common consolidated errors
     error ZeroValue();
     error ZeroAddress();
     error InvalidParameter();
-    error NotFound(ErrorType _type);
-    error Unauthorized(ErrorType _type);
-    error AlreadyExists(ErrorType _type);
-    error Insufficient(uint256 actual, uint256 minimum);
-    error Exceeds(uint256 actual, uint256 maximum);
-    error OutOfRange(uint256 actual, uint256 minimum, uint256 maximum);
+    error NotFound(ErrorType _errorType);
+    error Unauthorized(ErrorType _errorOrigin);
+    error AlreadyExists(ErrorType _errorType);
+    error Insufficient(uint256 _actual, uint256 _minimum);
+    error Exceeds(uint256 _actual, uint256 _maximum);
+    error OutOfRange(uint256 _actual, uint256 _minimum, uint256 _maximum);
+    error NotInitialized();
     error AlreadyInitialized();
-    error Failed(ErrorType _type);
-    error Paused(ErrorType _type);
-    error NotPaused(ErrorType _type);
-    error Locked();
-    error Expired(ErrorType _type);
-    error NotZero(uint256 value);
-    error WrongOrder(ErrorType _type);
     error InitializationFailed();
+    error Failed(ErrorType _errorType);
+    error Paused(ErrorType _errorType);
+    error NotPaused(ErrorType _errorType);
+    error Locked();
+    error Expired(ErrorType _errorType);
+    error NotZero(uint256 _nonZeroValue);
+    error WrongOrder(ErrorType _errorType);
     error UnexpectedInput();
     error UnexpectedOutput();
-    error SwapFailed();
     error RouterError();
     error DelegateCallFailed();
     error StaticCallFailed();
-    error CallRestricted();
     error SlippageTooHigh();
     error StalePrice();
-
-    // ERC20/ERC1155 errors - keeping these as they are standard
-    error TransferExceedsBalance();
-    error InsufficientAllowance();
-    error BurnExceedsBalance();
 }
 
 library BTREvents {
-    // Events
-
-    // Diamond specific events
-    event DiamondCut(IDiamondCut.FacetCut[] _diamondCut, address _init, bytes _calldata);
-    event FunctionAdded(address indexed facetAddress, bytes4 selector);
-    event FunctionReplaced(address indexed oldFacetAddress, address indexed newFacetAddress, bytes4 selector);
-    event FunctionRemoved(address indexed facetAddress, bytes4 selector);
-    event FacetAdded(address indexed facetAddress);
-    event FacetRemoved(address indexed facetAddress);
-    event InitializationFailed(address indexed initContract, bytes reason);
-
-    // Core operation events
-    event VaultCreated(uint32 indexed vaultId, address indexed creator, VaultInitParams params);
-    event SharesMinted(address indexed receiver, uint256 mintAmount, uint256 amount0, uint256 amount1);
-    event SharesBurnt(address indexed receiver, uint256 burnAmount, uint256 amount0, uint256 amount1);
-    event PositionsBurned(address indexed user, uint256 amount0, uint256 amount1);
-    event RebalanceExecuted(Rebalance rebalanceParams, uint256 balance0After, uint256 balance1After);
-    event EmergencyWithdrawal(address token, uint256 amount, address owner);
-    event Paused(uint32 indexed scope, address indexed by);
-    event Unpaused(uint32 indexed scope, address indexed by);
-    event FeesUpdated(uint32 indexed scope, uint16 entry, uint16 exit, uint16 mgmt, uint16 perf, uint16 flash);
-    event FeesCollected(
-        uint32 indexed scope, address indexed token0, address indexed token1, uint256 fee0, uint256 fee1
-    );
-    event FeesAccrued(
-        uint32 indexed vaultId, address indexed token0, address indexed token1, uint256 fee0, uint256 fee1
-    );
-
-    // Additional vault events
-    event MaxSupplyUpdated(uint32 indexed vaultId, uint256 newCapacity);
-    event MintRestricted(uint32 indexed vaultId, address by);
-    event MintUnrestricted(uint32 indexed vaultId, address by);
-    event PoolInfoAdded(address indexed pool, uint24 feeTier);
-    event PoolInfoRemoved(address indexed pool);
-    event RouterAdded(address indexed router);
-    event RouterRemoved(address indexed router);
-    event FeeTierStatusUpdated(uint24 feeTier, bool allowed);
-    event BlacklistUpdated(address indexed target);
-
-    // ERC20 events
-    event Transfer(address indexed from, address indexed to, uint256 amount);
-    event Approval(address indexed owner, address indexed spender, uint256 amount);
-
-    // ERC4626 events
-    event Deposit(address indexed caller, address indexed owner, uint256 assets, uint256 shares);
+    // ERC1155/ERC20 events
+    event Transfer(address indexed _from, address indexed _to, uint256 _amount);
+    event Approval(address indexed _owner, address indexed _spender, uint256 _amount);
+    event Deposit(address indexed _caller, address indexed _owner, uint256 _assets, uint256 _shares);
     event Withdraw(
-        address indexed caller, address indexed receiver, address indexed owner, uint256 assets, uint256 shares
+        address indexed _caller, address indexed _receiver, address indexed _owner, uint256 _assets, uint256 _shares
     );
-
-    // Position management events
-    event RangeMinted(bytes32 indexed rangeId, uint128 liquidity, uint256 amount0, uint256 amount1);
-    event RangeBurnt(
-        bytes32 indexed rangeId, uint128 liquidity, uint256 burn0, uint256 burn1, uint256 fee0, uint256 fee1
-    );
-    event RangeAdded(bytes32 indexed poolId, int24 lowerTick, int24 upperTick, DEX dex);
-    event RangeRemoved(bytes32 indexed poolId, int24 lowerTick, int24 upperTick, DEX dex);
-
-    // Protocol management events
-    event VersionUpdated(uint8 version);
-    event TreasuryUpdated(address indexed treasury);
-    event PoolInfoAdded(bytes32 indexed poolId, DEX dex, address token0, address token1);
-    event PoolInfoRemoved(bytes32 indexed poolId);
-    event AccountStatusUpdated(address indexed account, AccountStatus prev, AccountStatus status);
-
-    // Access control events
-    event RoleAdminChanged(bytes32 indexed role, bytes32 indexed previousAdminRole, bytes32 indexed newAdminRole);
-    event RoleGranted(bytes32 indexed role, address indexed account, address indexed sender);
-    event RoleRevoked(bytes32 indexed role, address indexed account, address indexed sender);
-    event RoleAcceptanceCreated(bytes32 indexed role, address indexed account, address indexed sender);
-    event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
-    event TimelockConfigUpdated(uint256 grantDelay, uint256 acceptWindow);
-
+    event MaxSupplyUpdated(uint32 indexed _vid, uint256 _newCapacity);
+    // ERC-2535/Diamond events
+    event VersionUpdated(uint8 _version);
+    event FunctionAdded(address indexed _facetAddress, bytes4 _selector);
+    event FunctionReplaced(address indexed _oldFacetAddress, address indexed _newFacetAddress, bytes4 _selector);
+    event FunctionRemoved(address indexed _facetAddress, bytes4 _selector);
+    event FacetAdded(address indexed _facetAddress);
+    event FacetRemoved(address indexed _facetAddress);
+    event InitializationFailed(address indexed _initContract, bytes _reason);
+    // AccessControl events
+    event RoleGranted(bytes32 indexed _role, address indexed _account, address indexed _sender);
+    event RoleRevoked(bytes32 indexed _role, address indexed _account, address indexed _sender);
+    event RoleAcceptanceCreated(bytes32 indexed _role, address indexed _account, address indexed _sender);
+    event RoleAdminUpdated(bytes32 indexed _role, bytes32 indexed _previousAdminRole, bytes32 indexed _newAdminRole);
+    event OwnershipTransferred(address indexed _previousOwner, address indexed _newOwner);
+    event TimelockConfigUpdated(uint256 _grantDelay, uint256 _acceptanceTtl);
     // Rescue events
-    event RescueConfigUpdated(uint64 timelock, uint64 validity);
-    event RescueRequested(address indexed receiver, uint64 timestamp, TokenType tokenType, bytes32[] tokens);
-    event RescueExecuted(address indexed token, address indexed receiver, uint256 amount, TokenType tokenType);
-    event RescueCancelled(address indexed receiver, TokenType tokenType, bytes32[] tokens);
-    event TokenRescued(address indexed token, uint256 indexed tokenId, address indexed receiver);
-    event RescueFailed(address indexed token, uint256 indexed tokenId, string reason);
-
-    // Swapper events
-    event Swapped(
-        address indexed user, address indexed assetIn, address indexed assetOut, uint256 amountIn, uint256 amountOut
+    event RescueConfigUpdated(uint64 _timelock, uint64 _validity);
+    event RescueRequested(address indexed _receiver, uint64 _timestamp, TokenType _tokenType, bytes32[] _tokens);
+    event RescueExecuted(address indexed _token, address indexed _receiver, uint256 _amount, TokenType _tokenType);
+    event RescueCancelled(address indexed _receiver, TokenType _tokenType, bytes32[] _tokens);
+    event TokenRescued(address indexed _token, uint256 indexed _tokenId, address indexed _receiver);
+    event RescueFailed(address indexed _token, uint256 _tokenId, string _reason);
+    // Oracle events
+    event DataFeedUpdated(bytes32 indexed _feed, address indexed _provider, bytes32 indexed _providerId, uint256 _ttl);
+    event DataFeedRemoved(bytes32 indexed _feed, address indexed _provider);
+    event DataProviderUpdated(address indexed _oldProvider, address indexed _newProvider);
+    event DataProviderRemoved(address indexed _provider);
+    event TwapLookbackUpdated(bytes32 indexed _feed, uint32 _lookback);
+    event MaxDeviationUpdated(bytes32 indexed _feed, uint256 _maxDeviationBp);
+    // ALM events
+    event VaultCreated(uint32 indexed _vid, address indexed _creator, VaultInitParams _params);
+    event VaultRebalanced(uint32 indexed _vid, uint256 _in0, uint256 _in1, uint256 _fee0, uint256 _fee1);
+    event PoolUpdated(bytes32 indexed _pid, address _adapter, address _token0, address _token1);
+    event PoolRemoved(bytes32 indexed _pid);
+    event DEXAdapterUpdated(address indexed _old, address indexed _new, uint256 _count);
+    event DEXAdapterRemoved(address indexed _adapter);
+    event SharesMinted(
+        address indexed _payer,
+        address indexed _receiver,
+        uint256 _mintedShares,
+        uint256 _amount0,
+        uint256 _amount1,
+        uint256 _fee0,
+        uint256 _fee1
     );
-    event SwapperInitialized(bool restrictSwapCaller, bool restrictSwapRouter, bool approveMax, bool autoRevoke);
-
-    // Restriction management events
-    event RestrictionUpdated(uint8 indexed restrictionType, bool enabled);
-    event RestrictionsInitialized(bool restrictSwapCaller, bool restrictSwapRouter, bool approveMax, bool autoRevoke);
-
-    // TWAP protection events
-    event DefaultPriceProtectionUpdated(uint32 lookback, uint256 maxDeviation);
-    event VaultPriceProtectionUpdated(uint32 indexed vaultId, uint32 lookback, uint256 maxDeviation);
+    event SharesBurnt(
+        address indexed _payer,
+        address indexed _receiver,
+        uint256 _burntShares,
+        uint256 _amount0,
+        uint256 _amount1,
+        uint256 _fee0,
+        uint256 _fee1
+    );
+    event RangeMinted(bytes32 indexed _rid, uint256 _liquidity, uint256 _amount0, uint256 _amount1);
+    event RangeBurnt(
+        bytes32 indexed _rid, uint256 _liquidity, uint256 _burn0, uint256 _burn1, uint256 _fee0, uint256 _fee1
+    );
+    // Treasury events
+    event TreasuryUpdated(address indexed _treasury);
+    event FeesUpdated(uint32 indexed _vid, uint16 _entry, uint16 _exit, uint16 _mgmt, uint16 _perf, uint16 _flash);
+    event CustomFeesUpdated(
+        address indexed _user, uint16 _entry, uint16 _exit, uint16 _mgmt, uint16 _perf, uint16 _flash
+    );
+    event ALMFeesAccrued(
+        uint32 indexed _vid,
+        address indexed _token0,
+        address indexed _token1,
+        uint256 _perfFee0,
+        uint256 _perfFee1,
+        uint256 _mgmtFee0,
+        uint256 _mgmtFee1
+    );
+    event ALMFeesCollected(
+        uint32 indexed _vid, address indexed _token0, address indexed _token1, uint256 _fee0, uint256 _fee1, address _by
+    );
+    // Swap events
+    event RouterAdded(address indexed _router);
+    event RouterRemoved(address indexed _router);
+    event Swapped(
+        address indexed _user,
+        address indexed _assetIn,
+        address indexed _assetOut,
+        uint256 _amountIn,
+        uint256 _amountOut
+    );
+    // Management events
+    event Paused(uint32 indexed _vid, address indexed _by);
+    event Unpaused(uint32 indexed _vid, address indexed _by);
+    event MintRestricted(uint32 indexed _vid, address _by);
+    event MintUnrestricted(uint32 indexed _vid, address _by);
+    event RestrictionUpdated(uint8 indexed _restrictionType, bool _enabled);
+    event AccountStatusUpdated(address indexed _account, AccountStatus _previousStatus, AccountStatus _newStatus);
+    // Risk management events
+    event RiskModelUpdated(RiskModel _oldModel, RiskModel _newModel);
+    event WeightModelUpdated(WeightModel _oldModel, WeightModel _newModel);
+    event LiquidityModelUpdated(LiquidityModel _oldModel, LiquidityModel _newModel);
+    event SlippageModelUpdated(SlippageModel _oldModel, SlippageModel _newModel);
+    event PoolCScoreUpdated(bytes32 indexed _poolId, uint16 _oldScore, uint16 _newScore);
+    // Price protection/Oracle events
+    event DefaultPriceProtectionUpdated(uint32 _lookback, uint256 _maxDeviation);
+    event VaultPriceProtectionUpdated(uint32 indexed _vid, uint32 _lookback, uint256 _maxDeviation);
 }

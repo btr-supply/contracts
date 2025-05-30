@@ -1,16 +1,16 @@
+# BTR Supply Contracts
+
 <div align="center">
-  <img border-radius="25px" max-height="250px" src="./banner.png" /> <!-- Assuming banner exists at this path -->
-  <h1>BTR Supply Contracts</h1>
+  <img border-radius="25px" max-height="250px" src="./banner.png" />
+  <h1>BTR Supply: Market-Aware Automated Liquidity Manager</h1>
   <p>
-    <strong>Concentrated Liquidity Position Manager</strong>
+    <strong>The first open and market-aware ALM for concentrated liquidity AMMs</strong>
   </p>
   <p>
-    <!-- Placeholder for relevant badge, e.g., build status if available -->
-    <!-- <a href="https://btr.supply/docs"><img alt="Docs" src="https://img.shields.io/badge/Docs-212121?style=flat-square&logo=readthedocs&logoColor=white" width="auto"/></a> -->
     <a href="https://opensource.org/licenses/MIT"><img alt="License" src="https://img.shields.io/badge/license-MIT-000000?style=flat-square&logo=open-source-initiative&logoColor=white&labelColor=4c9c3d" width="auto"/></a>
     <a href="https://t.me/BTRSupply"><img alt="Telegram" src="https://img.shields.io/badge/Telegram-24b3e3?style=flat-square&logo=telegram&logoColor=white" width="auto"/></a>
     <a href="https://twitter.com/BTRSupply"><img alt="X (Twitter)" src="https://img.shields.io/badge/@BTRSupply-000000?style=flat-square&logo=x&logoColor=white" width="auto"/></a>
-    </p>
+  </p>
 </div>
 
 ---
@@ -18,212 +18,218 @@
 ## Table of Contents
 
 - [Introduction](#introduction)
-- [Key Features & Innovations](#key-features--innovations)
-- [Repository Overview](#repository-overview)
-- [EVM Architecture (Diamond Standard)](#evm-architecture-diamond-standard)
+- [Key Features](#key-features)
+- [Architecture Overview](#architecture-overview)
 - [Getting Started](#getting-started)
 - [Development Workflow](#development-workflow)
 - [Testing](#testing)
-- [Releasing](#releasing)
-- [Key Scripts](#key-scripts)
+- [Documentation](#documentation)
 - [Contributing](#contributing)
-- [Project Evolution & Inspirations](#project-evolution--inspirations)
 - [License](#license)
 
 ## Introduction
 
-**BTR** (Bayesian True Range), or simply 'Better', is the first open and market-aware Automated Liquidity Manager (ALM) designed for concentrated liquidity AMMs like Uniswap V3/V4, Algebra DEX, Raydium, Orca, and more.
+**BTR** (Bayesian True Range), or simply 'Better', is the first open and market-aware Automated Liquidity Manager (ALM) designed for concentrated liquidity AMMs like Uniswap V3/V4, PancakeSwap V3, Thena, and other Algebra DEX deployments.
 
-Concentrated Liquidity AMMs offer superior capital efficiency but require active management, similar to traditional market-making. Existing ALM solutions often fall short due to:
+BTR consists of two interconnected systems:
 
-*   Lagging market data and overlooked volatility.
-*   Inefficient or opaque rebalancing strategies.
-*   Lack of true market awareness beyond a single pool.
-*   Complex user experiences.
+### BTR Markets (Data Layer)
+A transparent, high-frequency data aggregator that tracks prices, volumes, and depth across 50+ centralized exchanges and 1000+ liquidity pools across multiple chains. It provides:
+- Open statistical estimators for trend, volatility, and momentum
+- Unbiased and transparent aggregation methodology
+- Adaptive range optimization models that work across all asset pairs
 
-BTR aims to solve these issues through a two-part system:
+### BTR Supply (On-Chain ALM)
+This repository contains the smart contract implementation that utilizes insights from BTR Markets to execute adaptive, transparent market-making strategies. Key innovations include:
 
-1.  **BTR Markets (Data Layer):** A transparent, high-frequency data aggregator tracking prices, volumes, and depth across numerous CEXs and DEXs. It provides open statistical estimators for trend, volatility, and momentum.
-2.  **BTR Supply (On-Chain ALM):** The smart contract layer that utilizes insights from BTR Markets to execute an adaptive, transparent market-making strategy. It focuses on providing robust, auto-compounding vaults with a simplified user experience across multiple blockchains.
+- **Predictive Range Optimization**: Liquidity ranges determined by market-specific algorithms trained on high-fidelity data
+- **MEV Protection**: Swaps and operations shielded through timing randomization and protected relays
+- **DEX-Agnostic Vaults**: Single vaults manage positions across multiple compatible DEXs simultaneously
+- **Gas-Efficient ERC-1155 Design**: Vaults implemented as token instances rather than standalone contracts
 
-This repository contains the smart contracts for **BTR Supply**.
+## Key Features
 
-## Key Features & Innovations
+### 🎯 **Market-Aware Strategy**
+- Real-time market data integration from BTR Markets
+- Adaptive range sizing based on volatility and momentum
+- Cross-DEX arbitrage and rebalancing
 
-BTR Supply incorporates several unique features designed to maximize efficiency and yield:
+### ⚡ **Gas-Optimized Operations**
+- Cash buffer system for instant deposits/withdrawals
+- Batch rebalancing to socialize gas costs
+- ERC-1155 vault shares for reduced deployment overhead
 
-*   **Predictive Range Optimization:** Liquidity ranges are determined by a perpetually optimized, market-specific predictive algorithm trained on high-fidelity tick and depth data from BTR Markets. The precise triggering rules for rebalancing remain off-chain for strategic reasons but are designed for future verifiability by liquidity providers.
-*   **MEV Protection:** All protocol swaps and upkeep operations are shielded from MEV (Maximal Extractable Value) through techniques like pseudo-random execution timing, non-deterministic rule application, and the use of MEV-protecting relays/RPC nodes.
-*   **Swapping via BTR Swap:** All swaps leverage [BTR Swap's aggregator](https://github.com/btr-supply/btr-swap), which routes orders across DEXs, and RFQ/intent-based systems to guarantee minimal slippage and fees, directly enhancing LP returns. Historical swapping performance data will be publicly available for audit.
-*   **DEX-Agnostic Vaults:** BTR Vaults operate across multiple compatible DEXs simultaneously. For instance, a single USDC-USDT vault on BNB Chain can manage liquidity positions across Uniswap V3, Uniswap V4, PancakeSwap V3, and Thena pools for that pair, automatically arbitraging and rebalancing liquidity between them. This significantly simplifies the user experience, as LPs deposit into a single vault per pair per chain.
-*   **Gas-Efficient ERC-1155 Vaults:** Vaults are implemented as ERC-1155 token instances rather than standalone contracts (similar to Uniswap V4 pools). This minimizes deployment overhead and reduces operational gas costs for actions like deposits, withdrawals, and rebalancing.
+### 🛡️ **MEV Protection**
+- Protected swap routing through aggregators
+- Non-deterministic execution timing
+- Slippage protection and circuit breakers
 
-## Repository Overview
+### 🔄 **Multi-DEX Support**
+- Uniswap V3/V4 compatibility + forks (eg. PancakeSwap V3/V4)
+- Algebra DEX support (eg. Thena, Camelot, QuickSwap)
+- Unified liquidity management across protocols
 
-This repository houses the smart contract implementations for the BTR Supply ALM system, targeting:
+### 💰 **Fair Fee Model**
+- Negligible entry/exit fees
+- Performance and management fee structures
+- Treasury fee collection and distribution
 
-*   **EVM Chains:** Primarily developed using Foundry ([`./evm`](./evm)).
-*   **Solana:** Code located in [`./solana`](./solana).
-*   **Sui:** Code located in [`./sui`](./sui).
+## Architecture Overview
 
-Key top-level directories:
-*   [`./scripts`](./scripts): Project-wide scripts for tasks like releasing, formatting, and utility functions.
-*   [`./assets`](./assets): Contains project metadata, descriptions ([`desc.yml`](./assets/desc.yml)), and potentially other assets like images.
+BTR Supply uses the **Diamond Standard (EIP-2535)** for modularity and safe upgradability,
+and standalone adapters for DEX and oracle adapters. Core components include:
 
-## EVM Architecture (Diamond Standard)
+### Technical Facets
+- **DiamondLoupe**: Provides introspection capabilities for the diamond
+- **DiamondCut**: Handles upgrades and facet management
 
-The EVM implementation utilizes the **Diamond Standard (EIP-2535)** for modularity, upgradability, and gas efficiency. The core diamond proxy is implemented in [`./evm/src/BTRDiamond.sol`](./evm/src/BTRDiamond.sol).
+### ALM Facets
+- **ALMUser**: User-facing deposit/withdrawal operations
+- **ALMProtected**: Admin/keeper operations (rebalancing, vault management)
+- **ALMInfo**: Read-only vault information and previews
 
-Key components within `./evm/src`:
+### Protocol Facets
+- **AccessControl**: Role-based permissions
+- **RiskModel**: Risk assessment and management
+- **Treasury**: Fee collection and management
+- **Management**: Protocol configuration
+- **Rescue**: Emergency recovery operations
 
-*   **Facets ([`./facets`](./evm/src/facets)):** Individual units of logic plugged into the diamond. Examples include:
-    *   `ALMFacet.sol`: Core Automated Liquidity Management logic (position calculation, rebalancing).
-    *   `ERC1155VaultsFacet.sol`: Manages LP positions represented as ERC1155 tokens.
-    *   `DEXAdapterFacet.sol` (and specific implementations like `UniV3AdapterFacet.sol`, `CakeV3AdapterFacet.sol`): Interfaces with different DEX protocols.
-    *   `SwapperFacet.sol`: Handles token swaps via registered DEX adapters.
-    *   `ManagementFacet.sol`: Protocol parameter management (e.g., pausing).
-    *   `AccessControlFacet.sol`: Role-based access control.
-    *   `DiamondCutFacet.sol` / `DiamondLoupeFacet.sol`: Standard diamond upgrade and introspection logic.
-    *   *(Refer to [`assets/desc.yml`](./assets/desc.yml) for a full list and descriptions)*
-*   **Libraries ([`./libraries`](./evm/src/libraries)):** Reusable code modules used by facets. Examples include:
-    *   `LibALM.sol`: Core ALM calculations.
-    *   `LibDEXMaths.sol`: DEX-specific math (tick calculations, price conversions).
-    *   `LibDiamond.sol`: Diamond storage interaction helpers.
-    *   `BTRStorage.sol`: Defines the diamond's storage layout (AppStorage pattern).
-    *   *(Refer to [`assets/desc.yml`](./assets/desc.yml) for a full list and descriptions)*
-*   **Scripts ([`../scripts`](./evm/scripts)):** Foundry scripts for deployment and contract interaction ([`DeployDiamond.s.sol`](./evm/scripts/DeployDiamond.s.sol), etc.).
-*   **Tests ([`../tests`](./evm/tests)):** Unit and integration tests.
+### Information Facets
+- **Oracle**: External price feeds and data integration
+- **Info**: General information retrieval
+- **ALMInfo**: Read-only vault information and previews
+
+### DEX Adapters
+#### Ticks Based
+- **V3Adapter**: Base for Uniswap V3-style integrations
+- **UniV3Adapter**: Uniswap V3 integration
+- **UniV4Adapter**: Uniswap V4 integration
+- **CakeV3Adapter**: PancakeSwap V3 integration (Uniswap V3 based)
+- **CakeV4Adapter**: PancakeSwap V4 integration (Uniswap V4 based)
+- **VeloV3Adapter**: Velodrome Slipstream integration (Solidly/Uniswap V3 based)
+- **AeroV3Adapter**: Aerodrome Slipstream integration (Velodrome Slipstream based)
+- **KodiakV3Adapter**: Kodiak V3 integration (Uniswap V3 based)
+- **AgniV3Adapter**: Agni V3 integration (Uniswap V3 based)
+- **SailorV3Adapter**: Sailor V3 integration (Uniswap V3 based)
+- **KyoV3Adapter**: Kyo V3 integration (Uniswap V3 based)
+- **SonexV3Adapter**: Sonex V3 integration (Uniswap V3 based)
+- **HyperSwapV3Adapter**: HyperSwap V3 integration (Uniswap V3 based)
+- **ThrusterV3Adapter**: Thruster V3 integration (Uniswap V3 based)
+- **EqualizerV3Adapter**: Equalizer V3 integration (Solidly/Uniswap V3 based)
+- **RamsesV3Adapter**: Ramses V3 integration (Solidly/Uniswap V3 based)
+- **PharaohV3Adapter**: Pharaoh V3 integration (Ramses V3 based)
+- **ShadowV3Adapter**: Shadow V3 integration (Ramses V3 based)
+- **ThenaV3Adapter**: Thena V3 Fusion integration (Solidly/Algebra V4 based)
+- **CamelotV3Adapter**: Camelot V3 integration (Algebra based)
+- **QuickV3Adapter**: QuickSwap V3 integration (Algebra V3 based)
+- **LynexV3Adapter**: Lynex V3 Adapter (Solidly/Algebra V3 based)
+- **SwapXV4Adapter**: SwapX V3 Adapter (Algebra V4 based)
+- **StellaSwapV4Adapter**: StellaSwap V4 Adapter (Algebra V4 based)
+
+#### Buckets Based
+- **JoeV2Adapter**: Joe V2(.*) integration
+- **MoeAdapter**: Merchant Moe integration (Joe V2 based)
+- **MetropolisAdapter**: Metropolis integration (Joe V2 based)
+
+For detailed architecture information, see [`docs/architecture.md`](./docs/architecture.md).
 
 ## Getting Started
 
 ### Prerequisites
-
-*   **Git:** [Installation Guide](https://git-scm.com/book/en/v2/Getting-Started-Installing-Git)
-*   **Foundry:** [Installation Guide](https://book.getfoundry.sh/getting-started/installation) (Installs `forge`, `cast`, `anvil`)
-*   **Python:** >= 3.10 recommended.
-*   **uv:** Fast Python package installer/resolver. [Installation Guide](https://github.com/astral-sh/uv#installation)
-*   **pre-commit:** Git hook manager. [Installation Guide](https://pre-commit.com/#install)
+- **Foundry**: [Installation Guide](https://book.getfoundry.sh/getting-started/installation)
+- **Python** >= 3.10
+- **uv**: [Installation Guide](https://github.com/astral-sh/uv#installation)
 
 ### Installation
 
-1.  **Clone the repository:**
-    ```bash
-    git clone <repository_url>
-    cd contracts # Or your cloned directory name
-    ```
+1. **Clone and setup:**
+   ```bash
+   git clone <repository_url>
+   cd contracts
+   make install-deps
+   ```
 
-2.  **Install dependencies and setup hooks:**
-    ```bash
-    make install-deps
-    ```
-    This command will:
-    *   Run `scripts/install_deps.sh` to ensure necessary system dependencies are present.
-    *   Use `uv sync` to create a virtual environment (if needed) and install Python packages listed in [`pyproject.toml`](./pyproject.toml).
-    *   Install git hooks using `pre-commit` for automated formatting, linting, and commit checks.
+2. **Configure environment:**
+   ```bash
+   cp evm/.env.example evm/.env
+   # Edit evm/.env with your values
+   ```
 
-### Environment Configuration
+3. **Build contracts:**
+   ```bash
+   make build
+   ```
 
-Certain operations, particularly integration tests involving chain forks or deployments, require environment variables (e.g., RPC URLs, private keys).
-
-*   Copy the example environment file:
-    ```bash
-    cp evm/.env.example evm/.env
-    ```
-*   Edit [`evm/.env`](./evm/.env) and populate it with your specific values. **Never commit your `.env` file.**
+4. **Run tests:**
+   ```bash
+   make test
+   ```
 
 ## Development Workflow
 
-### Formatting
-
-Ensure code conforms to project standards:
-
+### Code Quality
 ```bash
-make format
-```
-This runs `forge fmt` for Solidity and custom formatters ([`scripts/format_code.sh`](./scripts/format_code.sh), [`scripts/format_headers.py`](./scripts/format_headers.py)).
-
-### Linting
-
-Check and fix Python code style using Ruff:
-
-```bash
-make python-lint-fix
+make format          # Format all code
+make python-lint-fix # Fix Python linting issues
 ```
 
-### Git Hooks (Pre-commit)
+### Testing
+```bash
+make test           # Run full test suite
+```
 
-The `pre-commit` hooks installed via `make install-deps` automatically run checks before certain git actions. The configured hooks include:
-*   **pre-commit:** Runs formatters (`forge fmt`, custom scripts) and linters (`ruff`).
-*   **commit-msg:** Validates commit message format using [`scripts/check_name.py -c`](./scripts/check_name.py).
-*   **pre-push:** Validates branch name and commit messages before pushing using [`scripts/check_name.py -p`](./scripts/check_name.py).
-*   **post-checkout:** Can be used for environment synchronization after switching branches.
+### Releasing
+```bash
+make publish-patch  # Patch version (0.1.0 -> 0.1.1)
+make publish-minor  # Minor version (0.1.1 -> 0.2.0)  
+make publish-major  # Major version (0.2.0 -> 1.0.0)
+```
 
-These ensure code quality and consistency.
+### Build Process
+The project uses a three-step compilation process via `./scripts/build.sh`:
+1. Compile facets from `./evm/src/facets`
+2. Generate diamond deployment script
+3. Compile all components together
 
 ## Testing
 
-Run the test suite using Foundry:
+The test suite covers:
 
-```bash
-make test
-```
-This command typically executes [`scripts/test.sh`](./scripts/test.sh), which runs `forge test`.
+- **Unit Tests**: Individual component testing in [`evm/tests/unit`](./evm/tests/unit)
+- **Integration Tests**: Full workflow testing in [`evm/tests/integration`](./evm/tests/integration)
+- **Fork Tests**: Mainnet fork testing for realistic scenarios
 
-*   **Unit Tests:** Located in [`evm/tests/unit`](./evm/tests/unit), focusing on isolated contract logic.
-*   **Integration Tests:** Located in [`evm/tests/integration`](./evm/tests/integration), verifying interactions between facets and external contracts, often using mainnet forks (configured via [`evm/.env`](./evm/.env)). See [`evm/tests/integration/spec.md`](./evm/tests/integration/spec.md) for detailed test scenarios.
+Tests use the `BaseALMTest` abstraction for common ALM functionality with specific implementations for each DEX adapter.
 
-## Releasing
+See [`docs/testing.md`](./docs/testing.md) for detailed testing strategy.
 
-The release process is automated using Make commands:
+## Documentation
 
-```bash
-# For a new patch version (e.g., 0.1.0 -> 0.1.1)
-make publish-patch
+Comprehensive documentation is available in the [`docs/`](./docs) directory:
 
-# For a new minor version (e.g., 0.1.1 -> 0.2.0)
-make publish-minor
-
-# For a new major version (e.g., 0.2.0 -> 1.0.0)
-make publish-major
-```
-
-These commands execute [`scripts/release.sh`](./scripts/release.sh), which in turn runs [`scripts/release.py`](./scripts/release.py). The process involves:
-
-1.  Checking if the current branch is `main`.
-2.  Calculating the next version number.
-3.  Updating the version in [`pyproject.toml`](./pyproject.toml).
-4.  Generating/updating [`CHANGELOG.md`](./CHANGELOG.md) based on commit messages since the last tag (using prefixes like `[feat]`, `[fix]`, `[refac]`, etc.).
-5.  Committing the version bump and changelog changes (`[ops] Release vX.Y.Z`).
-6.  Creating a Git tag (`vX.Y.Z`).
-7.  Pushing the commit and tag to the `origin` remote.
-
-Make sure your commit messages follow the convention expected by [`scripts/release.py`](./scripts/release.py) (see `COMMIT_PREFIX_MAP` in the script) for accurate changelog generation.
-
-## Key Scripts
-
-Beyond testing and releasing, several utility scripts exist in [`./scripts`](./scripts):
-
-*   [`generate_deployer.py`](./scripts/generate_deployer.py): Generates the [`DiamondDeployer.gen.sol`](./evm/utils/generated/DiamondDeployer.gen.sol) contract used in deployment scripts based on [`facets.json`](./scripts/facets.json).
-*   [`get_swap_data.sh`](./scripts/get_swap_data.sh): Example script demonstrating how to use an external `btr-swap` tool to fetch optimal swap data from aggregators.
-*   [`check_name.py`](./scripts/check_name.py): Validates branch names and commit messages (used by pre-commit hooks).
-*   [`format_code.sh`](./scripts/format_code.sh) / [`format_headers.py`](./scripts/format_headers.py): Code formatting utilities.
-
-
-## Project Evolution & Inspirations
-
-BTR Supply originated as a fork of [Arrakis V2](https://github.com/ArrakisFinance/v2-core), subsequently extended to support a wider range of DEXs including Uniswap V3 forks and Algebra DEX deployments. Over time, it has evolved into a largely re-implemented, optimized, and more comprehensive liquidity management solution.
-
-While now distinct, BTR Supply draws inspiration from pioneering work in the ALM space, including:
-
-*   [Arrakis Finance (V2 & V3/Modular)](https://arrakis.finance/)
-*   [Maverick Protocol](https://www.mav.xyz/)
-*   [Steer Protocol](https://app.steer.finance/)
-*   [Kamino Liquidity](https://kamino.finance)
+- **[Architecture](./docs/architecture.md)**: System design and component overview
+- **[User Flows](./docs/alm/user-flows.md)**: Deposit/withdrawal mechanics and fee structures
+- **[Protocol Flows](./docs/alm/protocol-flows.md)**: Admin operations and rebalancing
+- **[Vault Allocation](./docs/vault-allocation.md)**: Risk-based allocation methodology
+- **[Liquidity Management](./docs/liquidity-requirements.md)**: Buffer system and liquidity optimization
+- **[Testing Guide](./docs/testing.md)**: Testing strategy and implementation
 
 ## Contributing
 
-Please follow standard development practices: lint code, ensure tests pass, and adhere to commit message conventions for automated changelog generation. Refer to the project's contribution guidelines in [`./CONTRIBUTING.md`](./CONTRIBUTING.md) for more details.
+Please follow the development guidelines in the project configuration:
+
+1. **Code Style**: Use `make format` before committing
+2. **Testing**: Ensure all tests pass with `make test`
+3. **Commit Messages**: Follow conventional commit format for automated changelog generation
+4. **Pull Requests**: Include comprehensive test coverage for new features
 
 ## License
 
-This project is licensed under the MIT License - see the [`./LICENSE`](./LICENSE) file for details.
+This project is licensed under the MIT License - see the [LICENSE](./LICENSE) file for details.
+
+---
+
+## Inspiration and Acknowledgments
+
+BTR Supply draws inspiration from pioneering ALM solutions including Arrakis Finance, Gamma Strategies, Steer Protocol, Beefy CLM, Ichi, Maverick Protocol, and Kamino Liquidity, while introducing novel market-awareness and cross-DEX capabilities.

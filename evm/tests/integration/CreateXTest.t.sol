@@ -1,14 +1,17 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.28;
+pragma solidity 0.8.29;
 
-/**
-@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
-@@@@@@@@@/         '@@@@/            /@@@/         '@@@@@@@@
-@@@@@@@@/    /@@@    @@@@@@/    /@@@@@@@/    /@@@    @@@@@@@
-@@@@@@@/           _@@@@@@/    /@@@@@@@/    /.     _@@@@@@@@
-@@@@@@/    /@@@    '@@@@@/    /@@@@@@@/    /@@    @@@@@@@@@@
-@@@@@/            ,@@@@@/    /@@@@@@@/    /@@@,    @@@@@@@@@
-@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+import {ICreateX} from "../../interfaces/ICreateX.sol";
+import {Test, console} from "forge-std/Test.sol";
+
+/*
+ * @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+ * @@@@@@@@@/         '@@@@/            /@@@/         '@@@@@@@@
+ * @@@@@@@@/    /@@@    @@@@@@/    /@@@@@@@/    /@@@    @@@@@@@
+ * @@@@@@@/           _@@@@@@/    /@@@@@@@/    /.     _@@@@@@@@
+ * @@@@@@/    /@@@    '@@@@@/    /@@@@@@@/    /@@    @@@@@@@@@@
+ * @@@@@/            ,@@@@@/    /@@@@@@@/    /@@@,    @@@@@@@@@
+ * @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
  *
  * @title CreateX Test - Tests for CreateX factory usage
  * @copyright 2025
@@ -17,22 +20,13 @@ pragma solidity 0.8.28;
  * @author BTR Team
  */
 
-import {Test, console} from "forge-std/Test.sol";
-import {ICreateX} from "../../interfaces/ICreateX.sol";
-
-/**
- * @title CreateXTest
- * @notice Integration test for verifying CreateX Create3 salts
- */
 contract CreateXTest is Test {
     // From .env file
     address DEPLOYER = vm.envAddress("DEPLOYER");
     address CREATEX = vm.envAddress("CREATEX");
-
     // Add back the constants for verification
     address constant TEST_FACTORY = 0xba5Ed099633D3B313e4D5F7bdc1305d3c28ba5Ed; // Checksummed
     address constant TEST_DEPLOYER = 0x57b3771F6b772C52E81646Aa007D1Ab28d91B3Fe; // Already checksummed
-
     // Test contract bytecode
     bytes constant SIMPLE_CONTRACT_BYTECODE =
         hex"6080604052348015600f57600080fd5b50603f80601d6000396000f3fe6080604052600080fdfea2646970667358221220d4fa15a7fbd8dc8f6ba8a1be307b4f4c4b715f79e46fc2a25ab02d13a52dc84d64736f6c63430008160033";

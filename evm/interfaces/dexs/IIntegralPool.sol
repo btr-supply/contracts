@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.28;
+pragma solidity 0.8.29;
 
 interface IIntegralPool {
     function DOMAIN_TYPEHASH() external view returns (bytes32);
@@ -14,10 +14,10 @@ interface IIntegralPool {
     function decimals() external view returns (uint8);
     function decreaseAllowance(address spender, uint256 subtractedValue) external returns (bool);
     function factory() external view returns (address);
-    function getDepositAmount0In(uint256 amount0, bytes calldata data) external view returns (uint256);
-    function getDepositAmount1In(uint256 amount1, bytes calldata data) external view returns (uint256);
+    function depositSingle00In(uint256 amount0, bytes calldata data) external view returns (uint256);
+    function depositSingle01In(uint256 amount1, bytes calldata data) external view returns (uint256);
     function getDomainSeparator() external view returns (bytes32);
-    function getFees() external view returns (uint256, uint256);
+    function almVaultFees() external view returns (uint256, uint256);
     function getReserves() external view returns (uint112, uint112);
     function getSwapAmount0In(uint256 amount1Out, bytes calldata data) external view returns (uint256);
     function getSwapAmount0Out(uint256 amount1In, bytes calldata data) external view returns (uint256);

@@ -1,14 +1,16 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.28;
+pragma solidity 0.8.29;
 
-/**
-@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
-@@@@@@@@@/         '@@@@/            /@@@/         '@@@@@@@@
-@@@@@@@@/    /@@@    @@@@@@/    /@@@@@@@/    /@@@    @@@@@@@
-@@@@@@@/           _@@@@@@/    /@@@@@@@/    /.     _@@@@@@@@
-@@@@@@/    /@@@    '@@@@@/    /@@@@@@@/    /@@    @@@@@@@@@@
-@@@@@/            ,@@@@@/    /@@@@@@@/    /@@@,    @@@@@@@@@
-@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+
+/*
+ * @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+ * @@@@@@@@@/         '@@@@/            /@@@/         '@@@@@@@@
+ * @@@@@@@@/    /@@@    @@@@@@/    /@@@@@@@/    /@@@    @@@@@@@
+ * @@@@@@@/           _@@@@@@/    /@@@@@@@/    /.     _@@@@@@@@
+ * @@@@@@/    /@@@    '@@@@@/    /@@@@@@@/    /@@    @@@@@@@@@@
+ * @@@@@/            ,@@@@@/    /@@@@@@@/    /@@@,    @@@@@@@@@
+ * @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
  *
  * @title Mock ERC20 - Mock implementation of ERC20 token
  * @copyright 2025
@@ -17,12 +19,6 @@ pragma solidity 0.8.28;
  * @author BTR Team
  */
 
-import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-
-/**
- * @title MockERC20
- * @notice A simple ERC20 token used for testing
- */
 contract MockERC20 is ERC20 {
     uint8 private _decimals;
 
@@ -30,12 +26,12 @@ contract MockERC20 is ERC20 {
         _decimals = decimals_;
     }
 
-    function mint(address to, uint256 amount) external {
-        _mint(to, amount);
+    function mint(address _to, uint256 _amount) external {
+        _mint(_to, _amount);
     }
 
-    function burn(address from, uint256 amount) external {
-        _burn(from, amount);
+    function burn(address _from, uint256 _amount) external {
+        _burn(_from, _amount);
     }
 
     function decimals() public view virtual override returns (uint8) {

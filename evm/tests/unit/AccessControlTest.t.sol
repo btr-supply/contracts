@@ -1,65 +1,51 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.28;
+pragma solidity 0.8.29;
 
-/**
-@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
-@@@@@@@@@/         '@@@@/            /@@@/         '@@@@@@@@
-@@@@@@@@/    /@@@    @@@@@@/    /@@@@@@@/    /@@@    @@@@@@@
-@@@@@@@/           _@@@@@@/    /@@@@@@@/    /.     _@@@@@@@@
-@@@@@@/    /@@@    '@@@@@/    /@@@@@@@/    /@@    @@@@@@@@@@
-@@@@@/            ,@@@@@/    /@@@@@@@/    /@@@,    @@@@@@@@@
-@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+import {BTRErrors as Errors, BTREvents as Events} from "@libraries/BTREvents.sol";
+import {PendingAcceptance, ErrorType} from "@/BTRTypes.sol";
+import {LibAccessControl as AC} from "@libraries/LibAccessControl.sol";
+import {BaseDiamondTest} from "../BaseDiamondTest.t.sol";
+import {PermissionedFacet} from "@facets/abstract/PermissionedFacet.sol";
+import "forge-std/Test.sol";
+import {AccessControlFacet} from "@facets/AccessControlFacet.sol";
+
+/*
+ * @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+ * @@@@@@@@@/         '@@@@/            /@@@/         '@@@@@@@@
+ * @@@@@@@@/    /@@@    @@@@@@/    /@@@@@@@/    /@@@    @@@@@@@
+ * @@@@@@@/           _@@@@@@/    /@@@@@@@/    /.     _@@@@@@@@
+ * @@@@@@/    /@@@    '@@@@@/    /@@@@@@@/    /@@    @@@@@@@@@@
+ * @@@@@/            ,@@@@@/    /@@@@@@@/    /@@@,    @@@@@@@@@
+ * @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
  *
  * @title Access Control Test - Permission validation
  * @copyright 2025
- * @notice Verifies role-based access control functionality
- * @dev Tests permission escalation prevention
+ * @notice Verifies role-based access control functionality (granting, revoking, checking roles)
+ * @dev Tests role administration, admin roles, and modifier access via AccessControlFacet/LibAccessControl
  * @author BTR Team
  */
 
-import "forge-std/Test.sol";
-import {BaseDiamondTest} from "../BaseDiamondTest.t.sol";
-import {AccessControlFacet} from "@facets/AccessControlFacet.sol";
-import {LibAccessControl as AC} from "@libraries/LibAccessControl.sol";
-import {BTRErrors as Errors, BTREvents as Events} from "@libraries/BTREvents.sol";
-import {PendingAcceptance, ErrorType} from "@/BTRTypes.sol";
-import {PermissionedFacet} from "@facets/abstract/PermissionedFacet.sol";
-
-/**
- * @title AccessControlTest
- * @notice Tests role management including role hierarchy, role revocation, and role renunciation
- * @dev This test focuses exclusively on access control functionality
- */
 contract AccessControlTest is BaseDiamondTest {
-    AccessControlFacet public accessControlFacet;
-    address public keeper;
+    AccessControlFacet public ac;
     address public newAdmin;
-    address public user;
     bytes32 public constant CUSTOM_ROLE = keccak256("CUSTOM_ROLE");
 
     function setUp() public override {
         // Set the admin to the test contract address
         admin = address(this);
-
-        // Call base setup
-        keeper = makeAddr("keeper");
         newAdmin = makeAddr("newAdmin");
-        user = makeAddr("user");
-
-        // Override and set the treasury separately
-        treasury = makeAddr("treasury");
 
         // Call parent setup to deploy diamond and setup roles
         super.setUp();
 
         // Initialize the access control facet
-        accessControlFacet = AccessControlFacet(diamond);
+        ac = AccessControlFacet(diamond);
     }
 
     // Helper functions to reduce code duplication
     function grantRole(bytes32 role, address account) internal {
         vm.prank(admin);
-        accessControlFacet.grantRole(role, account);
+        ac.grantRole(role, account);
     }
 
     function advancePastDelay() internal {
@@ -68,12 +54,12 @@ contract AccessControlTest is BaseDiamondTest {
 
     function acceptRole(bytes32 role, address account) internal {
         vm.prank(account);
-        accessControlFacet.acceptRole(role);
+        ac.acceptRole(role);
     }
 
     function setupRole(bytes32 role, address account) internal {
         // Skip if the account already has the role
-        if (!accessControlFacet.hasRole(role, account)) {
+        if (!ac.hasRole(role, account)) {
             grantRole(role, account);
             advancePastDelay();
             acceptRole(role, account);
@@ -82,34 +68,34 @@ contract AccessControlTest is BaseDiamondTest {
 
     function testBasicRoles() public {
         // Verify admin role is set on deployment
-        assertTrue(accessControlFacet.hasRole(AC.ADMIN_ROLE, admin));
+        assertTrue(ac.isAdmin(admin));
 
         // Manager role is already granted in BaseDiamondTest.t.sol, so verify that
-        assertTrue(accessControlFacet.hasRole(AC.MANAGER_ROLE, manager));
+        assertTrue(ac.isManager(manager));
 
         // Test a different role - keeper
         grantRole(AC.KEEPER_ROLE, keeper);
 
         // Keeper role doesn't need acceptance, so it's granted immediately
-        assertTrue(accessControlFacet.hasRole(AC.KEEPER_ROLE, keeper));
+        assertTrue(ac.isKeeper(keeper));
     }
 
-    function testRoleRevocation() public {
+    function testRoleRevocations() public {
         // Manager role is already granted in BaseDiamondTest, verify that
-        assertTrue(accessControlFacet.hasRole(AC.MANAGER_ROLE, manager));
+        assertTrue(ac.isManager(manager));
 
         // Revoke the role
         vm.prank(admin);
-        accessControlFacet.revokeRole(AC.MANAGER_ROLE, manager);
+        ac.revokeRole(AC.MANAGER_ROLE, manager);
 
         // Verify role is revoked
-        assertFalse(accessControlFacet.hasRole(AC.MANAGER_ROLE, manager));
+        assertFalse(ac.isManager(manager));
     }
 
     function testTimelock() public {
         // First revoke manager role that was granted in BaseDiamondTest
         vm.prank(admin);
-        accessControlFacet.revokeRole(AC.MANAGER_ROLE, manager);
+        ac.revokeRole(AC.MANAGER_ROLE, manager);
 
         // Grant role
         grantRole(AC.MANAGER_ROLE, manager);
@@ -117,7 +103,7 @@ contract AccessControlTest is BaseDiamondTest {
         // Try to accept before timelock expires (should fail)
         vm.prank(manager);
         vm.expectRevert(Errors.Locked.selector);
-        accessControlFacet.acceptRole(AC.MANAGER_ROLE);
+        ac.acceptRole(AC.MANAGER_ROLE);
 
         // Fast forward time beyond the delay
         advancePastDelay();
@@ -126,13 +112,13 @@ contract AccessControlTest is BaseDiamondTest {
         acceptRole(AC.MANAGER_ROLE, manager);
 
         // Verify role is granted
-        assertTrue(accessControlFacet.hasRole(AC.MANAGER_ROLE, manager));
+        assertTrue(ac.isManager(manager));
     }
 
     function testExpiryWindow() public {
         // First revoke manager role that was granted in BaseDiamondTest
         vm.prank(admin);
-        accessControlFacet.revokeRole(AC.MANAGER_ROLE, manager);
+        ac.revokeRole(AC.MANAGER_ROLE, manager);
 
         // Grant role
         grantRole(AC.MANAGER_ROLE, manager);
@@ -143,48 +129,48 @@ contract AccessControlTest is BaseDiamondTest {
         // Try to accept (should fail)
         vm.prank(manager);
         vm.expectRevert(abi.encodeWithSelector(Errors.Expired.selector, ErrorType.ACCEPTANCE));
-        accessControlFacet.acceptRole(AC.MANAGER_ROLE);
+        ac.acceptRole(AC.MANAGER_ROLE);
     }
 
     function testRoleHierarchy() public {
         // Comment out these functions for now
         /*
-        assertTrue(accessControlFacet.isAdmin(admin), "Admin role not set");
-        
+        assertTrue(ac.isAdmin(admin), "Admin role not set");
+
         // Grant manager role
         setupRole(AC.MANAGER_ROLE, manager);
-        
+
         // Grant keeper role
         setupRole(AC.KEEPER_ROLE, keeper);
-        
+
         // Verify roles
-        assertTrue(accessControlFacet.isAdmin(admin), "Admin role check failed");
-        assertTrue(accessControlFacet.isManager(manager), "Manager role check failed");
-        assertTrue(accessControlFacet.isKeeper(keeper), "Keeper role check failed");
-        
-        assertFalse(accessControlFacet.isAdmin(manager), "Manager should not have admin role");
-        assertFalse(accessControlFacet.isManager(keeper), "Keeper should not have manager role");
+        assertTrue(ac.isAdmin(admin), "Admin role check failed");
+        assertTrue(ac.isManager(manager), "Manager role check failed");
+        assertTrue(ac.isKeeper(keeper), "Keeper role check failed");
+
+        assertFalse(ac.isAdmin(manager), "Manager should not have admin role");
+        assertFalse(ac.isManager(keeper), "Keeper should not have manager role");
         */
     }
 
     function testRoleRenunciation() public {
         // Manager role is already granted in BaseDiamondTest
-        assertTrue(accessControlFacet.isManager(manager), "Manager should have the role");
+        assertTrue(ac.isManager(manager), "Manager should have the role");
 
         // Renounce role
         vm.prank(manager);
-        accessControlFacet.renounceRole(AC.MANAGER_ROLE);
+        ac.renounceRole(AC.MANAGER_ROLE);
 
         // Verify role was renounced
-        assertFalse(accessControlFacet.isManager(manager), "Manager should have renounced role");
+        assertFalse(ac.isManager(manager), "Manager should have renounced role");
     }
 
-    function testGetMembers() public {
+    function testGetMemberst() public {
         // Manager role is already granted in BaseDiamondTest
 
         // Get members - should work with admin as caller
         vm.prank(admin);
-        address[] memory members = accessControlFacet.getMembers(AC.MANAGER_ROLE);
+        address[] memory members = ac.members(AC.MANAGER_ROLE);
 
         // Verify the members array length
         assertEq(members.length, 1); // Only manager has the role, not admin
@@ -195,24 +181,24 @@ contract AccessControlTest is BaseDiamondTest {
     // Simpler test just to verify ownership
     function testOwnership() public view {
         // Verify the initial owner is correct
-        address owner = accessControlFacet.owner();
+        address owner = ac.owner();
         assertEq(owner, admin);
 
         // Verify the owner has admin role
-        assertTrue(accessControlFacet.isAdmin(admin));
+        assertTrue(ac.isAdmin(admin));
     }
 
     function testTimelockConfig() public {
         // Get the initial timelock config
-        (uint256 initialDelay, uint256 initialExpiry) = accessControlFacet.getTimelockConfig();
+        (uint256 initialDelay, uint256 initialExpiry) = ac.timelockConfig();
 
         // Test setting timelock config as admin
         vm.startPrank(admin);
-        accessControlFacet.setTimelockConfig(1 days, 7 days);
+        ac.setTimelockConfig(1 days, 7 days);
         vm.stopPrank();
 
         // Check that the timelock config was updated
-        (uint256 delay, uint256 expiry) = accessControlFacet.getTimelockConfig();
+        (uint256 delay, uint256 expiry) = ac.timelockConfig();
         assertEq(delay, 1 days);
         assertEq(expiry, 7 days);
 
@@ -223,36 +209,36 @@ contract AccessControlTest is BaseDiamondTest {
 
         // The actual behavior depends on the implementation:
         // Option 1: If managers are allowed to set timelock config in the implementation
-        accessControlFacet.setTimelockConfig(2 days, 14 days);
-        (delay, expiry) = accessControlFacet.getTimelockConfig();
+        ac.setTimelockConfig(2 days, 14 days);
+        (delay, expiry) = ac.timelockConfig();
         assertEq(delay, 2 days);
         assertEq(expiry, 14 days);
 
         // Reset to the initial values
         vm.prank(admin);
-        accessControlFacet.setTimelockConfig(initialDelay, initialExpiry);
+        ac.setTimelockConfig(initialDelay, initialExpiry);
     }
 
     function testRoleAdminChange() public {
         // Create a custom role
         vm.prank(admin);
-        accessControlFacet.setRoleAdmin(CUSTOM_ROLE, AC.MANAGER_ROLE);
+        ac.setRoleAdmin(CUSTOM_ROLE, AC.MANAGER_ROLE);
 
         // Manager role is already granted in BaseDiamondTest
-        assertTrue(accessControlFacet.isManager(manager));
+        assertTrue(ac.isManager(manager));
 
         // Manager should be able to grant the custom role
         vm.prank(manager);
-        accessControlFacet.grantRole(CUSTOM_ROLE, keeper);
+        ac.grantRole(CUSTOM_ROLE, keeper);
 
         advancePastDelay();
         acceptRole(CUSTOM_ROLE, keeper);
 
-        assertTrue(accessControlFacet.hasRole(CUSTOM_ROLE, keeper), "Keeper should have custom role");
+        assertTrue(ac.hasRole(CUSTOM_ROLE, keeper), "Keeper should have custom role");
 
         // Change the admin role back to admin
         vm.prank(admin);
-        accessControlFacet.setRoleAdmin(CUSTOM_ROLE, AC.ADMIN_ROLE);
+        ac.setRoleAdmin(CUSTOM_ROLE, AC.ADMIN_ROLE);
 
         // Here we need to test what actually happens in the implementation
         // Instead of assuming managers can't grant roles anymore
@@ -262,61 +248,61 @@ contract AccessControlTest is BaseDiamondTest {
 
         // Try having the manager grant the role (our implementation allows this)
         vm.prank(manager);
-        accessControlFacet.grantRole(CUSTOM_ROLE, newKeeper);
+        ac.grantRole(CUSTOM_ROLE, newKeeper);
 
         // Advance time and accept role
         advancePastDelay();
         vm.prank(newKeeper);
-        accessControlFacet.acceptRole(CUSTOM_ROLE);
+        ac.acceptRole(CUSTOM_ROLE);
 
         // Verify the role was granted
-        assertTrue(accessControlFacet.hasRole(CUSTOM_ROLE, newKeeper), "New keeper should have custom role");
+        assertTrue(ac.hasRole(CUSTOM_ROLE, newKeeper), "New keeper should have custom role");
 
         // Admin should also be able to grant the custom role
         address anotherKeeper = makeAddr("anotherKeeper");
         vm.prank(admin);
-        accessControlFacet.grantRole(CUSTOM_ROLE, anotherKeeper);
+        ac.grantRole(CUSTOM_ROLE, anotherKeeper);
 
         // Advance time and accept role
         advancePastDelay();
         vm.prank(anotherKeeper);
-        accessControlFacet.acceptRole(CUSTOM_ROLE);
+        ac.acceptRole(CUSTOM_ROLE);
 
         // Verify the role was granted
-        assertTrue(accessControlFacet.hasRole(CUSTOM_ROLE, anotherKeeper), "Another keeper should have custom role");
+        assertTrue(ac.hasRole(CUSTOM_ROLE, anotherKeeper), "Another keeper should have custom role");
     }
 
     function testCancelRoleGrant() public {
         // First revoke manager role that was granted in BaseDiamondTest
         vm.prank(admin);
-        accessControlFacet.revokeRole(AC.MANAGER_ROLE, manager);
+        ac.revokeRole(AC.MANAGER_ROLE, manager);
 
         // Grant a role
         grantRole(AC.MANAGER_ROLE, manager);
 
         // Check there's a pending role
-        (bytes32 pendingRole,,) = accessControlFacet.getPendingAcceptance(manager);
+        (bytes32 pendingRole,,) = ac.getPendingAcceptance(manager);
         assertEq(pendingRole, AC.MANAGER_ROLE);
 
         // Cancel the role grant
         vm.prank(admin);
-        accessControlFacet.cancelRoleGrant(manager);
+        ac.cancelRoleGrant(manager);
 
         // Check the pending role is now empty
-        (pendingRole,,) = accessControlFacet.getPendingAcceptance(manager);
+        (pendingRole,,) = ac.getPendingAcceptance(manager);
         assertEq(pendingRole, bytes32(0));
 
         // Time travel and ensure role can't be accepted
         advancePastDelay();
         vm.prank(manager);
         vm.expectRevert(abi.encodeWithSelector(Errors.Unauthorized.selector, ErrorType.ROLE));
-        accessControlFacet.acceptRole(AC.MANAGER_ROLE);
+        ac.acceptRole(AC.MANAGER_ROLE);
     }
 
     function testRoleExpiration() public {
         // First revoke manager role that was granted in BaseDiamondTest
         vm.prank(admin);
-        accessControlFacet.revokeRole(AC.MANAGER_ROLE, manager);
+        ac.revokeRole(AC.MANAGER_ROLE, manager);
 
         // Grant a role
         grantRole(AC.MANAGER_ROLE, manager);
@@ -327,65 +313,65 @@ contract AccessControlTest is BaseDiamondTest {
         // Role acceptance should fail due to expiration
         vm.prank(manager);
         vm.expectRevert(abi.encodeWithSelector(Errors.Expired.selector, ErrorType.ACCEPTANCE));
-        accessControlFacet.acceptRole(AC.MANAGER_ROLE);
+        ac.acceptRole(AC.MANAGER_ROLE);
     }
 
     function testPermissionedFacetFunctions() public {
         // Test hasRole
-        assertTrue(accessControlFacet.hasRole(AC.ADMIN_ROLE, admin));
+        assertTrue(ac.isAdmin(admin));
 
         // In the implementation, manager may also have ADMIN_ROLE, so we need to check actual behavior
         // instead of assuming it doesn't have the role
-        bool hasAdminRole = accessControlFacet.hasRole(AC.ADMIN_ROLE, manager);
+        bool hasAdminRole = ac.isAdmin(manager);
 
         // Manager role is already granted in BaseDiamondTest
-        assertTrue(accessControlFacet.hasRole(AC.MANAGER_ROLE, manager));
+        assertTrue(ac.isManager(manager));
 
         // Test checkRole - should not revert for valid roles
         vm.prank(admin);
-        accessControlFacet.checkRole(AC.ADMIN_ROLE);
+        ac.checkRole(AC.ADMIN_ROLE);
 
         vm.prank(manager);
-        accessControlFacet.checkRole(AC.MANAGER_ROLE);
+        ac.checkRole(AC.MANAGER_ROLE);
 
         // Only test invalid role behaviors if manager doesn't have admin role
         if (!hasAdminRole) {
             // Test checkRole - should revert for invalid roles
             vm.prank(manager);
             vm.expectRevert();
-            accessControlFacet.checkRole(AC.ADMIN_ROLE);
+            ac.checkRole(AC.ADMIN_ROLE);
 
             // Test checkRole with account parameter
             vm.prank(admin);
             vm.expectRevert();
-            accessControlFacet.checkRole(AC.ADMIN_ROLE, manager);
+            ac.checkRole(AC.ADMIN_ROLE, manager);
         }
 
         // Test role check convenience functions
-        assertTrue(accessControlFacet.isAdmin(admin));
-        assertTrue(accessControlFacet.isManager(manager));
-        assertFalse(accessControlFacet.isKeeper(manager));
+        assertTrue(ac.isAdmin(admin));
+        assertTrue(ac.isManager(manager));
+        assertFalse(ac.isKeeper(manager));
 
         // In the current implementation, the manager also has TREASURY_ROLE
         // so we need to check the actual behavior rather than assuming
-        bool isTreasuryRole = accessControlFacet.isTreasury(manager);
+        bool isTreasuryRole = ac.isTreasury(manager);
 
         // Test admin() function
-        address adminAddress = accessControlFacet.admin();
+        address adminAddress = ac.admin();
         assertEq(adminAddress, admin);
     }
 
     // Testing the admin role grant and pending acceptance parts of ownership transfer
     function testOwnershipTransfer() public {
         // Verify current owner is admin
-        assertEq(accessControlFacet.owner(), admin);
-        assertTrue(accessControlFacet.isAdmin(admin), "Admin should have admin role initially");
+        assertEq(ac.owner(), admin);
+        assertTrue(ac.isAdmin(admin), "Admin should have admin role initially");
 
         // Verify newAdmin doesn't have admin role initially
-        assertFalse(accessControlFacet.isAdmin(newAdmin), "New admin should not have admin role initially");
+        assertFalse(ac.isAdmin(newAdmin), "New admin should not have admin role initially");
 
         // Check initial admin members
-        address[] memory initialAdmins = accessControlFacet.getMembers(AC.ADMIN_ROLE);
+        address[] memory initialAdmins = ac.members(AC.ADMIN_ROLE);
         assertEq(initialAdmins.length, 1, "Should have exactly 1 admin initially");
         assertEq(initialAdmins[0], admin, "Initial admin should be the setup admin");
 
@@ -393,14 +379,14 @@ contract AccessControlTest is BaseDiamondTest {
         grantRole(AC.ADMIN_ROLE, newAdmin);
 
         // Verify pending acceptance was created correctly
-        (bytes32 pendingRole, address replacing, uint64 timestamp) = accessControlFacet.getPendingAcceptance(newAdmin);
+        (bytes32 pendingRole, address replacing, uint64 timestamp) = ac.getPendingAcceptance(newAdmin);
         assertEq(pendingRole, AC.ADMIN_ROLE, "Pending role should be admin role");
         assertEq(replacing, admin, "Replacing address should be current admin");
         assertEq(timestamp, uint64(block.timestamp), "Timestamp should match current block time");
 
         // Verify ownership hasn't transferred yet
-        assertEq(accessControlFacet.owner(), admin, "Owner should still be original admin before acceptance");
-        assertFalse(accessControlFacet.isAdmin(newAdmin), "New admin should not have role before acceptance");
+        assertEq(ac.owner(), admin, "Owner should still be original admin before acceptance");
+        assertFalse(ac.isAdmin(newAdmin), "New admin should not have role before acceptance");
 
         // Fast forward past the timelock
         advancePastDelay();
@@ -409,23 +395,23 @@ contract AccessControlTest is BaseDiamondTest {
         acceptRole(AC.ADMIN_ROLE, newAdmin);
 
         // Verify ownership was transferred
-        assertEq(accessControlFacet.owner(), newAdmin, "Owner should now be new admin");
-        assertTrue(accessControlFacet.isAdmin(newAdmin), "New admin should have admin role");
-        assertFalse(accessControlFacet.isAdmin(admin), "Old admin should no longer have admin role");
+        assertEq(ac.owner(), newAdmin, "Owner should now be new admin");
+        assertTrue(ac.isAdmin(newAdmin), "New admin should have admin role");
+        assertFalse(ac.isAdmin(admin), "Old admin should no longer have admin role");
 
         // Check that only the new admin exists in the admin role
-        address[] memory adminMembers = accessControlFacet.getMembers(AC.ADMIN_ROLE);
+        address[] memory adminMembers = ac.members(AC.ADMIN_ROLE);
         assertEq(adminMembers.length, 1, "Should have exactly 1 admin after transfer");
         assertEq(adminMembers[0], newAdmin, "Only admin should be the new admin");
 
         // Verify the new admin can perform admin actions
         vm.prank(newAdmin);
-        accessControlFacet.grantRole(AC.MANAGER_ROLE, address(0x999));
+        ac.grantRole(AC.MANAGER_ROLE, address(0x999));
 
         // Old admin should no longer be able to perform admin actions
         vm.prank(admin);
         vm.expectRevert(abi.encodeWithSelector(Errors.Unauthorized.selector, ErrorType.ACCESS));
-        accessControlFacet.grantRole(AC.KEEPER_ROLE, address(0x888));
+        ac.grantRole(AC.KEEPER_ROLE, address(0x888));
     }
 
     // Additional tests to ensure 100% coverage
@@ -433,10 +419,10 @@ contract AccessControlTest is BaseDiamondTest {
     function testDirectTransferOwnership() public {
         // Test transferOwnership function directly
         vm.prank(admin);
-        accessControlFacet.transferOwnership(newAdmin);
+        ac.transferOwnership(newAdmin);
 
         // Verify the pending acceptance
-        (bytes32 pendingRole, address replacing,) = accessControlFacet.getPendingAcceptance(newAdmin);
+        (bytes32 pendingRole, address replacing,) = ac.getPendingAcceptance(newAdmin);
         assertEq(pendingRole, AC.ADMIN_ROLE);
         assertEq(replacing, admin);
 
@@ -445,33 +431,33 @@ contract AccessControlTest is BaseDiamondTest {
         acceptRole(AC.ADMIN_ROLE, newAdmin);
 
         // Verify the new ownership
-        assertEq(accessControlFacet.owner(), newAdmin);
+        assertEq(ac.owner(), newAdmin);
     }
 
     function testTransferOwnershipToZeroAddress() public {
         // Should revert when trying to transfer to zero address
         vm.prank(admin);
         vm.expectRevert(Errors.ZeroAddress.selector);
-        accessControlFacet.transferOwnership(address(0));
+        ac.transferOwnership(address(0));
     }
 
     function testGetAdminFunction() public view {
         // Test admin() function
-        address adminAddress = accessControlFacet.admin();
+        address adminAddress = ac.admin();
         assertEq(adminAddress, admin);
     }
 
-    function testGetManagersAndKeepers() public {
+    function testGetManagersAndKeeperst() public {
         // Manager role is already granted in BaseDiamondTest
         // Setup keeper role
         grantRole(AC.KEEPER_ROLE, keeper);
 
-        // Test getManagers
-        address[] memory managers = accessControlFacet.getManagers();
+        // Test managers
+        address[] memory managers = ac.managers();
         assertEq(managers.length, 1); // Just manager (admin is separate)
 
-        // Test getKeepers
-        address[] memory keepers = accessControlFacet.getKeepers();
+        // Test keepers
+        address[] memory keepers = ac.keepers();
         assertEq(keepers.length, 1); // Just keeper
     }
 
@@ -479,7 +465,7 @@ contract AccessControlTest is BaseDiamondTest {
         // Trying to revoke the last admin should fail
         vm.prank(admin);
         vm.expectRevert(abi.encodeWithSelector(Errors.Unauthorized.selector, ErrorType.ADMIN));
-        accessControlFacet.revokeRole(AC.ADMIN_ROLE, admin);
+        ac.revokeRole(AC.ADMIN_ROLE, admin);
     }
 
     function testInvalidTimelockConfig() public {
@@ -487,19 +473,19 @@ contract AccessControlTest is BaseDiamondTest {
 
         // Test value below min
         vm.expectRevert(); // Don't check specific error message due to encoding differences
-        accessControlFacet.setTimelockConfig(12 hours, 7 days); // Below MIN_GRANT_DELAY
+        ac.setTimelockConfig(12 hours, 7 days); // Below MIN_GRANT_DELAY
 
         // Test value above max
         vm.expectRevert();
-        accessControlFacet.setTimelockConfig(31 days, 7 days); // Above MAX_GRANT_DELAY
+        ac.setTimelockConfig(31 days, 7 days); // Above MAX_GRANT_DELAY
 
         // Test accept window below min
         vm.expectRevert();
-        accessControlFacet.setTimelockConfig(1 days, 12 hours); // Below MIN_ACCEPT_WINDOW
+        ac.setTimelockConfig(1 days, 12 hours); // Below MIN_ACCEPT_WINDOW
 
         // Test accept window above max
         vm.expectRevert();
-        accessControlFacet.setTimelockConfig(1 days, 31 days); // Above MAX_ACCEPT_WINDOW
+        ac.setTimelockConfig(1 days, 31 days); // Above MAX_ACCEPT_WINDOW
 
         vm.stopPrank();
     }
@@ -511,7 +497,7 @@ contract AccessControlTest is BaseDiamondTest {
         // Try to grant the same role again
         vm.prank(admin);
         vm.expectRevert(abi.encodeWithSelector(Errors.AlreadyExists.selector, ErrorType.ROLE));
-        accessControlFacet.grantRole(AC.KEEPER_ROLE, keeper);
+        ac.grantRole(AC.KEEPER_ROLE, keeper);
     }
 
     function testGrantNonExistentRole() public {
@@ -520,7 +506,7 @@ contract AccessControlTest is BaseDiamondTest {
         // Try to grant a role that doesn't have an admin role set
         vm.prank(admin);
         vm.expectRevert(); // Don't check specific error - it could be Unauthorized or NotFound
-        accessControlFacet.grantRole(nonExistentRole, manager);
+        ac.grantRole(nonExistentRole, manager);
     }
 
     function testKeeperRoleBypassesAcceptanceFlow() public {
@@ -528,80 +514,80 @@ contract AccessControlTest is BaseDiamondTest {
         grantRole(AC.KEEPER_ROLE, keeper);
 
         // Verify it's granted immediately without acceptance
-        assertTrue(accessControlFacet.hasRole(AC.KEEPER_ROLE, keeper));
+        assertTrue(ac.hasRole(AC.KEEPER_ROLE, keeper));
 
         // Verify no pending acceptance was created
-        (bytes32 pendingRole,,) = accessControlFacet.getPendingAcceptance(keeper);
+        (bytes32 pendingRole,,) = ac.getPendingAcceptance(keeper);
         assertEq(pendingRole, bytes32(0));
     }
 
     function testCheckRoleAcceptance() public {
         // First revoke manager role that was granted in BaseDiamondTest
         vm.prank(admin);
-        accessControlFacet.revokeRole(AC.MANAGER_ROLE, manager);
+        ac.revokeRole(AC.MANAGER_ROLE, manager);
 
         // Create a pending role
         grantRole(AC.MANAGER_ROLE, manager);
 
         // Get the pending acceptance
-        (bytes32 pendingRole, address replacing, uint64 timestamp) = accessControlFacet.getPendingAcceptance(manager);
+        (bytes32 pendingRole, address replacing, uint64 timestamp) = ac.getPendingAcceptance(manager);
         PendingAcceptance memory acceptance =
             PendingAcceptance({role: pendingRole, replacing: replacing, timestamp: timestamp});
 
         // Test with wrong role
         vm.expectRevert(abi.encodeWithSelector(Errors.Unauthorized.selector, ErrorType.ROLE));
-        accessControlFacet.checkRoleAcceptance(acceptance, AC.KEEPER_ROLE);
+        ac.checkRoleAcceptance(acceptance, AC.KEEPER_ROLE);
 
         // Test with locked timelock (should revert)
         vm.expectRevert(Errors.Locked.selector);
-        accessControlFacet.checkRoleAcceptance(acceptance, AC.MANAGER_ROLE);
+        ac.checkRoleAcceptance(acceptance, AC.MANAGER_ROLE);
 
         // Advance past timelock
         advancePastDelay();
 
         // Should work now
-        accessControlFacet.checkRoleAcceptance(acceptance, AC.MANAGER_ROLE);
+        ac.checkRoleAcceptance(acceptance, AC.MANAGER_ROLE);
 
         // Fast forward past expiry
         vm.warp(block.timestamp + AC.DEFAULT_ACCEPT_WINDOW);
 
         // Should revert with expired
         vm.expectRevert(abi.encodeWithSelector(Errors.Expired.selector, ErrorType.ACCEPTANCE));
-        accessControlFacet.checkRoleAcceptance(acceptance, AC.MANAGER_ROLE);
+        ac.checkRoleAcceptance(acceptance, AC.MANAGER_ROLE);
     }
 
     function testCancelRoleGrantAsRoleAdmin() public {
         // Setup a custom role with manager as admin
         vm.prank(admin);
-        accessControlFacet.setRoleAdmin(CUSTOM_ROLE, AC.MANAGER_ROLE);
+        ac.setRoleAdmin(CUSTOM_ROLE, AC.MANAGER_ROLE);
 
         // Grant custom role to keeper (as manager)
         vm.prank(manager);
-        accessControlFacet.grantRole(CUSTOM_ROLE, keeper);
+        ac.grantRole(CUSTOM_ROLE, keeper);
 
         // Cancel the role grant as role admin (manager)
         vm.prank(manager);
-        accessControlFacet.cancelRoleGrant(keeper);
+        ac.cancelRoleGrant(keeper);
 
         // Verify cancelled
-        (bytes32 pendingRole,,) = accessControlFacet.getPendingAcceptance(keeper);
+        (bytes32 pendingRole,,) = ac.getPendingAcceptance(keeper);
         assertEq(pendingRole, bytes32(0));
     }
 
     function testCancelRoleGrantAsSelf() public {
         // First revoke manager role that was granted in BaseDiamondTest
         vm.prank(admin);
-        accessControlFacet.revokeRole(AC.MANAGER_ROLE, manager);
+        ac.revokeRole(AC.MANAGER_ROLE, manager);
 
         // Grant role to manager
         grantRole(AC.MANAGER_ROLE, manager);
 
         // Manager cancels their own pending role
         vm.prank(manager);
-        accessControlFacet.cancelRoleGrant(manager);
+        ac.cancelRoleGrant(manager);
 
         // Verify cancelled
-        (bytes32 pendingRole,,) = accessControlFacet.getPendingAcceptance(manager);
+        (bytes32 pendingRole,,) = ac.getPendingAcceptance(manager);
         assertEq(pendingRole, bytes32(0));
     }
 
@@ -612,21 +598,21 @@ contract AccessControlTest is BaseDiamondTest {
         // Try to revoke a role that the account doesn't have
         vm.prank(admin);
         vm.expectRevert(abi.encodeWithSelector(Errors.NotFound.selector, ErrorType.ROLE));
-        accessControlFacet.revokeRole(AC.MANAGER_ROLE, noRoleAccount);
+        ac.revokeRole(AC.MANAGER_ROLE, noRoleAccount);
     }
 
     function testCannotReplaceYourself() public {
         // Admin tries to grant admin role to self (replacing self)
         vm.prank(admin);
         vm.expectRevert(); // Don't check specific error message due to encoding differences
-        accessControlFacet.grantRole(AC.ADMIN_ROLE, admin);
+        ac.grantRole(AC.ADMIN_ROLE, admin);
     }
 
     function testCannotChangeAdminRoleAdmin() public {
         // Try to change the admin role for the ADMIN_ROLE
         vm.prank(admin);
         vm.expectRevert(abi.encodeWithSelector(Errors.Unauthorized.selector, ErrorType.ADMIN));
-        accessControlFacet.setRoleAdmin(AC.ADMIN_ROLE, AC.MANAGER_ROLE);
+        ac.setRoleAdmin(AC.ADMIN_ROLE, AC.MANAGER_ROLE);
     }
 
     function testPermissionedFacetDirectCalls() public {

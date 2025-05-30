@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.28;
+pragma solidity 0.8.29;
 
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {IERC721} from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
@@ -48,7 +48,7 @@ interface ISwapXV4MasterChef {
     function setVestingEscrowShare(uint256 newValue) external;
     function stakedTokenIds(address _user) external view returns (uint256[] memory tokenIds);
     function tokenOwner(uint256) external view returns (address);
-    function totalRewards() external view returns (uint256);
+    function totalRewardiam() external view returns (uint256);
     function totalRewardsExtra() external view returns (uint256);
     function transferOwnership(address newOwner) external;
     function updatePool() external returns (IMasterchef.PoolInfo memory pool);

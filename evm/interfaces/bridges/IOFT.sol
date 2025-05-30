@@ -1,7 +1,7 @@
-import {MessagingParams, MessagingReceipt, MessagingFee} from "@interfaces/ILayerZero.sol";
-
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.20;
+pragma solidity 0.8.29;
+
+import {MessagingParams, MessagingReceipt, MessagingFee} from "@interfaces/ILayerZero.sol";
 
 struct SendParam {
     uint32 dstEid;

@@ -1,14 +1,19 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.28;
+pragma solidity 0.8.29;
 
-/**
-@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
-@@@@@@@@@/         '@@@@/            /@@@/         '@@@@@@@@
-@@@@@@@@/    /@@@    @@@@@@/    /@@@@@@@/    /@@@    @@@@@@@
-@@@@@@@/           _@@@@@@/    /@@@@@@@/    /.     _@@@@@@@@
-@@@@@@/    /@@@    '@@@@@/    /@@@@@@@/    /@@    @@@@@@@@@@
-@@@@@/            ,@@@@@/    /@@@@@@@/    /@@@,    @@@@@@@@@
-@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+import {ICreateX} from "@interfaces/ICreateX.sol";
+import "forge-std/console.sol";
+import {DiamondDeployer} from "@utils/generated/DiamondDeployer.gen.sol";
+import {Script} from "forge-std/Script.sol";
+
+/*
+ * @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+ * @@@@@@@@@/         '@@@@/            /@@@/         '@@@@@@@@
+ * @@@@@@@@/    /@@@    @@@@@@/    /@@@@@@@/    /@@@    @@@@@@@
+ * @@@@@@@/           _@@@@@@/    /@@@@@@@/    /.     _@@@@@@@@
+ * @@@@@@/    /@@@    '@@@@@/    /@@@@@@@/    /@@    @@@@@@@@@@
+ * @@@@@/            ,@@@@@/    /@@@@@@@/    /@@@,    @@@@@@@@@
+ * @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
  *
  * @title Deploy Diamond - Mainnet deployment
  * @copyright 2025
@@ -17,15 +22,6 @@ pragma solidity 0.8.28;
  * @author BTR Team
  */
 
-import "forge-std/console.sol";
-import {Script} from "forge-std/Script.sol";
-import {ICreateX} from "@interfaces/ICreateX.sol";
-import {DiamondDeployer} from "@utils/generated/DiamondDeployer.gen.sol";
-
-/**
- * @title DeployDiamond
- * @notice Forge script to deploy BTR Diamond architecture
- */
 contract DeployDiamond is Script {
     function run() external {
         // Get deployer private key and address
@@ -39,9 +35,8 @@ contract DeployDiamond is Script {
 
         vm.startBroadcast(deployerPk);
 
-        // Deploy diamond and all facets using the utility
-        DiamondDeployer diamondDeployer = new DiamondDeployer();
-        DiamondDeployer.Deployment memory deployment = diamondDeployer.deployDiamond(admin, treasury);
+        // Deploy diamond with and all facets using the utility
+        DiamondDeployer.Deployment memory deployment = new DiamondDeployer().deployDiamond(admin, treasury);
 
         vm.stopBroadcast();
 

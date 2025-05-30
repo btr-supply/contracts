@@ -1,4 +1,20 @@
-#!/bin/bash
+#
+# SPDX-License-Identifier: BUSL-1.1
+# @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+# @@@@@@@@@/         '@@@@/            /@@@/         '@@@@@@@@
+# @@@@@@@@/    /@@@    @@@@@@/    /@@@@@@@/    /@@@    @@@@@@@
+# @@@@@@@/           _@@@@@@/    /@@@@@@@/    /.     _@@@@@@@@
+# @@@@@@/    /@@@    '@@@@@/    /@@@@@@@/    /@@    @@@@@@@@@@
+# @@@@@/            ,@@@@@/    /@@@@@@@/    /@@@,    @@@@@@@@@
+# @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+#
+# @title Get Swap Data Script - Fetches swap parameters for a given pool
+# @copyright 2025
+# @notice Retrieves necessary data (e.g., tick spacing, pool address) for executing a swap on a specific DEX pool, likely using cast or another CLI tool
+# @dev Used by ALM or testing scripts to prepare swap transactions
+# @author BTR Team
+#
+
 set -euo pipefail
 
 die() { echo "$1"; exit 1; }

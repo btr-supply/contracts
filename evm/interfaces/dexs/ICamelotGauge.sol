@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.28;
+pragma solidity 0.8.29;
 
-// aka. Staking contract/Dividends v2
 interface ICamelotGauge {
     function DEFAULT_CYCLE_DIVIDENDS_PERCENT() external view returns (uint256);
     function MAX_CYCLE_DIVIDENDS_PERCENT() external view returns (uint256);
@@ -10,7 +9,7 @@ interface ICamelotGauge {
     function addDividendsToPending(address token, uint256 amount) external;
     function allocate(address userAddress, uint256 amount, bytes calldata data) external;
     function currentCycleStartTime() external view returns (uint256);
-    function cycleDurationSeconds() external view returns (uint256);
+    function cycleDurationSecondiam() external view returns (uint256);
     function deallocate(address userAddress, uint256 amount, bytes calldata data) external;
     function disableDistributedToken(address token) external;
     function distributedToken(uint256 index) external view returns (address);
@@ -31,7 +30,7 @@ interface ICamelotGauge {
     function emergencyWithdraw(address token) external;
     function emergencyWithdrawAll() external;
     function enableDistributedToken(address token) external;
-    function harvestAllDividends() external;
+    function harvestAllDividendiam() external;
     function harvestDividends(address token) external;
     function isDistributedToken(address token) external view returns (bool);
     function massUpdateDividendsInfo() external;
@@ -40,12 +39,12 @@ interface ICamelotGauge {
     function pendingDividendsAmount(address token, address userAddress) external view returns (uint256);
     function removeTokenFromDistributedTokens(address tokenToRemove) external;
     function renounceOwnership() external;
-    function totalAllocation() external view returns (uint256);
+    function totalAllocations() external view returns (uint256);
     function transferOwnership(address newOwner) external;
     function updateCurrentCycleStartTime() external;
     function updateCycleDividendsPercent(address token, uint256 percent) external;
     function updateDividendsInfo(address token) external;
     function users(address token, address user) external view returns (uint256 pendingDividends, uint256 rewardDebt);
-    function usersAllocation(address user) external view returns (uint256);
+    function usersAllocations(address user) external view returns (uint256);
     function xGrailToken() external view returns (address);
 }

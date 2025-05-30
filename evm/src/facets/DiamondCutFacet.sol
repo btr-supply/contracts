@@ -1,45 +1,39 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.28;
+pragma solidity 0.8.29;
 
-/**
-@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
-@@@@@@@@@/         '@@@@/            /@@@/         '@@@@@@@@
-@@@@@@@@/    /@@@    @@@@@@/    /@@@@@@@/    /@@@    @@@@@@@
-@@@@@@@/           _@@@@@@/    /@@@@@@@/    /.     _@@@@@@@@
-@@@@@@/    /@@@    '@@@@@/    /@@@@@@@/    /@@    @@@@@@@@@@
-@@@@@/            ,@@@@@/    /@@@@@@@/    /@@@,    @@@@@@@@@
-@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+import {BTRErrors as Errors} from "@libraries/BTREvents.sol";
+import {ErrorType} from "@/BTRTypes.sol";
+import {BTRStorage as S} from "@libraries/BTRStorage.sol";
+import {LibDiamond as D} from "@libraries/LibDiamond.sol";
+import {IDiamondCut, FacetCut} from "@interfaces/IDiamond.sol";
+import {NonReentrantFacet} from "@facets/abstract/NonReentrantFacet.sol";
+import {PermissionedFacet} from "@facets/abstract/PermissionedFacet.sol";
+
+/*
+ * @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+ * @@@@@@@@@/         '@@@@/            /@@@/         '@@@@@@@@
+ * @@@@@@@@/    /@@@    @@@@@@/    /@@@@@@@/    /@@@    @@@@@@@
+ * @@@@@@@/           _@@@@@@/    /@@@@@@@/    /.     _@@@@@@@@
+ * @@@@@@/    /@@@    '@@@@@/    /@@@@@@@/    /@@    @@@@@@@@@@
+ * @@@@@/            ,@@@@@/    /@@@@@@@/    /@@@,    @@@@@@@@@
+ * @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
  *
  * @title Diamond Cut - Upgrade functionality
  * @copyright 2025
  * @notice Handles diamond proxy upgrades and facet management
- * @dev Implements EIP-2535 diamond standard
+ * @dev Implements EIP-2535 diamond standard core upgrade logic
+- Security Critical: Controls contract logic upgrades. Requires `onlyOwner` (implicitly admin via LibDiamond/initial setup)
+
  * @author BTR Team
  */
 
-import {LibDiamond as D} from "@libraries/LibDiamond.sol";
-import {IDiamondCut} from "@interfaces/IDiamond.sol";
-import {PermissionedFacet} from "@facets/abstract/PermissionedFacet.sol";
-import {NonReentrantFacet} from "@facets/abstract/NonReentrantFacet.sol";
-import {LibAccessControl as AC} from "@libraries/LibAccessControl.sol";
-import {BTRErrors as Errors} from "@libraries/BTREvents.sol";
-import {ErrorType} from "@/BTRTypes.sol";
-
-/// @title DiamondCutFacet
-/// @dev External facet for diamond cut functionality
-contract DiamondCutFacet is IDiamondCut, NonReentrantFacet {
-    /// @notice Adds/replaces/removes functions and optionally executes a function with delegatecall
-    /// @param _diamondCut Contains the facet addresses and function selectors
-    /// @param _init The address of the contract or facet to execute _calldata
-    /// @param _calldata A function call, including function selector and arguments
+contract DiamondCutFacet is IDiamondCut, PermissionedFacet, NonReentrantFacet {
     function diamondCut(FacetCut[] calldata _diamondCut, address _init, bytes calldata _calldata)
         external
         override
+        onlyAdmin
         nonReentrant
     {
-        if (!AC.hasRole(AC.ADMIN_ROLE, msg.sender)) {
-            revert Errors.Unauthorized(ErrorType.ADDRESS);
-        }
-        D.diamondCut(_diamondCut, _init, _calldata);
+        D.diamondCut(S.diam(), _diamondCut, _init, _calldata);
     }
 }

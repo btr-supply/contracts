@@ -1,108 +1,132 @@
-// SPDX-License-Identifier: MIT
-pragma solidity 0.8.28;
+// SPDX-License-Identifier: BUSL-1.1
+pragma solidity 0.8.29;
 
-/**
-@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
-@@@@@@@@@/         '@@@@/            /@@@/         '@@@@@@@@
-@@@@@@@@/    /@@@    @@@@@@/    /@@@@@@@/    /@@@    @@@@@@@
-@@@@@@@/           _@@@@@@/    /@@@@@@@/    /.     _@@@@@@@@
-@@@@@@/    /@@@    '@@@@@/    /@@@@@@@/    /@@    @@@@@@@@@@
-@@@@@/            ,@@@@@/    /@@@@@@@/    /@@@,    @@@@@@@@@
-@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+import {BTRErrors as Errors, BTREvents as Events} from "@libraries/BTREvents.sol";
+import {ErrorType, CoreStorage, ALMVault, Restrictions} from "@/BTRTypes.sol";
+import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {BTRUtils as U} from "@libraries/BTRUtils.sol";
+import {LibAccessControl as AC} from "@libraries/LibAccessControl.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+
+/*
+ * @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+ * @@@@@@@@@/         '@@@@/            /@@@/         '@@@@@@@@
+ * @@@@@@@@/    /@@@    @@@@@@/    /@@@@@@@/    /@@@    @@@@@@@
+ * @@@@@@@/           _@@@@@@/    /@@@@@@@/    /.     _@@@@@@@@
+ * @@@@@@/    /@@@    '@@@@@/    /@@@@@@@/    /@@    @@@@@@@@@@
+ * @@@@@/            ,@@@@@/    /@@@@@@@/    /@@@,    @@@@@@@@@
+ * @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
  *
  * @title ERC1155 Library - ERC1155 token interaction logic
  * @copyright 2025
  * @notice Contains internal functions for managing ERC1155 vault tokens
- * @dev Helper library for ERC1155VaultsFacet
+ * @dev Helper library for vault token operations (minting, burning, transfers)
  * @author BTR Team
  */
 
-import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import {BTRErrors as Errors, BTREvents as Events} from "@libraries/BTREvents.sol";
-import {BTRStorage as S} from "@libraries/BTRStorage.sol";
-import {BTRUtils} from "@libraries/BTRUtils.sol";
-import {ErrorType, CoreStorage, ALMVault} from "@/BTRTypes.sol";
-
 library LibERC1155 {
     using SafeERC20 for IERC20;
-    using BTRUtils for uint32;
+    using U for uint32;
 
-    function totalSupply(uint32 id) internal view returns (uint256) {
-        return id.getVault().totalSupply;
+    function name(ALMVault storage _vault) internal view returns (string memory) {
+        return _vault.name;
     }
 
-    function balanceOf(uint32 id, address account) internal view returns (uint256) {
-        return id.getVault().balances[account];
+    function symbol(ALMVault storage _vault) internal view returns (string memory) {
+        return _vault.symbol;
     }
 
-    function allowance(uint32 id, address owner, address spender) internal view returns (uint256) {
-        return id.getVault().allowances[owner][spender];
+    function decimals(ALMVault storage _vault) internal view returns (uint8) {
+        return _vault.decimals;
     }
 
-    function approve(uint32 id, address owner, address spender, uint256 amount) internal {
-        if (spender == address(0)) revert Errors.ZeroAddress();
-        id.getVault().allowances[owner][spender] = amount;
-        emit Events.Approval(owner, spender, amount);
+    function totalSupply(ALMVault storage _vault) internal view returns (uint256) {
+        return _vault.totalSupply;
     }
 
-    function transferFrom(uint32 id, address operator, address sender, address recipient, uint256 amount) internal {
-        ALMVault storage vs = id.getVault();
+    function maxSupply(ALMVault storage _vault) internal view returns (uint256) {
+        return _vault.maxSupply;
+    }
 
-        if (sender != operator) {
-            uint256 currentAllowance = vs.allowances[sender][operator];
-            if (currentAllowance < amount) {
-                revert Errors.Insufficient(currentAllowance, amount);
+    function balanceOf(ALMVault storage _vault, address _account) internal view returns (uint256) {
+        return _vault.balances[_account];
+    }
+
+    function allowance(ALMVault storage _vault, address _owner, address _spender) internal view returns (uint256) {
+        return _vault.allowances[_owner][_spender];
+    }
+
+    function setMaxSupply(ALMVault storage _vault, uint256 _maxSupply) internal {
+        _vault.maxSupply = _maxSupply;
+        emit Events.MaxSupplyUpdated(_vault.id, _maxSupply);
+    }
+
+    function approve(ALMVault storage _vault, address _owner, address _spender, uint256 _amount) internal {
+        if (_spender == address(0)) revert Errors.ZeroAddress();
+        _vault.allowances[_owner][_spender] = _amount;
+        emit Events.Approval(_owner, _spender, _amount);
+    }
+
+    function transferFrom(
+        ALMVault storage _vault,
+        Restrictions storage _rs,
+        address _operator,
+        address _sender,
+        address _recipient,
+        uint256 _amount
+    ) internal {
+        AC.checkAlmMinterUnrestricted(_rs, _vault.id, _recipient);
+        if (_sender != _operator) {
+            uint256 currentAllowance = _vault.allowances[_sender][_operator];
+            if (currentAllowance < _amount) {
+                revert Errors.Insufficient(currentAllowance, _amount);
             }
-            vs.allowances[sender][operator] = currentAllowance - amount;
+            _vault.allowances[_sender][_operator] = currentAllowance - _amount;
         }
 
-        transfer(id, sender, recipient, amount);
+        transfer(_vault, _rs, _sender, _recipient, _amount);
     }
 
-    function transfer(uint32 id, address sender, address recipient, uint256 amount) internal {
-        if (sender == address(0) || recipient == address(0)) revert Errors.ZeroAddress();
-        if (amount == 0) revert Errors.ZeroValue();
+    function transfer(
+        ALMVault storage _vault,
+        Restrictions storage _rs,
+        address _sender,
+        address _recipient,
+        uint256 _amount
+    ) internal {
+        if (_sender == address(0) || _recipient == address(0)) revert Errors.ZeroAddress();
+        if (_amount == 0) revert Errors.ZeroValue();
+        AC.checkAlmMinterUnrestricted(_rs, _vault.id, _recipient);
 
-        ALMVault storage vs = id.getVault();
-
-        if (vs.balances[sender] < amount) {
-            revert Errors.Insufficient(vs.balances[sender], amount);
+        if (_vault.balances[_sender] < _amount) {
+            revert Errors.Insufficient(_vault.balances[_sender], _amount);
         }
 
-        vs.balances[sender] -= amount;
-        vs.balances[recipient] += amount;
+        _vault.balances[_sender] -= _amount;
+        _vault.balances[_recipient] += _amount;
 
-        emit Events.Transfer(sender, recipient, amount);
+        emit Events.Transfer(_sender, _recipient, _amount);
     }
 
-    function mint(uint32 id, address account, uint256 amount) internal {
-        if (account == address(0)) revert Errors.ZeroAddress();
-
-        ALMVault storage vs = id.getVault();
-
-        if (vs.maxSupply > 0 && vs.totalSupply + amount > vs.maxSupply) {
-            revert Errors.Exceeds(vs.totalSupply + amount, vs.maxSupply);
+    function mint(ALMVault storage _vault, Restrictions storage _rs, address _account, uint256 _amount) internal {
+        if (_account == address(0)) revert Errors.ZeroAddress();
+        AC.checkAlmMinterUnrestricted(_rs, _vault.id, _account);
+        if (_vault.maxSupply > 0 && _vault.totalSupply + _amount > _vault.maxSupply) {
+            revert Errors.Exceeds(_vault.totalSupply + _amount, _vault.maxSupply);
         }
-
-        vs.totalSupply += amount;
-        vs.balances[account] += amount;
-
-        emit Events.Transfer(address(0), account, amount);
+        _vault.totalSupply += _amount;
+        _vault.balances[_account] += _amount;
+        emit Events.Transfer(address(0), _account, _amount);
     }
 
-    function burn(uint32 id, address account, uint256 amount) internal {
-        if (account == address(0)) revert Errors.ZeroAddress();
-
-        ALMVault storage vs = id.getVault();
-
-        if (vs.balances[account] < amount) {
-            revert Errors.Insufficient(vs.balances[account], amount);
+    function burn(ALMVault storage _vault, Restrictions storage _rs, address _account, uint256 _amount) internal {
+        if (_account == address(0)) revert Errors.ZeroAddress();
+        AC.checkAlmMinterUnrestricted(_rs, _vault.id, _account);
+        if (_vault.balances[_account] < _amount) {
+            revert Errors.Insufficient(_vault.balances[_account], _amount);
         }
-
-        vs.totalSupply -= amount;
-        vs.balances[account] -= amount;
-
-        emit Events.Transfer(account, address(0), amount);
+        _vault.totalSupply -= _amount;
+        _vault.balances[_account] -= _amount;
+        emit Events.Transfer(_account, address(0), _amount);
     }
 }

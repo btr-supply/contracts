@@ -10,7 +10,7 @@
         "DiamondLoupeFacet": "",
         "AccessControlFacet": "",
         "ManagementFacet": "",
-        "SwapperFacet": "",  
+        "SwapFacet": "",
         "ALMFacet": ""
     }
 }

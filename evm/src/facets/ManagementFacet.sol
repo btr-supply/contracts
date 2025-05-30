@@ -1,248 +1,145 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.28;
+pragma solidity 0.8.29;
 
-/**
-@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
-@@@@@@@@@/         '@@@@/            /@@@/         '@@@@@@@@
-@@@@@@@@/    /@@@    @@@@@@/    /@@@@@@@/    /@@@    @@@@@@@
-@@@@@@@/           _@@@@@@/    /@@@@@@@/    /.     _@@@@@@@@
-@@@@@@/    /@@@    '@@@@@/    /@@@@@@@/    /@@    @@@@@@@@@@
-@@@@@/            ,@@@@@/    /@@@@@@@/    /@@@,    @@@@@@@@@
-@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+import {AccountStatus as AS, AddressType, ErrorType, Fees, CoreStorage, ALMVault} from "@/BTRTypes.sol";
+import {BTRErrors as Errors, BTREvents as Events} from "@libraries/BTREvents.sol";
+import {BTRStorage as S} from "@libraries/BTRStorage.sol";
+import {LibAccessControl as AC} from "@libraries/LibAccessControl.sol";
+import {LibDiamond} from "@libraries/LibDiamond.sol";
+import {LibERC1155} from "@libraries/LibERC1155.sol";
+import {LibManagement as M} from "@libraries/LibManagement.sol";
+import {LibPausable as P} from "@libraries/LibPausable.sol";
+import {LibTreasury as T} from "@libraries/LibTreasury.sol";
+import {NonReentrantFacet} from "@facets/abstract/NonReentrantFacet.sol";
+import {PermissionedFacet} from "@facets/abstract/PermissionedFacet.sol";
+
+/*
+ * @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+ * @@@@@@@@@/         '@@@@/            /@@@/         '@@@@@@@@
+ * @@@@@@@@/    /@@@    @@@@@@/    /@@@@@@@/    /@@@    @@@@@@@
+ * @@@@@@@/           _@@@@@@/    /@@@@@@@/    /.     _@@@@@@@@
+ * @@@@@@/    /@@@    '@@@@@/    /@@@@@@@/    /@@    @@@@@@@@@@
+ * @@@@@/            ,@@@@@/    /@@@@@@@/    /@@@,    @@@@@@@@@
+ * @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
  *
  * @title Management Facet - Protocol parameter management
  * @copyright 2025
  * @notice Allows authorized addresses to update protocol settings and parameters
- * @dev Works with AccessControl for permissions
+ * @dev Governs protocol configuration (pauses, whitelists, restrictions)
+- Security Critical: Controls pausing, account status, minting restrictions, swap parameters
+- Modifiers: Primarily uses `onlyManager` to secure parameter changes. `initializeManagement` uses `onlyAdmin`
+- Manages swap/bridge restrictions and vault-level settings
+
  * @author BTR Team
  */
 
-import {LibDiamond} from "@libraries/LibDiamond.sol";
-import {LibAccessControl} from "@libraries/LibAccessControl.sol";
-import {LibManagement as M} from "@libraries/LibManagement.sol";
-import {BTRStorage as S} from "@libraries/BTRStorage.sol";
-import {BTRErrors as Errors, BTREvents as Events} from "@libraries/BTREvents.sol";
-import {AccountStatus as AS, AddressType, ErrorType, Fees, CoreStorage, ALMVault} from "@/BTRTypes.sol";
-import {PermissionedFacet} from "@facets/abstract/PermissionedFacet.sol";
-import {PausableFacet} from "@facets/abstract/PausableFacet.sol";
-import {NonReentrantFacet} from "@facets/abstract/NonReentrantFacet.sol";
+contract ManagementFacet is PermissionedFacet, NonReentrantFacet {
+    using M for address;
+    using P for uint32;
 
-contract ManagementFacet is PermissionedFacet, PausableFacet, NonReentrantFacet {
-    /*═══════════════════════════════════════════════════════════════╗
-    ║                             PAUSE                              ║
-    ╚═══════════════════════════════════════════════════════════════*/
+    // --- INITIALIZATION ---
 
-    /// @notice Initialize the facet
-    /// @dev Can only be called once by admin
     function initializeManagement() external onlyAdmin {
-        // Initialize management facet with default restrictions
-        M.initializeRestrictions(
-            true, // restrictSwapCaller - enabled by default for security
-            true, // restrictSwapRouter - enabled by default for security
-            false, // approveMax - disabled by default for security
-            true // autoRevoke - enabled by default for security
+        M.initialize(
+            S.rst(), // restrictions storage
+            false, // restrictSwapCaller
+            false, // restrictSwapRouter
+            false, // restrictSwapInput
+            false, // restrictSwapOutput
+            true, // approveMax
+            true // autoRevoke
         );
     }
 
-    // protocol level pause
+    // --- PAUSE ---
+
     function pause() external onlyManager {
-        M.pause(0);
+        P.pause();
     }
 
     function unpause() external onlyManager {
-        M.unpause(0);
+        P.unpause();
     }
 
-    // vault level pause
-    function pause(uint32 vaultId) external onlyManager {
-        M.pause(vaultId);
+    // --- MANAGEMENT ---
+
+    function setVersion(uint8 _version) external onlyAdmin {
+        M.setVersion(S.core(), _version);
     }
 
-    function unpause(uint32 vaultId) external onlyManager {
-        M.unpause(vaultId);
+    // --- CUSTOM FEES ---
+
+    function setCustomFees(address _user, Fees calldata _fees) external onlyManager nonReentrant {
+        T.setCustomFees(S.tres(), _user, _fees);
     }
 
-    /*═══════════════════════════════════════════════════════════════╗
-    ║                           MANAGEMENT                           ║
-    ╚═══════════════════════════════════════════════════════════════*/
+    // --- WHITELISTED/BLACKLISTED ---
 
-    function getVersion() external view returns (uint8) {
-        return M.getVersion();
+    function setAccountStatus(address _account, AS _status) external onlyManager {
+        AC.setAccountStatus(S.rst(), _account, _status);
     }
 
-    function setVersion(uint8 version) external onlyAdmin {
-        M.setVersion(version);
+    function setAccountStatusBatch(address[] calldata _accounts, AS _status) external onlyManager {
+        AC.setAccountStatusBatch(S.rst(), _accounts, _status);
     }
 
-    function setMaxSupply(uint32 vaultId, uint256 maxSupply) external onlyManager {
-        M.setMaxSupply(vaultId, maxSupply);
+    // --- WHITELISTED/BLACKLISTED ---
+
+    function addToWhitelist(address _account) external onlyManager {
+        AC.addToWhitelist(S.rst(), _account);
     }
 
-    function getMaxSupply(uint32 vaultId) external view returns (uint256) {
-        return M.getMaxSupply(vaultId);
+    function removeFromList(address _account) external onlyManager {
+        AC.removeFromList(S.rst(), _account);
     }
 
-    function getVaultCount() external view returns (uint32) {
-        return S.registry().vaultCount;
+    function addToBlacklist(address _account) external onlyManager {
+        AC.addToBlacklist(S.rst(), _account);
     }
 
-    function getRangeCount() external view returns (uint32) {
-        return S.registry().rangeCount;
+    function addToListBatch(address[] calldata _accounts, AS _status) external onlyManager {
+        AC.addToListBatch(S.rst(), _accounts, _status);
     }
 
-    /*═══════════════════════════════════════════════════════════════╗
-    ║                     WHITELISTED/BLACKLISTED                    ║
-    ╚═══════════════════════════════════════════════════════════════*/
-
-    function setAccountStatus(address account, AS status) external onlyManager {
-        M.setAccountStatus(account, status);
+    function removeFromListBatch(address[] calldata _accounts) external onlyManager {
+        AC.removeFromListBatch(S.rst(), _accounts);
     }
 
-    function setAccountStatusBatch(address[] calldata accounts, AS status) external onlyManager {
-        M.setAccountStatusBatch(accounts, status);
+    // --- RESTRICTION MANAGEMENT ---
+
+    function setSwapCallerRestriction(bool _value) external onlyManager {
+        M.setSwapCallerRestriction(S.rst(), _value);
     }
 
-    function getAccountStatus(address account) external view returns (AS) {
-        return M.getAccountStatus(account);
+    function setSwapRouterRestriction(bool _value) external onlyManager {
+        M.setSwapRouterRestriction(S.rst(), _value);
     }
 
-    /*═══════════════════════════════════════════════════════════════╗
-    ║                       WHITELISTED/BLACKLISTED                  ║
-    ╚═══════════════════════════════════════════════════════════════*/
-
-    function addToWhitelist(address account) external onlyManager {
-        M.addToWhitelist(account);
+    function setSwapInputRestriction(bool _value) external onlyManager {
+        M.setSwapInputRestriction(S.rst(), _value);
     }
 
-    function removeFromList(address account) external onlyManager {
-        M.removeFromList(account);
+    function setSwapOutputRestriction(bool _value) external onlyManager {
+        M.setSwapOutputRestriction(S.rst(), _value);
     }
 
-    function addToBlacklist(address account) external onlyManager {
-        M.addToBlacklist(account);
+    function setBridgeInputRestriction(bool _value) external onlyManager {
+        M.setBridgeInputRestriction(S.rst(), _value);
     }
 
-    function addToListBatch(address[] calldata accounts, AS status) external onlyManager {
-        M.addToListBatch(accounts, status);
+    function setBridgeOutputRestriction(bool _value) external onlyManager {
+        M.setBridgeOutputRestriction(S.rst(), _value);
     }
 
-    function removeFromListBatch(address[] calldata accounts) external onlyManager {
-        M.removeFromListBatch(accounts);
+    function setBridgeRouterRestriction(bool _value) external onlyManager {
+        M.setBridgeRouterRestriction(S.rst(), _value);
     }
 
-    function isWhitelisted(address account) external view override returns (bool) {
-        return M.isWhitelisted(account);
+    function setApproveMax(bool _value) external onlyManager {
+        M.setApproveMax(S.rst(), _value);
     }
 
-    function isBlacklisted(address account) external view override returns (bool) {
-        return M.isBlacklisted(account);
-    }
-
-    /*═══════════════════════════════════════════════════════════════╗
-    ║                         RESTRICTED MINT                        ║
-    ╚═══════════════════════════════════════════════════════════════*/
-
-    function setRestrictedMint(uint32 vaultId, bool restricted) external onlyManager {
-        M.setRestrictedMint(vaultId, restricted);
-    }
-
-    function isRestrictedMint(uint32 vaultId) external view returns (bool) {
-        return M.isRestrictedMint(vaultId);
-    }
-
-    function isRestrictedMinter(uint32 vaultId, address minter) external view returns (bool) {
-        return M.isRestrictedMinter(vaultId, minter);
-    }
-
-    /*═══════════════════════════════════════════════════════════════╗
-    ║                     RESTRICTION MANAGEMENT                     ║
-    ╚═══════════════════════════════════════════════════════════════*/
-
-    function setRestriction(uint8 bit, bool value) external onlyManager {
-        M.setRestriction(bit, value);
-    }
-
-    function setSwapCallerRestriction(bool value) external onlyManager {
-        M.setSwapCallerRestriction(value);
-    }
-
-    function setSwapRouterRestriction(bool value) external onlyManager {
-        M.setSwapRouterRestriction(value);
-    }
-
-    function setSwapInputRestriction(bool value) external onlyManager {
-        M.setSwapInputRestriction(value);
-    }
-
-    function setSwapOutputRestriction(bool value) external onlyManager {
-        M.setSwapOutputRestriction(value);
-    }
-
-    function setBridgeInputRestriction(bool value) external onlyManager {
-        M.setBridgeInputRestriction(value);
-    }
-
-    function setBridgeOutputRestriction(bool value) external onlyManager {
-        M.setBridgeOutputRestriction(value);
-    }
-
-    function setBridgeRouterRestriction(bool value) external onlyManager {
-        M.setBridgeRouterRestriction(value);
-    }
-
-    function setApproveMax(bool value) external onlyManager {
-        M.setApproveMax(value);
-    }
-
-    function setAutoRevoke(bool value) external onlyManager {
-        M.setAutoRevoke(value);
-    }
-
-    function isSwapCallerRestricted(address caller) external view returns (bool) {
-        return M.isSwapCallerRestricted(caller);
-    }
-
-    function isSwapRouterRestricted(address router) external view returns (bool) {
-        return M.isSwapRouterRestricted(router);
-    }
-
-    function isSwapInputRestricted(address input) external view returns (bool) {
-        return M.isSwapInputRestricted(input);
-    }
-
-    function isSwapOutputRestricted(address output) external view returns (bool) {
-        return M.isSwapOutputRestricted(output);
-    }
-
-    function isBridgeInputRestricted(address input) external view returns (bool) {
-        return M.isBridgeInputRestricted(input);
-    }
-
-    function isBridgeOutputRestricted(address output) external view returns (bool) {
-        return M.isBridgeOutputRestricted(output);
-    }
-
-    function isBridgeRouterRestricted(address router) external view returns (bool) {
-        return M.isBridgeRouterRestricted(router);
-    }
-
-    function isApproveMax() external view returns (bool) {
-        return M.isApproveMax();
-    }
-
-    function isAutoRevoke() external view returns (bool) {
-        return M.isAutoRevoke();
-    }
-
-    /*═══════════════════════════════════════════════════════════════╗
-    ║                            RANGES                              ║
-    ╚═══════════════════════════════════════════════════════════════*/
-
-    function setRangeWeights(uint32 vaultId, uint256[] memory weights) external onlyManager nonReentrant {
-        M.setRangeWeights(vaultId, weights);
-    }
-
-    function zeroOutRangeWeights(uint32 vaultId) external onlyManager nonReentrant {
-        M.zeroOutRangeWeights(vaultId);
+    function setAutoRevoke(bool _value) external onlyManager {
+        M.setAutoRevoke(S.rst(), _value);
     }
 }

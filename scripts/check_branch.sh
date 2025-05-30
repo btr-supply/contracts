@@ -1,4 +1,20 @@
-#!/usr/bin/env sh
+#
+# SPDX-License-Identifier: BUSL-1.1
+# @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+# @@@@@@@@@/         '@@@@/            /@@@/         '@@@@@@@@
+# @@@@@@@@/    /@@@    @@@@@@/    /@@@@@@@/    /@@@    @@@@@@@
+# @@@@@@@/           _@@@@@@/    /@@@@@@@/    /.     _@@@@@@@@
+# @@@@@@/    /@@@    '@@@@@/    /@@@@@@@/    /@@    @@@@@@@@@@
+# @@@@@/            ,@@@@@/    /@@@@@@@/    /@@@,    @@@@@@@@@
+# @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+#
+# @title Check Branch Script - Verifies the current Git branch name
+# @copyright 2025
+# @notice Checks if the current Git branch matches an expected name (e.g., 'main'). Used in CI/CD or pre-commit hooks
+# @dev Simple Git utility script
+# @author BTR Team
+#
+
 set -euo pipefail
 
 exp=${1:-main}

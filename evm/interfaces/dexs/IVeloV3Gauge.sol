@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.28;
+pragma solidity 0.8.29;
 
-import {IVeloV3Voter} from "@interfaces/IVeloV3Voter.sol";
 import {IVeloV3Pool} from "@interfaces/dexs/IVeloV3Pool.sol";
+import {IVeloV3Voter} from "@interfaces/IVeloV3Voter.sol";
 
 interface IVeloV3Gauge {
     function nft() external view returns (address);

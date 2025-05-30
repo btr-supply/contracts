@@ -1,403 +1,335 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.28;
+pragma solidity 0.8.29;
 
-/**
-@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
-@@@@@@@@@/         '@@@@/            /@@@/         '@@@@@@@@
-@@@@@@@@/    /@@@    @@@@@@/    /@@@@@@@/    /@@@    @@@@@@@
-@@@@@@@/           _@@@@@@/    /@@@@@@@/    /.     _@@@@@@@@
-@@@@@@/    /@@@    '@@@@@/    /@@@@@@@/    /@@    @@@@@@@@@@
-@@@@@/            ,@@@@@/    /@@@@@@@/    /@@@,    @@@@@@@@@
-@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+import {ALMVault, Range, ErrorType, DEX, PoolInfo} from "@/BTRTypes.sol";
+import {BTRErrors as Errors, BTREvents as Events} from "@libraries/BTREvents.sol";
+import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {BTRUtils as U} from "@libraries/BTRUtils.sol";
+import {LibCast as C} from "@libraries/LibCast.sol";
+import {LibDEXMaths as DM} from "@libraries/LibDEXMaths.sol";
+import {LibMaths as M} from "@libraries/LibMaths.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {IUniV3Pool} from "@interfaces/dexs/IUniV3Pool.sol";
+import {DEXAdapterFacet} from "@facets/abstract/DEXAdapterFacet.sol";
+
+/*
+ * @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+ * @@@@@@@@@/         '@@@@/            /@@@/         '@@@@@@@@
+ * @@@@@@@@/    /@@@    @@@@@@/    /@@@@@@@/    /@@@    @@@@@@@
+ * @@@@@@@/           _@@@@@@/    /@@@@@@@/    /.     _@@@@@@@@
+ * @@@@@@/    /@@@    '@@@@@/    /@@@@@@@/    /@@    @@@@@@@@@@
+ * @@@@@/            ,@@@@@/    /@@@@@@@/    /@@@,    @@@@@@@@@
+ * @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
  *
- * @title V3 DEX Adapter Base - Abstract base for V3-style DEX adapters
+ * @title V3 DEX Adapter Base - Abstract base for Uniswap V3-style DEX adapters
  * @copyright 2025
  * @notice Defines the interface and common logic for V3 DEX interactions
- * @dev Handles common V3 pool interactions like position minting and collecting fees
+ * @dev Provides reusable V3-specific functions (mintRange, burnRange, collectFees)
+- Converts ticks and liquidity units via `LibDEXMaths`
+- Ensures token ordering and safety checks
+- Inherited by specific adapters: UniV3, CakeV3, ThenaV3
+
  * @author BTR Team
  */
 
-import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
+/*
+ * @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+ * @@@@@@@@@/         '@@@@/            /@@@/         '@@@@@@@@
+ * @@@@@@@@/    /@@@    @@@@@@/    /@@@@@@@/    /@@@    @@@@@@@
+ * @@@@@@@/           _@@@@@@/    /@@@@@@@/    /.     _@@@@@@@@
+ * @@@@@@/    /@@@    '@@@@@/    /@@@@@@@/    /@@    @@@@@@@@@@
+ * @@@@@/            ,@@@@@/    /@@@@@@@/    /@@@,    @@@@@@@@@
+ * @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+ *
+ * @title V3 DEX Adapter Base - Abstract base for Uniswap V3-style DEX adapters
+ * @copyright 2025
+ * @notice Defines the interface and common logic for V3 DEX interactions
+ * @dev Provides reusable V3-specific functions (mintRange, burnRange, collectFees) - Converts ticks and liquidity units via `LibDEXMaths` - Ensures token ordering and safety checks - Inherited by specific adapters: UniV3, CakeV3, ThenaV3
 
-import {ALMVault, Range, WithdrawProceeds, ErrorType, DEX} from "@/BTRTypes.sol";
-import {BTRErrors as Errors, BTREvents as Events} from "@libraries/BTREvents.sol";
-import {BTRUtils} from "@libraries/BTRUtils.sol";
-import {LibMaths as M} from "@libraries/LibMaths.sol";
-import {LibDEXMaths} from "@libraries/LibDEXMaths.sol";
-import {DEXAdapterFacet} from "@facets/abstract/DEXAdapterFacet.sol";
-import {IUniV3Pool} from "@interfaces/dexs/IUniV3Pool.sol";
-
-/**
- * @title DEXAdapterFacet
- * @notice Abstract contract defining interfaces and common functionality for DEX adapters
- * @dev This contract defines virtual methods and implements common functionality for V3-style DEXes
+ * @author BTR Team
  */
+
 abstract contract V3AdapterFacet is DEXAdapterFacet {
     using SafeERC20 for IERC20;
-    using SafeCast for uint256;
     using M for uint256;
-    using BTRUtils for uint32;
-    using BTRUtils for bytes32;
-    using LibDEXMaths for int24;
-    using LibDEXMaths for uint160;
+    using U for uint32;
+    using U for bytes32;
+    using C for uint256;
+    using C for bytes32;
+    using DM for int24;
+    using DM for uint160;
 
-    // NB: also works with v3 forks algebra deployments
-    function _getPoolTokens(IUniV3Pool pool) internal view virtual returns (IERC20 token0, IERC20 token1) {
-        return (IERC20(pool.token0()), IERC20(pool.token1()));
+    function _poolTokens(IUniV3Pool _pool) internal view virtual returns (IERC20 token0, IERC20 token1) {
+        return (IERC20(_pool.token0()), IERC20(_pool.token1()));
     }
 
-    /**
-     * @notice Helper function to get token pair from a pool
-     * @param poolId The DEX pool ID
-     * @return token0 Address of token0
-     * @return token1 Address of token1
-     */
-    function _getPoolTokens(bytes32 poolId) internal view override returns (IERC20 token0, IERC20 token1) {
-        return _getPoolTokens(IUniV3Pool(poolId.toAddress()));
+    function poolTokens(bytes32 _pid) public view override returns (IERC20 token0, IERC20 token1) {
+        return _poolTokens(IUniV3Pool(_pid.toAddress()));
     }
 
-    // NB: also works with v3 forks algebra deployments
-    function _getPoolTickSpacing(bytes32 poolId) internal view override returns (int24) {
-        return IUniV3Pool(poolId.toAddress()).tickSpacing();
+    function _poolTickSpacing(bytes32 _pid) internal view override returns (int24) {
+        return IUniV3Pool(_pid.toAddress()).tickSpacing();
     }
 
-    function _validateTickSpacing(Range memory range) internal view override returns (bool) {
-        return _getPoolTickSpacing(range.poolId).validateTickSpacing(range.lowerTick, range.upperTick);
+    function _validateTickSpacing(Range memory _range) internal view override returns (bool) {
+        return _poolTickSpacing(_range.poolId).validateTickSpacing(_range.lowerTick, _range.upperTick);
     }
 
-    function _getPoolSqrtPriceAndTick(address pool) internal view virtual returns (uint160 sqrtPriceX96, int24 tick) {
-        (sqrtPriceX96, tick,,,,,) = IUniV3Pool(pool).slot0();
+    function _poolState(address _pool) internal view virtual returns (uint160 priceX96, int24 tick) {
+        (priceX96, tick,,,,,) = IUniV3Pool(_pool).slot0();
     }
 
-    function _getPoolSqrtPriceAndTick(bytes32 poolId)
-        internal
-        view
-        override
-        returns (uint160 sqrtPriceX96, int24 tick)
-    {
-        return _getPoolSqrtPriceAndTick(poolId.toAddress());
+    function poolState(bytes32 _pid) public view override returns (uint160 priceX96, int24 tick) {
+        return _poolState(_pid.toAddress());
     }
 
-    function _getPosition(address pool, bytes32 positionId)
+    function _position(address _pool, bytes32 _positionId)
         internal
         view
         virtual
-        returns (uint128 liquidity, uint128 fees0, uint128 fees1)
+        returns (uint128 liquidity, uint128 fee0, uint128 fee1)
     {
-        (liquidity,,, fees0, fees1) = IUniV3Pool(pool).positions(keccak256(abi.encodePacked(address(this), positionId)));
+        (liquidity,,, fee0, fee1) = IUniV3Pool(_pool).positions(keccak256(abi.encodePacked(address(this), _positionId)));
     }
 
-    /**
-     * @notice Get position details for a given pool, position ID, and tick range
-     * @param pool The pool address
-     * @param positionId The position ID
-     * @param tickLower The lower tick
-     * @param tickUpper The upper tick
-     * @return liquidity The position's liquidity
-     * @return amount0 Amount of token0 in the position
-     * @return amount1 Amount of token1 in the position
-     * @return fees0 Accumulated fees for token0
-     * @return fees1 Accumulated fees for token1
-     */
-    function _getPositionWithAmounts(address pool, bytes32 positionId, int24 tickLower, int24 tickUpper)
+    function _positionInfo(address _pool, bytes32 _positionId, int24 _tickLower, int24 _tickUpper)
         internal
         view
-        returns (uint128 liquidity, uint256 amount0, uint256 amount1, uint128 fees0, uint128 fees1)
+        returns (uint128 liquidity, uint256 amount0, uint256 amount1, uint128 fee0, uint128 fee1)
     {
-        (liquidity, fees0, fees1) = _getPosition(pool, positionId);
-        (, int24 currentTick) = _getPoolSqrtPriceAndTick(pool);
-        (amount0, amount1) = currentTick.getAmountsForLiquidity(tickLower, tickUpper, liquidity);
+        (liquidity, fee0, fee1) = _position(_pool, _positionId);
+        (, int24 currentTick) = _poolState(_pool);
+        (amount0, amount1) = DM.liquidityToAmountsTickV3(currentTick, _tickLower, _tickUpper, liquidity);
     }
 
-    /**
-     * @notice Get position details for a specific range ID
-     * @param rangeId The range ID
-     * @return liquidity The position's liquidity
-     * @return amount0 Amount of token0 in the position
-     * @return amount1 Amount of token1 in the position
-     * @return fees0 Accumulated fees for token0
-     * @return fees1 Accumulated fees for token1
-     */
-    function _getPositionWithAmounts(bytes32 rangeId)
-        internal
+    function rangePositionInfo(bytes32 _rid)
+        public
         view
         override
-        returns (uint128 liquidity, uint256 amount0, uint256 amount1, uint128 fees0, uint128 fees1)
+        returns (uint128 liquidity, uint256 amount0, uint256 amount1, uint256 fee0, uint256 fee1)
     {
-        Range storage range = rangeId.getRange();
-        return _getPositionWithAmounts(range.poolId.toAddress(), range.positionId, range.lowerTick, range.upperTick);
+        Range storage range = _rid.range();
+        return _positionInfo(range.poolId.toAddress(), range.positionId, range.lowerTick, range.upperTick);
     }
 
-    /**
-     * @notice Common implementation for getAmountsForLiquidity for V3-style DEXes
-     * @param rangeId The range ID
-     * @param liquidity The liquidity amount to calculate for
-     * @return amount0 Amount of token0 in the position
-     * @return amount1 Amount of token1 in the position
-     */
-    function _getAmountsForLiquidity(bytes32 rangeId, uint256 liquidity)
-        internal
+    function liquidityToAmountsTicks(bytes32 _pid, int24 _lowerTick, int24 _upperTick, uint256 _liquidity)
+        public
         view
         override
         returns (uint256 amount0, uint256 amount1)
     {
-        Range storage range = rangeId.getRange();
-
-        // Get current tick directly from the pool along with sqrtPrice
-        (, int24 currentTick) = _getPoolSqrtPriceAndTick(range.poolId);
-
-        // Calculate token amounts using DEX math library
-        (amount0, amount1) = currentTick.getAmountsForLiquidity(
-            range.lowerTick,
-            range.upperTick,
-            uint128(liquidity) // Cast to uint128 for the math library function
-        );
-        return (amount0, amount1);
+        (, int24 currentTick) = _poolState(_pid.toAddress());
+        return DM.liquidityToAmountsTickV3(currentTick, _lowerTick, _upperTick, uint128(_liquidity));
     }
 
-    function _getLiquidityForAmounts(bytes32 rangeId, uint256 amount0Desired, uint256 amount1Desired)
-        internal
+    function liquidityToAmounts(bytes32 _rid, uint256 _liquidity)
+        public
+        view
+        override
+        returns (uint256 amount0, uint256 amount1)
+    {
+        Range storage r = _rid.range();
+        (amount0, amount1) = liquidityToAmountsTicks(r.poolId, r.lowerTick, r.upperTick, _liquidity);
+    }
+
+    // Internal helper for computing liquidity from token amounts given tick range
+    function amountsToLiquidityTicks(
+        bytes32 _pid,
+        int24 _tickLower,
+        int24 _tickUpper,
+        uint256 _amount0,
+        uint256 _amount1
+    ) public view returns (uint128 liquidity) {
+        (uint160 priceX96,) = _poolState(_pid.toAddress());
+        return priceX96.amountsToLiquidityPriceX96V3(
+            _tickLower.tickToPriceX96V3(), _tickUpper.tickToPriceX96V3(), _amount0, _amount1
+        );
+    }
+
+    function amountsToLiquiditySqrt(bytes32 _rid, uint256 _amount0, uint256 _amount1)
+        public
         view
         override
         returns (uint128 liquidity)
     {
-        Range storage range = rangeId.getRange();
-        return _getLiquidityForAmounts(
-            range.poolId.toAddress(), range.lowerTick, range.upperTick, amount0Desired, amount1Desired
-        );
+        Range storage r = _rid.range();
+        return amountsToLiquidityTicks(r.poolId, r.lowerTick, r.upperTick, _amount0, _amount1);
     }
 
-    /**
-     * @notice Helper function to compute liquidity from desired amounts
-     * @param pool The DEX pool address
-     * @param tickLower The lower tick of the position
-     * @param tickUpper The upper tick of the position
-     * @param amount0Desired Desired amount of token0
-     * @param amount1Desired Desired amount of token1
-     * @return liquidity The computed liquidity amount
-     */
-    function _getLiquidityForAmounts(
-        address pool,
-        int24 tickLower,
-        int24 tickUpper,
-        uint256 amount0Desired,
-        uint256 amount1Desired
-    ) internal view returns (uint128 liquidity) {
-        (uint160 sqrtPriceX96,) = _getPoolSqrtPriceAndTick(pool);
-        return sqrtPriceX96.getLiquidityForAmounts(
-            tickLower.getSqrtPriceAtTick(), tickUpper.getSqrtPriceAtTick(), amount0Desired, amount1Desired
-        );
+    function amountsToLiquidity(bytes32 _rid, uint256 _amount0, uint256 _amount1)
+        public
+        view
+        override
+        returns (uint128 liquidity)
+    {
+        Range storage r = _rid.range();
+        return amountsToLiquidityTicks(r.poolId, r.lowerTick, r.upperTick, _amount0, _amount1);
     }
 
-    function _mintPosition(address pool, int24 tickLower, int24 tickUpper, uint128 liquidity)
+    function _mintPosition(address _pool, int24 _tickLower, int24 _tickUpper, uint128 _liquidity)
         internal
         virtual
         returns (uint256 amount0, uint256 amount1)
     {
-        (amount0, amount1) = IUniV3Pool(pool).mint(address(this), tickLower, tickUpper, liquidity, abi.encode(pool));
+        (amount0, amount1) =
+            IUniV3Pool(_pool).mint(address(this), _tickLower, _tickUpper, _liquidity, abi.encode(_pool));
     }
 
-    /**
-     * @inheritdoc DEXAdapterFacet
-     * @dev Implementation for Uniswap V3 using rangeId
-     */
-    function _mintRange(bytes32 rangeId)
+    function _mintRange(Range storage _range)
         internal
         override
-        returns (uint128 liquidity, uint256 amount0, uint256 amount1)
+        returns (uint256 mintedLiquidity, uint256 amount0, uint256 amount1)
     {
-        Range storage range = rangeId.getRange();
-        address pool = range.poolId.toAddress();
+        address v3Pool = _range.poolId.toAddress();
 
-        if (range.positionId == bytes32(0)) {
-            range.positionId = bytes32(_getPositionId(range.lowerTick, range.upperTick));
+        // New range = new position
+        if (_range.positionId == bytes32(0)) {
+            _range.positionId = bytes32(U.positionId(_range.lowerTick, _range.upperTick));
         }
 
         // Get liquidity from position
-        (uint128 currentLiquidity,,) = _getPosition(pool, range.positionId);
+        (uint128 liq128,,) = _position(v3Pool, _range.positionId);
 
-        // increase only
-        if (currentLiquidity >= range.liquidity) {
-            revert Errors.Exceeds(currentLiquidity, range.liquidity);
+        // Allow increase only
+        if (uint256(liq128) >= _range.liquidity) {
+            revert Errors.Exceeds(uint256(liq128), _range.liquidity);
         }
 
-        (IERC20 token0, IERC20 token1) = _getPoolTokens(pool);
+        (IERC20 token0, IERC20 token1) = _poolTokens(v3Pool);
 
         // Approve tokens vault->pool
-        token0.approve(pool, type(uint256).max);
-        token1.approve(pool, type(uint256).max);
-        (amount0, amount1) = _mintPosition(pool, range.lowerTick, range.upperTick, range.liquidity - currentLiquidity);
+        token0.approve(v3Pool, type(uint256).max);
+        token1.approve(v3Pool, type(uint256).max);
+
+        mintedLiquidity = _range.liquidity - uint256(liq128);
+        (amount0, amount1) = _mintPosition(v3Pool, _range.lowerTick, _range.upperTick, uint128(mintedLiquidity));
 
         // Revoke approvals pool->vault (after mint callback)
-        token0.approve(pool, 0);
-        token1.approve(pool, 0);
-        liquidity = range.liquidity;
-        emit Events.RangeMinted(rangeId, liquidity, amount0, amount1);
+        token0.approve(v3Pool, 0);
+        token1.approve(v3Pool, 0);
     }
 
-    function _mintCallback(uint256 amount0Owed, uint256 amount1Owed, bytes calldata data) internal {
-        address pool = abi.decode(data, (address));
+    function _mintCallback(uint256 _owed0, uint256 _owed1, bytes calldata _data) internal {
+        address pool = abi.decode(_data, (address));
         if (msg.sender != pool) {
             revert Errors.Unauthorized(ErrorType.CONTRACT);
         }
 
-        // Ensure minimum amounts are satisfied
-        // if (amount0Owed < amount0Min || amount1Owed < amount1Min)
-        //     revert Errors.SlippageTooHigh();
-
-        (IERC20 token0, IERC20 token1) = _getPoolTokens(IUniV3Pool(pool));
+        (IERC20 token0, IERC20 token1) = _poolTokens(IUniV3Pool(pool));
 
         // Transfer owed tokens to the pool
-        if (amount0Owed > 0) {
-            token0.safeTransfer(msg.sender, amount0Owed);
+        if (_owed0 > 0) {
+            token0.safeTransfer(msg.sender, _owed0);
         }
-        if (amount1Owed > 0) {
-            token1.safeTransfer(msg.sender, amount1Owed);
+        if (_owed1 > 0) {
+            token1.safeTransfer(msg.sender, _owed1);
         }
     }
 
-    /**
-     * @notice Pool-specific implementation for burning a position
-     * @dev Must be implemented by each adapter to handle pool-specific burn logic
-     */
-    function _burnPosition(address pool, int24 tickLower, int24 tickUpper, uint128 liquidity)
+    function _burnPosition(address _pool, int24 _tickLower, int24 _tickUpper, uint128 _liquidity)
         internal
         virtual
         returns (uint256 amount0, uint256 amount1)
     {
         // Burn position to release tokens
-        (amount0, amount1) = IUniV3Pool(pool).burn(tickLower, tickUpper, liquidity);
+        (amount0, amount1) = IUniV3Pool(_pool).burn(_tickLower, _tickUpper, _liquidity);
     }
 
-    /**
-     * @inheritdoc DEXAdapterFacet
-     * @dev Implementation for Uniswap V3 using rangeId
-     */
-    function _burnRange(bytes32 rangeId)
+    function _burnRange(Range storage _range)
         internal
         override
-        returns (uint256 amount0, uint256 amount1, uint256 lpFees0, uint256 lpFees1)
+        returns (uint256 burntLiquidity, uint256 amount0, uint256 amount1, uint256 lpFee0, uint256 lpFee1)
     {
-        Range storage range = rangeId.getRange();
-        address pool = range.poolId.toAddress();
+        address pool = _range.poolId.toAddress();
 
-        if (range.positionId == bytes32(0)) {
-            range.positionId = bytes32(_getPositionId(range.lowerTick, range.upperTick));
+        // New position = new range
+        if (_range.positionId == bytes32(0)) {
+            revert Errors.NotFound(ErrorType.RANGE);
         }
 
         // Get liquidity from position
-        (uint128 liquidity,,) = _getPosition(pool, range.positionId);
-
-        // decrease only
-        if (liquidity <= range.liquidity) {
-            revert Errors.Exceeds(range.liquidity, liquidity);
-        }
+        (uint128 liq128,,) = _position(pool, _range.positionId);
+        burntLiquidity = uint256(liq128);
 
         // burn position
-        (amount0, amount1) = _burnPosition(pool, range.lowerTick, range.upperTick, range.liquidity - liquidity);
+        (amount0, amount1) = _burnPosition(pool, _range.lowerTick, _range.upperTick, liq128);
 
         // Collect tokens from burnt liquidity and fees
-        (uint256 collected0, uint256 collected1) = _collectPositionFees(pool, range.lowerTick, range.upperTick);
+        (uint256 collected0, uint256 collected1) = _collectPosition(pool, _range.lowerTick, _range.upperTick);
 
         // Calculate LP fee amounts
-        lpFees0 = collected0 > amount0 ? collected0 - amount0 : 0;
-        lpFees1 = collected1 > amount1 ? collected1 - amount1 : 0;
+        lpFee0 = collected0.subMax0(amount0);
+        lpFee1 = collected1.subMax0(amount1);
 
         // update range liquidity
-        range.liquidity = liquidity;
-        emit Events.RangeBurnt(rangeId, liquidity, amount0, amount1, lpFees0, lpFees1);
+        _range.liquidity = 0;
     }
 
-    /**
-     * @notice Pool-specific implementation for collecting tokens and fees
-     * @dev Must be implemented by each adapter to handle pool-specific collect logic
-     */
-    function _collectPositionFees(address pool, int24 tickLower, int24 tickUpper)
+    function _collectPosition(address _pool, int24 _tickLower, int24 _tickUpper)
         internal
         virtual
         returns (uint256 collected0, uint256 collected1)
     {
-        return IUniV3Pool(pool).collect(address(this), tickLower, tickUpper, type(uint128).max, type(uint128).max);
+        return IUniV3Pool(_pool).collect(address(this), _tickLower, _tickUpper, type(uint128).max, type(uint128).max);
     }
 
-    function _collectRangeFees(bytes32 rangeId) internal override returns (uint256 collected0, uint256 collected1) {
-        Range storage range = rangeId.getRange();
-        return _collectPositionFees(range.poolId.toAddress(), range.lowerTick, range.upperTick);
+    function collectRangeFees(bytes32 _rid) public override returns (uint256 collected0, uint256 collected1) {
+        Range storage r = _rid.range();
+        return _collectPosition(r.poolId.toAddress(), r.lowerTick, r.upperTick);
     }
 
-    function _observe(address pool, uint32[] memory secondsAgos)
+    function _observe(address _pool, uint32[] memory _secondsAgos)
         internal
         view
         virtual
         returns (int56[] memory tickCumulatives, uint160[] memory intervalSecondsX128)
     {
-        return IUniV3Pool(pool).observe(secondsAgos);
+        return IUniV3Pool(_pool).observe(_secondsAgos);
     }
 
-    /**
-     * @notice Calculate time-weighted average price from the pool
-     * @param pool The pool address
-     * @param lookback Time interval in seconds for the TWAP calculation
-     * @return arithmeticMeanTick The mean tick over the specified period
-     * @return harmonicMeanLiquidity The harmonic mean liquidity over the specified period
-     */
-    function _consult(address pool, uint32 lookback)
+    function _consult(address _pool, uint32 _lookback)
         internal
         view
         virtual
         returns (int24 arithmeticMeanTick, uint128 harmonicMeanLiquidity)
     {
         uint32[] memory secondsAgos = new uint32[](2);
-        secondsAgos[0] = lookback;
+        secondsAgos[0] = _lookback;
         secondsAgos[1] = 0;
 
-        (int56[] memory tickCumulatives, uint160[] memory intervalSecondsX128) = _observe(pool, secondsAgos);
+        (int56[] memory tickCumulatives, uint160[] memory intervalSecondsX128) = _observe(_pool, secondsAgos);
 
         // Calculate arithmetic mean tick
-        int56 tickCumulativesDelta = tickCumulatives[1] - tickCumulatives[0];
-        arithmeticMeanTick = int24(tickCumulativesDelta / int56(uint56(lookback)));
+        arithmeticMeanTick = int24((tickCumulatives[1] - tickCumulatives[0]) / int56(int32(_lookback)));
 
         // Calculate harmonic mean liquidity
         uint160 secondsPerLiquidityDelta = intervalSecondsX128[1] - intervalSecondsX128[0];
         if (secondsPerLiquidityDelta > 0) {
-            harmonicMeanLiquidity = uint128((uint256(lookback) << 128) / (uint256(secondsPerLiquidityDelta) + 1));
+            harmonicMeanLiquidity = uint128((uint256(_lookback) << 128) / (uint256(secondsPerLiquidityDelta) + 1));
         }
     }
 
-    /**
-     * @notice Validate current price against time-weighted average price to detect manipulation
-     * @param pool The DEX pool address
-     * @param lookback Time interval in seconds for the TWAP calculation
-     * @param maxDeviation Maximum allowed deviation between current price and TWAP in basis points (100 = 1%)
-     * @return isStale True if price is stale, false if price is valid
-     * @return deviation Deviation between current price and TWAP in basis points
-     */
-    function _getPriceDeviation(address pool, uint32 lookback, uint256 maxDeviation)
+    function safePoolState(bytes32 _pid, uint32 _lookback, uint256 _maxDeviationBp)
+        public
+        view
+        override
+        returns (uint160 priceX96, int24 tick, uint160 twapPriceX96, bool isStale, uint256 deviation)
+    {
+        return _safePoolState(_pid.toAddress(), _lookback, _maxDeviationBp);
+    }
+
+    function _safePoolState(address _pool, uint32 _lookback, uint256 _maxDeviation)
         internal
         view
-        returns (bool isStale, uint256 deviation)
+        returns (uint160 priceX96, int24 tick, uint160 twapPriceX96, bool isStale, uint256 deviation)
     {
-        // Get current price from pool
-        (uint160 currentSqrtPriceX96,) = _getPoolSqrtPriceAndTick(pool);
-
-        // Get time-weighted average price
-        (int24 arithmeticMeanTick,) = _consult(pool, lookback);
-
-        // Calculate price deviation
-        uint160 twapSqrtPriceX96 = arithmeticMeanTick.getSqrtPriceAtTick();
-        return currentSqrtPriceX96.getPriceDeviation(twapSqrtPriceX96, maxDeviation);
+        (priceX96, tick) = _poolState(_pool); // current price and tick
+        (int24 arithmeticMeanTick,) = _consult(_pool, _lookback); // twap
+        twapPriceX96 = arithmeticMeanTick.tickToPriceX96V3();
+        (isStale, deviation) = DM.deviationState(priceX96, twapPriceX96, _maxDeviation); // deviation
     }
 
-    function _checkStalePrice(address pool, uint32 lookback, uint256 maxDeviation) internal view {
-        (bool isStale,) = _getPriceDeviation(pool, lookback, maxDeviation);
-        if (isStale) {
-            revert Errors.StalePrice();
-        }
-    }
-
-    function _getPoolTokens(address pool) internal view virtual returns (IERC20 token0, IERC20 token1) {
-        return (IERC20(IUniV3Pool(pool).token0()), IERC20(IUniV3Pool(pool).token1()));
+    function _poolTokens(address _pool) internal view virtual returns (IERC20 token0, IERC20 token1) {
+        return (IERC20(IUniV3Pool(_pool).token0()), IERC20(IUniV3Pool(_pool).token1()));
     }
 }

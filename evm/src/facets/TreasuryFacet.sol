@@ -1,85 +1,75 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.28;
+pragma solidity 0.8.29;
 
-/**
-@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
-@@@@@@@@@/         '@@@@/            /@@@/         '@@@@@@@@
-@@@@@@@@/    /@@@    @@@@@@/    /@@@@@@@/    /@@@    @@@@@@@
-@@@@@@@/           _@@@@@@/    /@@@@@@@/    /.     _@@@@@@@@
-@@@@@@/    /@@@    '@@@@@/    /@@@@@@@/    /@@    @@@@@@@@@@
-@@@@@/            ,@@@@@/    /@@@@@@@/    /@@@,    @@@@@@@@@
-@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+import {Fees} from "@/BTRTypes.sol";
+import {BTRStorage as S} from "@libraries/BTRStorage.sol";
+import {BTRUtils as U} from "@libraries/BTRUtils.sol";
+import {LibTreasury as T} from "@libraries/LibTreasury.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {PermissionedFacet} from "@facets/abstract/PermissionedFacet.sol";
+
+/*
+ * @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+ * @@@@@@@@@/         '@@@@/            /@@@/         '@@@@@@@@
+ * @@@@@@@@/    /@@@    @@@@@@/    /@@@@@@@/    /@@@    @@@@@@@
+ * @@@@@@@/           _@@@@@@/    /@@@@@@@/    /.     _@@@@@@@@
+ * @@@@@@/    /@@@    '@@@@@/    /@@@@@@@/    /@@    @@@@@@@@@@
+ * @@@@@/            ,@@@@@/    /@@@@@@@/    /@@@,    @@@@@@@@@
+ * @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
  *
  * @title Treasury Facet - Manages protocol treasury funds
  * @copyright 2025
  * @notice Handles collection and distribution of protocol fees and revenues
- * @dev Integrates with fee management and access control
+ * @dev Manages vault fees and protocol revenue collection
+- Security Sensitive: Controls fee parameters and treasury address
+- Modifiers: `setAlmVaultFees`/`setDefaultFees`/`setCollector` use `onlyAdmin` or `onlyManager`. `collectFees` uses `onlyTreasury`
+
  * @author BTR Team
  */
 
-import {LibDiamond} from "@libraries/LibDiamond.sol";
-import {LibAccessControl} from "@libraries/LibAccessControl.sol";
-import {LibTreasury as T} from "@libraries/LibTreasury.sol";
-import {PermissionedFacet} from "@facets/abstract/PermissionedFacet.sol";
-import {Fees} from "@/BTRTypes.sol";
-import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-
 contract TreasuryFacet is PermissionedFacet {
-    /*═══════════════════════════════════════════════════════════════╗
-    ║                            TREASURY                            ║
-    ╚═══════════════════════════════════════════════════════════════*/
+    using U for uint32;
+    // --- TREASURY ---
 
-    /// @notice Initialize the facet
-    /// @dev Can only be called once by admin
     function initializeTreasury() external onlyAdmin {
-        // No initialization needed for TreasuryFacet
-        // Treasury address is set in BTRDiamond constructor
+        T.initialize(S.tres());
     }
 
-    // protocol level fees
-    function setFees(uint32 vaultId, Fees calldata fees) external onlyManager {
-        T.setFees(vaultId, fees);
+    // --- CONFIGURATION ---
+
+    function setCollector(address _collector) external onlyAdmin {
+        T.setCollector(S.tres(), S.acc(), _collector); // Updates treasury collector address
     }
 
-    // protocol level fees
-    function setFees(Fees calldata fees) external onlyManager {
-        T.setFees(fees);
+    function collector() external view returns (address) {
+        return S.tres().collector;
     }
 
-    // protocol level default fees (used for new vaults)
-    function setDefaultFees(Fees calldata fees) external onlyManager {
-        T.setDefaultFees(fees);
+    // --- PROTOCOL FEES ---
+
+    function validateFees(Fees memory fees) external pure {
+        T.validateFees(fees); // Checks fee percentages are valid
     }
 
-    // vault level fees
-    function getFees(uint32 vaultId) external view returns (Fees memory) {
-        return T.getFees(vaultId);
+    function setDefaultFees(Fees memory fees) external onlyAdmin {
+        T.setAlmVaultFees(uint32(0).vault(), fees); // Sets default fees (vault ID 0)
     }
 
-    // protocol level fees
-    function getFees() external view returns (Fees memory) {
-        return T.getFees();
+    function defaultFees() external view returns (Fees memory) {
+        return T.defaultFees(); // Returns default fee configuration
     }
 
-    // protocol level fees
-    function getAccruedFees(uint32 vaultId, IERC20 token) external view returns (uint256) {
-        return T.getAccruedFees(vaultId, token);
+    // --- ALM FEES ---
+
+    function setAlmVaultFees(uint32 vid, Fees calldata fees) external onlyManager {
+        T.setAlmVaultFees(vid.vault(), fees); // Sets fees for specific vault
     }
 
-    // protocol level fees
-    function getAccruedFees(IERC20 token) external view returns (uint256) {
-        return T.getAccruedFees(token);
+    function almVaultFees(uint32 vid) external view returns (Fees memory) {
+        return T.almVaultFees(vid.vault()); // Returns vault-specific fees
     }
 
-    function getPendingFees(uint32 vaultId, IERC20 token) external view returns (uint256) {
-        return T.getPendingFees(vaultId, token);
-    }
-
-    function setTreasury(address _treasury) external onlyAdmin {
-        T.setTreasury(_treasury);
-    }
-
-    function getTreasury() external view returns (address) {
-        return T.getTreasury();
+    function collectAlmFees(uint32 vid) external onlyTreasury {
+        T.collectAlmFees(vid.vault(), S.tres()); // Transfers pending fees to treasury
     }
 }

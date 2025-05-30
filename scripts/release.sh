@@ -1,4 +1,20 @@
-#!/usr/bin/env bash
+#
+# SPDX-License-Identifier: BUSL-1.1
+# @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+# @@@@@@@@@/         '@@@@/            /@@@/         '@@@@@@@@
+# @@@@@@@@/    /@@@    @@@@@@/    /@@@@@@@/    /@@@    @@@@@@@
+# @@@@@@@/           _@@@@@@/    /@@@@@@@/    /.     _@@@@@@@@
+# @@@@@@/    /@@@    '@@@@@/    /@@@@@@@/    /@@    @@@@@@@@@@
+# @@@@@/            ,@@@@@/    /@@@@@@@/    /@@@,    @@@@@@@@@
+# @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+#
+# @title Release Runner Script - Orchestrates the release process
+# @copyright 2025
+# @notice Executes the release helper Python script (`release.py`) and potentially other release tasks like tagging
+# @dev Top-level script for creating a new release
+# @author BTR Team
+#
+
 set -euo pipefail
 
 # Usage: release.sh <major|minor|patch>

@@ -1,14 +1,30 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.28;
+pragma solidity 0.8.29;
 
-/**
-@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
-@@@@@@@@@/         '@@@@/            /@@@/         '@@@@@@@@
-@@@@@@@@/    /@@@    @@@@@@/    /@@@@@@@/    /@@@    @@@@@@@
-@@@@@@@/           _@@@@@@/    /@@@@@@@/    /.     _@@@@@@@@
-@@@@@@/    /@@@    '@@@@@/    /@@@@@@@/    /@@    @@@@@@@@@@
-@@@@@/            ,@@@@@/    /@@@@@@@/    /@@@,    @@@@@@@@@
-@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+import {
+    AccessControl,
+    RoleData,
+    PendingAcceptance,
+    ErrorType,
+    TokenType,
+    Rescue,
+    Restrictions,
+    AccountStatus,
+    ALMVault
+} from "@/BTRTypes.sol";
+import {BTRErrors as Errors, BTREvents as Events} from "@libraries/BTREvents.sol";
+import {EnumerableSet} from "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
+import {BTRUtils as U} from "@libraries/BTRUtils.sol";
+import {LibRescue} from "@libraries/LibRescue.sol";
+
+/*
+ * @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+ * @@@@@@@@@/         '@@@@/            /@@@/         '@@@@@@@@
+ * @@@@@@@@/    /@@@    @@@@@@/    /@@@@@@@/    /@@@    @@@@@@@
+ * @@@@@@@/           _@@@@@@/    /@@@@@@@/    /.     _@@@@@@@@
+ * @@@@@@/    /@@@    '@@@@@/    /@@@@@@@/    /@@    @@@@@@@@@@
+ * @@@@@/            ,@@@@@/    /@@@@@@@/    /@@@,    @@@@@@@@@
+ * @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
  *
  * @title Access Control Library - Role-based access control logic
  * @copyright 2025
@@ -17,20 +33,11 @@ pragma solidity 0.8.28;
  * @author BTR Team
  */
 
-import {BTRStorage as S} from "@libraries/BTRStorage.sol";
-import {BTRErrors as Errors, BTREvents as Events} from "@libraries/BTREvents.sol";
-import {EnumerableSet} from "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
-import {AccessControl, RoleData, PendingAcceptance, ErrorType, TokenType, Rescue, AccountStatus} from "@/BTRTypes.sol";
-import {LibRescue} from "@libraries/LibRescue.sol";
-
-/// @title LibAccessControl
-/// @notice Library to manage role-based access control
 library LibAccessControl {
     using EnumerableSet for EnumerableSet.AddressSet;
+    using U for uint32;
 
-    /*═══════════════════════════════════════════════════════════════╗
-    ║                          CONSTANTS                             ║
-    ╚═══════════════════════════════════════════════════════════════*/
+    // --- CONSTANTS ---
 
     uint256 public constant DEFAULT_GRANT_DELAY = 2 days;
     uint256 public constant DEFAULT_ACCEPT_WINDOW = 7 days;
@@ -43,403 +50,380 @@ library LibAccessControl {
     bytes32 public constant KEEPER_ROLE = keccak256("KEEPER_ROLE");
     bytes32 public constant TREASURY_ROLE = keccak256("TREASURY_ROLE");
 
-    /*═══════════════════════════════════════════════════════════════╗
-    ║                            VIEW                                ║
-    ╚═══════════════════════════════════════════════════════════════*/
+    // --- INITIALIZATION ---
 
-    function _getMember0(bytes32 role) internal view returns (address) {
-        address[] memory members = getMembers(role);
-        return members.length > 0 ? members[0] : address(0);
+    function initialize(AccessControl storage _ac, address _admin, address _treasury) internal {
+        if (_admin == address(0)) {
+            revert Errors.ZeroAddress();
+        }
+
+        if (admin(_ac) != address(0)) {
+            revert Errors.AlreadyInitialized();
+        }
+
+        _ac.grantDelay = DEFAULT_GRANT_DELAY;
+        _ac.acceptanceTtl = DEFAULT_ACCEPT_WINDOW;
+        grantRole(_ac, ADMIN_ROLE, _admin);
+        grantRole(_ac, MANAGER_ROLE, _admin);
+        if (_treasury != address(0)) {
+            grantRole(_ac, TREASURY_ROLE, _treasury);
+        }
+        setRoleAdmin(_ac, ADMIN_ROLE, ADMIN_ROLE);
+        setRoleAdmin(_ac, MANAGER_ROLE, ADMIN_ROLE);
+        setRoleAdmin(_ac, KEEPER_ROLE, ADMIN_ROLE);
+        setRoleAdmin(_ac, TREASURY_ROLE, ADMIN_ROLE);
+        emit Events.TimelockConfigUpdated(DEFAULT_GRANT_DELAY, DEFAULT_ACCEPT_WINDOW);
     }
 
-    /// @notice Get the primary admin address
-    /// @return The first admin in the list, or address(0) if none
-    function admin() internal view returns (address) {
-        return _getMember0(ADMIN_ROLE);
+    // --- VIEWS ---
+
+    function timelockConfig(AccessControl storage _ac)
+        internal
+        view
+        returns (uint256 grantDelay, uint256 acceptanceTtl)
+    {
+        return (_ac.grantDelay, _ac.acceptanceTtl);
     }
 
-    /// @notice Get the treasury address
-    /// @return The first treasury in the list, or address(0) if none
-    function treasury() internal view returns (address) {
-        return _getMember0(TREASURY_ROLE);
+    function getPendingAcceptance(AccessControl storage _ac, address _account)
+        internal
+        view
+        returns (PendingAcceptance memory)
+    {
+        return _ac.pendingAcceptance[_account];
     }
 
-    /// @return Array of addresses with the manager role
-    function getManagers() internal view returns (address[] memory) {
-        return getMembers(MANAGER_ROLE);
+    function getRoleAdmin(AccessControl storage _ac, bytes32 _role) private view returns (bytes32) {
+        return _ac.roles[_role].adminRole;
     }
 
-    /// @notice Get the keeper addresses
-    /// @return Array of addresses with the keeper role
-    function getKeepers() internal view returns (address[] memory) {
-        return getMembers(KEEPER_ROLE);
+    function members(AccessControl storage _ac, bytes32 _role) internal view returns (address[] memory) {
+        RoleData storage role = _ac.roles[_role];
+        uint256 length = role.members.length();
+        address[] memory result = new address[](length);
+        unchecked {
+            for (uint256 i = 0; i < length; i++) {
+                result[i] = role.members.at(i);
+            }
+        }
+        return result;
     }
 
-    /// @notice Check if an account is blacklisted
-    /// @param account The account to check
-    /// @return True if the account is blacklisted
-    function isBlacklisted(address account) internal view returns (bool) {
-        return S.restrictions().accountStatus[account] == AccountStatus.BLACKLISTED;
+    function member0(AccessControl storage _ac, bytes32 _role) internal view returns (address) {
+        address[] memory m = members(_ac, _role);
+        return m.length > 0 ? m[0] : address(0);
     }
 
-    /// @notice Check if an account is whitelisted
-    /// @param account The account to check
-    /// @return True if the account is whitelisted
-    function isWhitelisted(address account) internal view returns (bool) {
-        return S.restrictions().accountStatus[account] == AccountStatus.WHITELISTED;
+    function admin(AccessControl storage _ac) internal view returns (address) {
+        return member0(_ac, ADMIN_ROLE);
     }
 
-    /// @notice Check if an account has a role
-    /// @param role The role to check
-    /// @param account The account to check
-    /// @return True if the account has the role
-    function hasRole(bytes32 role, address account) internal view returns (bool) {
-        AccessControl storage acs = S.accessControl();
-        return _hasRole(acs, role, account);
+    function treasury(AccessControl storage _ac) internal view returns (address) {
+        return member0(_ac, TREASURY_ROLE);
     }
 
-    /// @notice Verify that an account has a role, reverting if not
-    /// @param role The role to check
-    /// @param account The account to check
-    function checkRole(bytes32 role, address account) internal view {
-        if (!hasRole(role, account)) {
+    function managers(AccessControl storage _ac) internal view returns (address[] memory) {
+        return members(_ac, MANAGER_ROLE);
+    }
+
+    function keepers(AccessControl storage _ac) internal view returns (address[] memory) {
+        return members(_ac, KEEPER_ROLE);
+    }
+
+    function checkRole(AccessControl storage _ac, bytes32 _role, address _account) internal view {
+        if (!hasRole(_ac, _role, _account)) {
             revert Errors.Unauthorized(ErrorType.ACCESS);
         }
     }
 
-    /// @notice Verify that the caller has a role
-    /// @param role The role to check
-    function checkRole(bytes32 role) internal view {
-        checkRole(role, msg.sender);
+    function checkRole(AccessControl storage _ac, bytes32 _role) internal view {
+        checkRole(_ac, _role, msg.sender);
     }
 
-    /// @notice Check if an account has admin rights for a role
-    /// @param role The role to check
-    /// @param account The account to check
-    function checkRoleAdmin(bytes32 role, address account) internal view {
-        checkRole(getRoleAdmin(role), account);
+    function checkRoleAdmin(AccessControl storage _ac, bytes32 _role, address _account) internal view {
+        checkRole(_ac, getRoleAdmin(_ac, _role), _account);
     }
 
-    /// @notice Check if the caller has admin rights for a role
-    /// @param role The role to check
-    function checkRoleAdmin(bytes32 role) internal view {
-        checkRoleAdmin(role, msg.sender);
+    function checkRoleAdmin(AccessControl storage _ac, bytes32 _role) internal view {
+        checkRoleAdmin(_ac, _role, msg.sender);
     }
 
-    /// @notice Get the admin role for a role
-    /// @param role The role to get the admin for
-    /// @return The admin role
-    function getRoleAdmin(bytes32 role) internal view returns (bytes32) {
-        return S.accessControl().roles[role].adminRole;
-    }
-
-    /// @notice Get all members with a role
-    /// @param role The role to get members for
-    /// @return Array of addresses with the role
-    function getMembers(bytes32 role) internal view returns (address[] memory) {
-        AccessControl storage acs = S.accessControl();
-        RoleData storage roleData = acs.roles[role];
-
-        uint256 length = roleData.members.length();
-        address[] memory result = new address[](length);
-
-        for (uint256 i = 0; i < length;) {
-            result[i] = roleData.members.at(i);
-            unchecked {
-                ++i;
-            }
-        }
-
-        return result;
-    }
-
-    /// @notice Get the current timelock configuration
-    /// @return grantDelay The delay before a role grant can be accepted
-    /// @return acceptWindow The window of time during which a role grant can be accepted
-    function getTimelockConfig() internal view returns (uint256 grantDelay, uint256 acceptWindow) {
-        AccessControl storage acs = S.accessControl();
-        return (acs.grantDelay, acs.acceptWindow);
-    }
-
-    /// @notice Validate a pending role acceptance
-    /// @param acceptance The pending acceptance to check
-    /// @param role The role being accepted
-    function checkRoleAcceptance(PendingAcceptance memory acceptance, bytes32 role) internal view {
-        // Make sure the role accepted is the same as the pending one
-        if (acceptance.role != role) {
+    function checkRoleAcceptance(AccessControl storage _ac, PendingAcceptance memory _acceptance, bytes32 _role)
+        internal
+        view
+    {
+        if (_acceptance.role != _role) {
             revert Errors.Unauthorized(ErrorType.ROLE);
         }
+        if (_acceptance.role == KEEPER_ROLE) return;
 
-        // Grant the keeper role instantly (no attack surface here)
-        if (acceptance.role == KEEPER_ROLE) return;
+        (uint256 grantDelay, uint256 acceptanceTtl) = timelockConfig(_ac);
 
-        (uint256 grantDelay, uint256 acceptWindow) = getTimelockConfig();
-
-        // Check expiry
-        if (block.timestamp > (acceptance.timestamp + grantDelay + acceptWindow)) {
+        if (block.timestamp > (_acceptance.timestamp + grantDelay + acceptanceTtl)) {
             revert Errors.Expired(ErrorType.ACCEPTANCE);
         }
-
-        // Check timelock
-        if (block.timestamp < (acceptance.timestamp + grantDelay)) {
+        if (block.timestamp < (_acceptance.timestamp + grantDelay)) {
             revert Errors.Locked();
         }
     }
 
-    /// @notice Get pending role acceptance for an account
-    /// @param account The account to check
-    /// @return The pending acceptance details
-    function getPendingAcceptance(address account) internal view returns (PendingAcceptance memory) {
-        return S.accessControl().pendingAcceptance[account];
-    }
+    // --- ROLE MODIFICATIONS ---
 
-    /*═══════════════════════════════════════════════════════════════╗
-    ║                      ROLE MODIFICATIONS                        ║
-    ╚═══════════════════════════════════════════════════════════════*/
-
-    /// @notice Set the admin role for a role
-    /// @param role The role to set the admin for
-    /// @param adminRole The new admin role
-    function setRoleAdmin(bytes32 role, bytes32 adminRole) internal {
-        if (role == ADMIN_ROLE) {
-            revert Errors.Unauthorized(ErrorType.ADMIN); // 0x00 will always be the admin's admin role (top of the hierarchy)
+    function setRoleAdmin(AccessControl storage _ac, bytes32 _role, bytes32 _adminRole) internal {
+        if (!hasRole(_ac, ADMIN_ROLE, msg.sender)) {
+            revert Errors.Unauthorized(ErrorType.ACCESS);
+        }
+        if (_role == ADMIN_ROLE) {
+            revert Errors.Unauthorized(ErrorType.ADMIN);
         }
 
-        RoleData storage roleData = S.accessControl().roles[role];
-
+        RoleData storage roleData = _ac.roles[_role];
         bytes32 previousAdminRole = roleData.adminRole;
-        roleData.adminRole = adminRole;
+        roleData.adminRole = _adminRole;
 
-        emit Events.RoleAdminChanged(role, previousAdminRole, adminRole);
+        emit Events.RoleAdminUpdated(_role, previousAdminRole, _adminRole);
     }
 
-    /// @notice Set the timelock configuration
-    /// @param grantDelay The delay before a role grant can be accepted
-    /// @param acceptWindow The window of time during which a role grant can be accepted
-    function setTimelockConfig(uint256 grantDelay, uint256 acceptWindow) internal {
+    function setTimelockConfig(AccessControl storage _ac, uint256 _grantDelay, uint256 _acceptanceTtl) internal {
+        if (!hasRole(_ac, ADMIN_ROLE, msg.sender)) {
+            revert Errors.Unauthorized(ErrorType.ACCESS);
+        }
         if (
-            grantDelay < MIN_GRANT_DELAY || grantDelay > MAX_GRANT_DELAY || acceptWindow < MIN_ACCEPT_WINDOW
-                || acceptWindow > MAX_ACCEPT_WINDOW
+            _grantDelay < MIN_GRANT_DELAY || _grantDelay > MAX_GRANT_DELAY || _acceptanceTtl < MIN_ACCEPT_WINDOW
+                || _acceptanceTtl > MAX_ACCEPT_WINDOW
         ) {
-            revert Errors.OutOfRange(grantDelay, MIN_GRANT_DELAY, MAX_GRANT_DELAY);
+            revert Errors.OutOfRange(_grantDelay, MIN_GRANT_DELAY, MAX_GRANT_DELAY);
         }
 
-        AccessControl storage acs = S.accessControl();
-        acs.grantDelay = grantDelay;
-        acs.acceptWindow = acceptWindow;
+        _ac.grantDelay = _grantDelay;
+        _ac.acceptanceTtl = _acceptanceTtl;
 
-        emit Events.TimelockConfigUpdated(grantDelay, acceptWindow);
+        emit Events.TimelockConfigUpdated(_grantDelay, _acceptanceTtl);
     }
 
-    /// @notice Create a pending role acceptance
-    /// @param role The role to grant
-    /// @param account The account to grant the role to
-    /// @param sender The account granting the role
-    function createRoleAcceptance(bytes32 role, address account, address sender) internal {
-        if (account == address(0)) {
+    function safeGrantRole(AccessControl storage _ac, bytes32 _role, address _account, address _replacing) internal {
+        if (_account == address(0)) {
             revert Errors.ZeroAddress();
         }
+        bytes32 roleAdmin = getRoleAdmin(_ac, _role);
+        if (!hasRole(_ac, roleAdmin, msg.sender)) {
+            revert Errors.Unauthorized(ErrorType.ACCESS);
+        }
 
-        AccessControl storage acs = S.accessControl();
-
-        if (_hasRole(acs, role, account)) {
+        if (hasRole(_ac, _role, _account)) {
             revert Errors.AlreadyExists(ErrorType.ROLE);
         }
 
-        // Validate that the role exists (has an admin role defined)
-        bytes32 adminRole = getRoleAdmin(role);
-        if (adminRole == bytes32(0) && role != ADMIN_ROLE) {
+        bytes32 adminRole = getRoleAdmin(_ac, _role);
+        if (adminRole == bytes32(0) && _role != ADMIN_ROLE) {
             revert Errors.NotFound(ErrorType.ROLE);
         }
 
-        // Prevent an account from replacing itself
-        address replacing = role == ADMIN_ROLE ? sender : address(0);
-        if (replacing == account) {
+        if (_replacing == _account) {
             revert Errors.InvalidParameter();
         }
 
-        // No acceptance needed for keepers
-        if (role == KEEPER_ROLE) {
-            _grantRole(acs, role, account);
+        if (_role == KEEPER_ROLE || member0(_ac, _role) == address(0)) {
+            grantRole(_ac, _role, _account);
             return;
         }
 
-        // Set up pending acceptance
-        acs.pendingAcceptance[account] =
-            PendingAcceptance({replacing: replacing, timestamp: uint64(block.timestamp), role: role});
+        _ac.pendingAcceptance[_account] =
+            PendingAcceptance({replacing: _replacing, timestamp: uint64(block.timestamp), role: _role});
 
-        emit Events.RoleAcceptanceCreated(role, account, sender);
+        emit Events.RoleAcceptanceCreated(_role, _account, _replacing);
     }
 
-    /// @notice Accept a pending role
-    /// @param role The role to accept
-    /// @param account The account accepting the role
-    function acceptRole(bytes32 role, address account) internal {
-        AccessControl storage acs = S.accessControl();
-        PendingAcceptance memory acceptance = acs.pendingAcceptance[account];
+    function acceptRole(AccessControl storage _ac, Rescue storage _res, address _account) internal {
+        PendingAcceptance memory acceptance = _ac.pendingAcceptance[_account];
+        if (acceptance.role == bytes32(0)) {
+            revert Errors.Unauthorized(ErrorType.ACCESS);
+        }
 
-        checkRoleAcceptance(acceptance, role);
-
-        // Always grant the role first to ensure there's at least one admin
-        _grantRole(acs, acceptance.role, account);
+        bytes32 _role = acceptance.role;
+        grantRole(_ac, acceptance.role, _account);
 
         address replacing = acceptance.replacing;
         if (replacing != address(0)) {
-            // Clear all pending rescue requests if replacing an admin
-            if (role == ADMIN_ROLE) {
-                LibRescue.cancelRescueAll(replacing);
+            if (_role == ADMIN_ROLE) {
+                LibRescue.cancelRescueAll(_res, replacing);
             }
-
-            // Now revoke the role from the replaced account
-            // This will work for admin too since we added the new admin first
-            revokeRole(acceptance.role, replacing);
+            revokeRole(_ac, _role, replacing);
         }
 
-        delete acs.pendingAcceptance[account];
+        delete _ac.pendingAcceptance[_account];
     }
 
-    /// @notice Cancel a pending role grant
-    /// @param account The account with the pending role
-    function cancelRoleGrant(address account) internal {
-        AccessControl storage acs = S.accessControl();
-        PendingAcceptance memory acceptance = acs.pendingAcceptance[account];
+    function cancelRoleGrant(AccessControl storage _ac, address _account) internal {
+        PendingAcceptance memory acceptance = _ac.pendingAcceptance[_account];
 
-        // Only allow admin, role admin, or the account itself to cancel
         if (
-            !_hasRole(acs, ADMIN_ROLE, msg.sender) && !_hasRole(acs, getRoleAdmin(acceptance.role), msg.sender)
-                && msg.sender != account
+            !hasRole(_ac, ADMIN_ROLE, msg.sender) && !hasRole(_ac, getRoleAdmin(_ac, acceptance.role), msg.sender)
+                && msg.sender != _account
         ) {
             revert Errors.Unauthorized(ErrorType.ACCESS);
         }
 
-        emit Events.RoleAcceptanceCreated(acceptance.role, address(0), account);
-        delete acs.pendingAcceptance[account];
+        emit Events.RoleAcceptanceCreated(acceptance.role, address(0), _account);
+        delete _ac.pendingAcceptance[_account];
     }
 
-    /// @notice Revoke a role from an account
-    /// @param role The role to revoke
-    /// @param account The account to revoke the role from
-    function revokeRole(bytes32 role, address account) internal {
-        AccessControl storage acs = S.accessControl();
-        RoleData storage roleData = acs.roles[role];
+    function revokeRole(AccessControl storage _ac, bytes32 _role, address _account) internal {
+        if (_account != msg.sender) {
+            bytes32 roleAdmin = getRoleAdmin(_ac, _role);
+            if (!hasRole(_ac, roleAdmin, msg.sender) && !hasRole(_ac, ADMIN_ROLE, msg.sender)) {
+                revert Errors.Unauthorized(ErrorType.ACCESS);
+            }
+        }
+        RoleData storage roleData = _ac.roles[_role];
 
-        if (role == ADMIN_ROLE && roleData.members.length() == 1) {
-            revert Errors.Unauthorized(ErrorType.ADMIN); // Cannot revoke the last admin
+        if (_role == ADMIN_ROLE && roleData.members.length() == 1) {
+            revert Errors.Unauthorized(ErrorType.ADMIN);
         }
 
-        if (!_hasRole(acs, role, account)) {
+        if (!hasRole(_ac, _role, _account)) {
             revert Errors.NotFound(ErrorType.ROLE);
         }
 
-        roleData.members.remove(account);
-        emit Events.RoleRevoked(role, account, msg.sender);
+        roleData.members.remove(_account);
+        emit Events.RoleRevoked(_role, _account, msg.sender);
 
-        // Emit ownership transferred event if this was an admin role
-        if (role == ADMIN_ROLE) {
-            // Find the first admin in the list to consider as the "owner"
+        if (_role == ADMIN_ROLE) {
             address newOwner = roleData.members.length() > 0 ? roleData.members.at(0) : address(0);
-            emit Events.OwnershipTransferred(account, newOwner);
+            emit Events.OwnershipTransferred(_account, newOwner);
         }
     }
 
-    /**
-     * @notice Internal hasRole check that uses a storage pointer
-     * @param acs AccessControl storage pointer
-     * @param role The role to check
-     * @param account The account to check
-     */
-    function _hasRole(AccessControl storage acs, bytes32 role, address account) private view returns (bool) {
-        return acs.roles[role].members.contains(account);
-    }
-
-    /**
-     * @notice Internal function to grant a role using storage pointer
-     * @param acs AccessControl storage pointer
-     * @param role The role to grant
-     * @param account The account to grant the role to
-     */
-    function _grantRole(AccessControl storage acs, bytes32 role, address account) private {
-        if (_hasRole(acs, role, account)) {
-            return; // Account already has the role
-        }
-
-        RoleData storage roleData = acs.roles[role];
-        roleData.members.add(account);
-
-        emit Events.RoleGranted(role, account, msg.sender);
-
-        // Emit ownership transfer event if this is an admin role
-        if (role == ADMIN_ROLE) {
-            emit Events.OwnershipTransferred(msg.sender, account);
+    function revokeAll(AccessControl storage _ac, bytes32 _role) internal {
+        checkRoleAdmin(_ac, _role);
+        address[] memory _members = members(_ac, _role);
+        unchecked {
+            for (uint256 i = 0; i < _members.length; i++) {
+                revokeRole(_ac, _role, _members[i]);
+            }
         }
     }
 
-    /// @notice Grants a role directly (bypassing acceptance flow)
-    /// @param role The role to grant
-    /// @param account The account to grant the role to
-    function grantRole(bytes32 role, address account) internal {
-        AccessControl storage acs = S.accessControl();
-        _grantRole(acs, role, account);
+    function revokeAllManagers(AccessControl storage _ac) internal {
+        revokeAll(_ac, MANAGER_ROLE);
     }
 
-    /// @notice Create a pending role grant
-    /// @param role The role to grant
-    /// @param account The account to grant the role to
-    /// @param replacing The account being replaced (if any)
-    function grantPendingRole(bytes32 role, address account, address replacing) internal {
-        AccessControl storage acs = S.accessControl();
-
-        // If already has a pending acceptance for any role, revert
-        if (acs.pendingAcceptance[account].role != bytes32(0)) {
-            revert Errors.AlreadyExists(ErrorType.ROLE);
-        }
-
-        // Create pending acceptance
-        PendingAcceptance storage acceptance = acs.pendingAcceptance[account];
-        acceptance.role = role;
-        acceptance.timestamp = uint64(block.timestamp);
-        acceptance.replacing = replacing;
-
-        // If replacing someone, check that they have the role
-        if (replacing != address(0) && !_hasRole(acs, role, replacing)) {
-            revert Errors.NotFound(ErrorType.ROLE);
-        }
-
-        emit Events.RoleAcceptanceCreated(role, account, msg.sender);
+    function revokeAllKeepers(AccessControl storage _ac) internal {
+        revokeAll(_ac, KEEPER_ROLE);
     }
 
-    /*═══════════════════════════════════════════════════════════════╗
-    ║                         INITIALIZATION                         ║
-    ╚═══════════════════════════════════════════════════════════════*/
+    function hasRole(AccessControl storage _ac, bytes32 _role, address _account) internal view returns (bool) {
+        return _ac.roles[_role].members.contains(_account);
+    }
 
-    /// @notice Initialize the access control system
-    /// @param adminAddress The initial admin address
-    function initialize(address adminAddress) internal {
-        if (adminAddress == address(0)) {
-            revert Errors.ZeroAddress();
+    function grantRole(AccessControl storage _ac, bytes32 _role, address _account) private {
+        if (hasRole(_ac, _role, _account)) {
+            return;
         }
 
-        // Check if already initialized
-        if (admin() != address(0)) {
-            revert Errors.AlreadyInitialized();
+        RoleData storage roleData = _ac.roles[_role];
+        roleData.members.add(_account);
+
+        emit Events.RoleGranted(_role, _account, msg.sender);
+
+        if (_role == ADMIN_ROLE) {
+            emit Events.OwnershipTransferred(msg.sender, _account);
         }
+    }
 
-        AccessControl storage acs = S.accessControl();
+    function isAlmMinterUnrestricted(Restrictions storage _rs, uint32 _vid, address _account)
+        internal
+        view
+        returns (bool)
+    {
+        return _vid.vault().mintRestricted ? isWhitelisted(_rs, _account) : !isBlacklisted(_rs, _account);
+    }
 
-        // Grant initial roles
-        _grantRole(acs, ADMIN_ROLE, adminAddress);
-        _grantRole(acs, MANAGER_ROLE, adminAddress);
+    // --- CHECKS/ENSURE OR REVERT ---
 
-        // Set up role admins
-        setRoleAdmin(ADMIN_ROLE, ADMIN_ROLE);
-        setRoleAdmin(MANAGER_ROLE, ADMIN_ROLE);
-        setRoleAdmin(KEEPER_ROLE, ADMIN_ROLE);
-        setRoleAdmin(TREASURY_ROLE, ADMIN_ROLE);
+    function checkNotBlacklisted(Restrictions storage _rs, address _account) internal view {
+        if (_rs.accountStatus[_account] == AccountStatus.BLACKLISTED) {
+            revert Errors.Unauthorized(ErrorType.ADDRESS);
+        }
+    }
 
-        // Set default timelock settings
-        acs.grantDelay = DEFAULT_GRANT_DELAY;
-        acs.acceptWindow = DEFAULT_ACCEPT_WINDOW;
+    function checkWhitelisted(Restrictions storage _rs, address _account) internal view {
+        if (_rs.accountStatus[_account] != AccountStatus.WHITELISTED) {
+            revert Errors.Unauthorized(ErrorType.ADDRESS);
+        }
+    }
 
-        emit Events.TimelockConfigUpdated(DEFAULT_GRANT_DELAY, DEFAULT_ACCEPT_WINDOW);
+    function checkUnlisted(Restrictions storage _rs, address _account) internal view {
+        if (_rs.accountStatus[_account] != AccountStatus.NONE) {
+            revert Errors.Unauthorized(ErrorType.ADDRESS);
+        }
+    }
+
+    function checkAlmMinterUnrestricted(Restrictions storage _rs, uint32 _vid, address _account) internal view {
+        if (!isAlmMinterUnrestricted(_rs, _vid, _account)) revert Errors.Unauthorized(ErrorType.ADDRESS);
+    }
+
+    // --- ACCOUNT STATUS ---
+
+    function accountStatus(Restrictions storage _rs, address _account) internal view returns (AccountStatus) {
+        return _rs.accountStatus[_account];
+    }
+
+    function setAccountStatus(Restrictions storage _rs, address _account, AccountStatus _status) internal {
+        mapping(address => AccountStatus) storage sm = _rs.accountStatus;
+        AccountStatus prev = sm[_account];
+        sm[_account] = _status;
+        emit Events.AccountStatusUpdated(_account, prev, _status);
+    }
+
+    function setAccountStatusBatch(Restrictions storage _rs, address[] memory _accounts, AccountStatus _status)
+        internal
+    {
+        uint256 len = _accounts.length;
+        unchecked {
+            for (uint256 i = 0; i < len; i++) {
+                setAccountStatus(_rs, _accounts[i], _status);
+            }
+        }
+    }
+
+    // --- WHITELISTED/BLACKLISTED ---
+
+    function addToWhitelist(Restrictions storage _rs, address _account) internal {
+        setAccountStatus(_rs, _account, AccountStatus.WHITELISTED);
+    }
+
+    function removeFromList(Restrictions storage _rs, address _account) internal {
+        setAccountStatus(_rs, _account, AccountStatus.NONE);
+    }
+
+    function addToBlacklist(Restrictions storage _rs, address _account) internal {
+        setAccountStatus(_rs, _account, AccountStatus.BLACKLISTED);
+    }
+
+    function isWhitelisted(Restrictions storage _rs, address _account) internal view returns (bool) {
+        return accountStatus(_rs, _account) == AccountStatus.WHITELISTED;
+    }
+
+    function isBlacklisted(Restrictions storage _rs, address _account) internal view returns (bool) {
+        return accountStatus(_rs, _account) == AccountStatus.BLACKLISTED;
+    }
+
+    function addToListBatch(Restrictions storage _rs, address[] memory _accounts, AccountStatus _status) internal {
+        for (uint256 i = 0; i < _accounts.length;) {
+            setAccountStatus(_rs, _accounts[i], _status);
+            unchecked {
+                ++i;
+            }
+        }
+    }
+
+    function removeFromListBatch(Restrictions storage _rs, address[] memory _accounts) internal {
+        for (uint256 i = 0; i < _accounts.length;) {
+            setAccountStatus(_rs, _accounts[i], AccountStatus.NONE);
+            unchecked {
+                ++i;
+            }
+        }
     }
 }

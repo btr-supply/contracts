@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.28;
+pragma solidity 0.8.29;
 
-// includes IBribe
 interface IThenaV3Gauge {
     struct Reward {
         uint256 periodFinish;

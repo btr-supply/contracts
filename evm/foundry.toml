@@ -4,15 +4,25 @@ out = 'out'
 libs = ['.deps']
 script = 'scripts'
 test = 'tests'
-solc = "0.8.28"
+solc = "0.8.29"
 optimizer = true
 optimizer_runs = 200      # High value for optimized deployed contracts
-via_ir = false            # Enable intermediate representation compilation for more optimizations
+via_ir = false            # Disable intermediate representation compilation to avoid complex compilation issues
 evm_version = "london"    # Use London EVM version for better gas optimizations
 metadata_hash = "none"    # Reduces bytecode size
 bytecode_hash = "none"    # Further reduces bytecode size
 cbor_metadata = false     # Don't include CBOR metadata
 allow_paths = ["../../", "../", "./"]
+ffi = true
+remappings = []           # overriden by remappings.txt
+
+[fmt]
+tab_width = 2
+line_length = 100
+int_types = 'long'
+quote_style = 'double'
+number_underscore = 'preserve'
+wrap_comments = false
 
 [profile.debug]
 src = 'src'
@@ -20,6 +30,56 @@ out = 'out'
 libs = ['.deps']
 script = 'scripts'
 test = 'tests'
-solc = "0.8.28"
+solc = "0.8.29"
 optimizer = false
 verbosity = 4
+
+[fuzz]
+runs = 1000
+max_test_rejects = 20000
+
+[rpc_endpoints]
+ethereum = "https://${HTTPS_RPC_1}"
+optimism = "https://${HTTPS_RPC_10}"
+bnb_chain = "https://${HTTPS_RPC_56}"
+gnosis_chain = "https://${HTTPS_RPC_100}"
+unichain = "https://${HTTPS_RPC_130}"
+polygon = "https://${HTTPS_RPC_137}"
+sonic = "https://${HTTPS_RPC_146}"
+zksync_era = "https://${HTTPS_RPC_324}"
+worldchain = "https://${HTTPS_RPC_480}"
+moonbeam = "https://${HTTPS_RPC_1284}"
+moonriver = "https://${HTTPS_RPC_1285}"
+abstract = "https://${HTTPS_RPC_2741}"
+mantle = "https://${HTTPS_RPC_5000}"
+base = "https://${HTTPS_RPC_8453}"
+arbitrum_one = "https://${HTTPS_RPC_42161}"
+avalanche = "https://${HTTPS_RPC_43114}"
+berachain = "https://${HTTPS_RPC_80094}"
+linea = "https://${HTTPS_RPC_59144}"
+taiko = "https://${HTTPS_RPC_167000}"
+scroll = "https://${HTTPS_RPC_534352}"
+sepolia = "https://${HTTPS_RPC_11155111}"
+
+[etherscan]
+ethereum = { key = "${EXPLORER_API_KEY_1}", api = "https://api.etherscan.io/v2" }
+optimism = { key = "${EXPLORER_API_KEY_10}", api = "https://api.etherscan.io/v2" }
+bnb_chain = { key = "${EXPLORER_API_KEY_56}", api = "https://api.etherscan.io/v2" }
+gnosis_chain = { key = "${EXPLORER_API_KEY_100}", api = "https://api.etherscan.io/v2" }
+unichain = { key = "${EXPLORER_API_KEY_130}", api = "https://api.etherscan.io/v2" }
+polygon = { key = "${EXPLORER_API_KEY_137}", api = "https://api.etherscan.io/v2" }
+sonic = { key = "${EXPLORER_API_KEY_146}", api = "https://api.etherscan.io/v2" }
+zksync_era = { key = "${EXPLORER_API_KEY_324}", api = "https://api.etherscan.io/v2" }
+worldchain = { key = "${EXPLORER_API_KEY_480}", api = "https://api.etherscan.io/v2" }
+moonbeam = { key = "${EXPLORER_API_KEY_1284}", api = "https://api.etherscan.io/v2" }
+moonriver = { key = "${EXPLORER_API_KEY_1285}", api = "https://api.etherscan.io/v2" }
+abstract = { key = "${EXPLORER_API_KEY_2741}", api = "https://api.etherscan.io/v2" }
+mantle = { key = "${EXPLORER_API_KEY_5000}", api = "https://api.etherscan.io/v2" }
+base = { key = "${EXPLORER_API_KEY_8453}", api = "https://api.etherscan.io/v2" }
+arbitrum_one = { key = "${EXPLORER_API_KEY_42161}", api = "https://api.etherscan.io/v2" }
+avalanche = { key = "${EXPLORER_API_KEY_43114}", api = "https://api.etherscan.io/v2" }
+berachain = { key = "${EXPLORER_API_KEY_80094}", api = "https://api.etherscan.io/v2" }
+linea = { key = "${EXPLORER_API_KEY_59144}", api = "https://api.etherscan.io/v2" }
+taiko = { key = "${EXPLORER_API_KEY_167000}", api = "https://api.etherscan.io/v2" }
+scroll = { key = "${EXPLORER_API_KEY_534352}", api = "https://api.etherscan.io/v2" }
+sepolia = { key = "${EXPLORER_API_KEY_11155111}", api = "https://api.etherscan.io/v2" }

@@ -8,17 +8,17 @@ globs:
 
 ### Multi-Chain Architecture
 - EVM code in `./evm` with `foundry.toml` configuration
-- Solana code in `./solana` 
+- Solana code in `./solana`
 - Sui code in `./sui`
 
 ### Build Organization
 - Project-wide scripts in `./scripts`
-- EVM deployment scripts in `./evm/scripts` 
+- EVM deployment scripts in `./evm/scripts`
 - Diamond pattern facets in `./evm/src/facets`
 
 ### Diamond Architecture (EVM)
 - Uses Diamond pattern (EIP-2535) for modularity
-- Three-step compilation via `./scripts/setup.sh`:
+- Three-step compilation via `./scripts/build.sh`:
   1. Compile facets from `./evm/src/facets`
   2. Generate diamond deployment script
   3. Compile all components together
@@ -28,14 +28,35 @@ globs:
 ### Core Principles
 - Implement minimum viable solutions
 - Choose narrow scope interpretations
-- Require explicit approval for scope changes
-- Use only `setup.sh` for builds
+- Require explicit approval for [MAJOR] scope changes, otherwise, proceed with implementations on your own
+- Use only `make build` for builds
+
+### Build Workflow
+- **Installation:**
+  ```bash
+  make install-deps  # Installs system deps, Python packages, and git hooks
+  ```
+- **Formatting:**
+  ```bash
+  make format        # Runs forge fmt and custom formatters
+  make python-lint-fix  # Fixes Python code style
+  ```
+- **Testing:**
+  ```bash
+  make test         # Runs forge test suite
+  ```
+- **Releasing:**
+  ```bash
+  make publish-patch  # Increments patch version (0.1.0 -> 0.1.1)
+  make publish-minor  # Increments minor version (0.1.1 -> 0.2.0)
+  make publish-major  # Increments major version (0.2.0 -> 1.0.0)
+  ```
 
 ### Change Management
 - Classify changes as:
   - [MINOR] (1-8 lines)
-  - [MODERATE] (8-30 lines) 
-  - [MAJOR] (30+ lines)
+  - [MODERATE] (8-32 lines)
+  - [MAJOR] (32+ lines)
 - Flag [COMPLEX] changes affecting 3+ files
 - Provide implementation plans for [MAJOR] changes
 - Document potential side effects

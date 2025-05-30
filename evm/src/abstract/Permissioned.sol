@@ -1,14 +1,17 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.28;
+pragma solidity 0.8.29;
 
-/**
-@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
-@@@@@@@@@/         '@@@@/            /@@@/         '@@@@@@@@
-@@@@@@@@/    /@@@    @@@@@@/    /@@@@@@@/    /@@@    @@@@@@@
-@@@@@@@/           _@@@@@@/    /@@@@@@@/    /.     _@@@@@@@@
-@@@@@@/    /@@@    '@@@@@/    /@@@@@@@/    /@@    @@@@@@@@@@
-@@@@@/            ,@@@@@/    /@@@@@@@/    /@@@,    @@@@@@@@@
-@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+import {BTRErrors as Errors} from "@libraries/BTREvents.sol";
+import {IPermissioned} from "@interfaces/IPermissioned.sol";
+
+/*
+ * @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+ * @@@@@@@@@/         '@@@@/            /@@@/         '@@@@@@@@
+ * @@@@@@@@/    /@@@    @@@@@@/    /@@@@@@@/    /@@@    @@@@@@@
+ * @@@@@@@/           _@@@@@@/    /@@@@@@@/    /.     _@@@@@@@@
+ * @@@@@@/    /@@@    '@@@@@/    /@@@@@@@/    /@@    @@@@@@@@@@
+ * @@@@@/            ,@@@@@/    /@@@@@@@/    /@@@,    @@@@@@@@@
+ * @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
  *
  * @title Permissioned Base - Base contract for permissioned access
  * @copyright 2025
@@ -17,127 +20,113 @@ pragma solidity 0.8.28;
  * @author BTR Team
  */
 
-import {IPermissioned} from "@interfaces/IPermissioned.sol";
-
-/// @title Permissioned
-/// @notice Abstract contract for external contracts to validate roles via the Diamond
 abstract contract Permissioned {
-    /// @dev The diamond contract address that handles role validation
-    address public immutable diamond;
+    IPermissioned public diamond;
 
-    /// @notice Constructor to set the diamond address
-    /// @param _diamond Address of the diamond contract for role validation
     constructor(address _diamond) {
-        require(_diamond != address(0), "Permissioned: zero address");
-        diamond = _diamond;
+        _setDiamond(_diamond);
     }
 
-    /// @dev Access to permission checking functions via interface
-    function permissioned() internal view returns (IPermissioned) {
-        return IPermissioned(diamond);
+    function _setDiamond(address _diamond) internal {
+        if (_diamond == address(0)) revert Errors.ZeroAddress();
+        if (_diamond == diamond) revert Errors.AlreadyInitialized();
+        diamond = IPermissioned(_diamond);
     }
 
-    /// @notice Modifier to check if the caller has a specific role
-    /// @param role The role to validate
-    modifier onlyRole(bytes32 role) virtual {
-        permissioned().checkRole(role, msg.sender);
+    function setDiamond(address _diamond) external onlyAdmin {
+        _setDiamond(_diamond);
+    }
+
+    modifier onlyRole(bytes32 _role) virtual {
+        diamond.checkRole(_role, msg.sender);
         _;
     }
 
-    /// @notice Modifier for admin-only functions
+    modifier onlyDiamond() virtual {
+        if (msg.sender != address(diamond)) revert Errors.NotDiamond();
+        _;
+    }
+
     modifier onlyAdmin() virtual {
-        permissioned().isAdmin(msg.sender);
+        diamond.isAdmin(msg.sender);
         _;
     }
 
-    /// @notice Modifier for manager-only functions
     modifier onlyManager() virtual {
-        permissioned().isManager(msg.sender);
+        diamond.isManager(msg.sender);
         _;
     }
 
-    /// @notice Modifier for keeper-only functions
+    modifier onlyManagerFor(address _account) virtual {
+        diamond.isManager(_account);
+        _;
+    }
+
     modifier onlyKeeper() virtual {
-        permissioned().isKeeper(msg.sender);
+        diamond.isKeeper(msg.sender);
         _;
     }
 
-    /// @notice Modifier for treasury-only functions
+    modifier onlyKeeperFor(address _account) virtual {
+        diamond.isKeeper(_account);
+        _;
+    }
+
     modifier onlyTreasury() virtual {
-        permissioned().isTreasury(msg.sender);
+        diamond.isTreasury(msg.sender);
         _;
     }
 
-    /// @notice Check if an account has a specific role
-    /// @param role The role to check
-    /// @param account The account to validate
-    /// @return True if the account has the specified role
-    function hasRole(bytes32 role, address account) public view virtual returns (bool) {
-        return permissioned().hasRole(role, account);
+    modifier onlyTreasuryFor(address _account) virtual {
+        diamond.isTreasury(_account);
+        _;
     }
 
-    /// @notice Verify that an account has a specific role, reverting if not
-    /// @param role The role to check
-    /// @param account The account to validate
-    function checkRole(bytes32 role, address account) public view virtual {
-        permissioned().checkRole(role, account);
+    function hasRole(bytes32 _role, address _account) public view virtual returns (bool) {
+        return diamond.hasRole(_role, _account);
     }
 
-    /// @notice Verify that the caller has a specific role
-    /// @param role The role to check
-    function checkRole(bytes32 role) public view virtual {
-        permissioned().checkRole(role, msg.sender);
+    function checkRole(bytes32 _role, address _account) public view virtual {
+        diamond.checkRole(_role, _account);
     }
 
-    /// @notice Check if an account is an admin
-    /// @param account The account to check
-    /// @return True if the account has the admin role
-    function isAdmin(address account) external view virtual returns (bool) {
-        return permissioned().isAdmin(account);
+    function checkRole(bytes32 _role) public view virtual {
+        diamond.checkRole(_role, msg.sender);
     }
 
-    /// @notice Check if an account is a manager
-    /// @param account The account to check
-    /// @return True if the account has the manager role
-    function isManager(address account) external view virtual returns (bool) {
-        return permissioned().isManager(account);
+    function isDiamond(address _account) external view virtual returns (bool) {
+        return diamond.isDiamond(_account);
     }
 
-    /// @notice Check if an account is a keeper
-    /// @param account The account to check
-    /// @return True if the account has the keeper role
-    function isKeeper(address account) external view virtual returns (bool) {
-        return permissioned().isKeeper(account);
+    function isAdmin(address _account) external view virtual returns (bool) {
+        return diamond.isAdmin(_account);
     }
 
-    /// @notice Check if an account is a treasury
-    /// @param account The account to check
-    /// @return True if the account has the treasury role
-    function isTreasury(address account) external view virtual returns (bool) {
-        return permissioned().isTreasury(account);
+    function isManager(address _account) external view virtual returns (bool) {
+        return diamond.isManager(_account);
     }
 
-    /// @notice Get the admin address
-    /// @return The admin address
+    function isKeeper(address _account) external view virtual returns (bool) {
+        return diamond.isKeeper(_account);
+    }
+
+    function isTreasury(address _account) external view virtual returns (bool) {
+        return diamond.isTreasury(_account);
+    }
+
     function admin() external view virtual returns (address) {
-        return permissioned().admin();
+        return diamond.admin();
     }
 
-    /// @notice Get the treasury address
-    /// @return The treasury address
     function treasury() external view virtual returns (address) {
-        return permissioned().treasury();
+        return diamond.treasury();
     }
 
-    /// @notice Get all managers
-    /// @return The list of managers
-    function getManagers() external view virtual returns (address[] memory) {
-        return permissioned().getManagers();
+    function managers() external view virtual returns (address[] memory) {
+        return diamond.managers();
     }
 
-    /// @notice Get all keepers
-    /// @return The list of keepers
-    function getKeepers() external view virtual returns (address[] memory) {
-        return permissioned().getKeepers();
+    function keepers() external view virtual returns (address[] memory) {
+        return diamond.keepers();
     }
 }

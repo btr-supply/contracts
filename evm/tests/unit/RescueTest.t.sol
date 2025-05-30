@@ -1,42 +1,37 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.28;
+pragma solidity 0.8.29;
 
-/**
-@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
-@@@@@@@@@/         '@@@@/            /@@@/         '@@@@@@@@
-@@@@@@@@/    /@@@    @@@@@@/    /@@@@@@@/    /@@@    @@@@@@@
-@@@@@@@/           _@@@@@@/    /@@@@@@@/    /.     _@@@@@@@@
-@@@@@@/    /@@@    '@@@@@/    /@@@@@@@/    /@@    @@@@@@@@@@
-@@@@@/            ,@@@@@/    /@@@@@@@/    /@@@,    @@@@@@@@@
-@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+import {BTRErrors as Errors, BTREvents as Events} from "@libraries/BTREvents.sol";
+import {TokenType, ErrorType} from "@/BTRTypes.sol";
+import {IERC165} from "@openzeppelin/contracts/utils/introspection/IERC165.sol";
+import {LibAccessControl as AC} from "@libraries/LibAccessControl.sol";
+import {LibRescue} from "@libraries/LibRescue.sol";
+import {IERC1155Receiver} from "@openzeppelin/contracts/token/ERC1155/IERC1155Receiver.sol";
+import {IERC721Receiver} from "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
+import {BaseDiamondTest} from "../BaseDiamondTest.t.sol";
+import {AccessControlFacet} from "@facets/AccessControlFacet.sol";
+import {MockERC1155} from "../mocks/MockERC1155.sol";
+import {MockERC20} from "../mocks/MockERC20.sol";
+import {MockERC721} from "../mocks/MockERC721.sol";
+import {RescueFacet} from "@facets/RescueFacet.sol";
+import {Test} from "forge-std/Test.sol";
+
+/*
+ * @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+ * @@@@@@@@@/         '@@@@/            /@@@/         '@@@@@@@@
+ * @@@@@@@@/    /@@@    @@@@@@/    /@@@@@@@/    /@@@    @@@@@@@
+ * @@@@@@@/           _@@@@@@/    /@@@@@@@/    /.     _@@@@@@@@
+ * @@@@@@/    /@@@    '@@@@@/    /@@@@@@@/    /@@    @@@@@@@@@@
+ * @@@@@/            ,@@@@@/    /@@@@@@@/    /@@@,    @@@@@@@@@
+ * @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
  *
  * @title Rescue Test - Asset recovery validation
  * @copyright 2025
- * @notice Verifies emergency asset recovery functionality
- * @dev Tests the RescueFacet logic and permissions
+ * @notice Verifies RescueFacet request -> timelock -> execute flow for asset recovery
+ * @dev Tests the RescueFacet logic, permissions (`onlyAdmin`, `onlyManager`), and timelock mechanism
  * @author BTR Team
  */
 
-import {Test} from "forge-std/Test.sol";
-import {BaseDiamondTest} from "../BaseDiamondTest.t.sol";
-import {RescueFacet} from "@facets/RescueFacet.sol";
-import {AccessControlFacet} from "@facets/AccessControlFacet.sol";
-import {LibAccessControl as AC} from "@libraries/LibAccessControl.sol";
-import {TokenType, ErrorType} from "@/BTRTypes.sol";
-import {BTRErrors as Errors, BTREvents as Events} from "@libraries/BTREvents.sol";
-import {MockERC20} from "../mocks/MockERC20.sol";
-import {MockERC721} from "../mocks/MockERC721.sol";
-import {MockERC1155} from "../mocks/MockERC1155.sol";
-import {IERC721Receiver} from "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
-import {IERC1155Receiver} from "@openzeppelin/contracts/token/ERC1155/IERC1155Receiver.sol";
-import {IERC165} from "@openzeppelin/contracts/utils/introspection/IERC165.sol";
-import {LibRescue} from "@libraries/LibRescue.sol";
-
-/**
- * @title RescueTest
- * @notice Tests functionality for rescuing tokens from the diamond contract
- * @dev This test focuses exclusively on rescue operations and permissions
- */
 contract RescueTest is BaseDiamondTest {
     RescueFacet public rescueFacet;
     MockERC20 public mockToken;
@@ -348,14 +343,14 @@ contract RescueTest is BaseDiamondTest {
         vm.warp(block.timestamp + 2 days);
 
         // Check status - should be UNLOCKED (2)
-        uint256 status = rescueFacet.getRescueStatus(admin, TokenType.NATIVE);
+        uint256 status = rescueFacet.rescueStatus(admin, TokenType.NATIVE);
         assertEq(status, 2, "Should be unlocked");
 
         // Fast forward past validity period
         vm.warp(block.timestamp + 2 days);
 
         // Check status - should be EXPIRED (3)
-        status = rescueFacet.getRescueStatus(admin, TokenType.NATIVE);
+        status = rescueFacet.rescueStatus(admin, TokenType.NATIVE);
         assertEq(status, 3, "Should be expired");
 
         // Try to rescue after expiry (should fail)
@@ -380,7 +375,7 @@ contract RescueTest is BaseDiamondTest {
         rescueFacet.cancelRescue(admin, TokenType.NATIVE);
 
         // Verify the rescue was cancelled
-        uint256 status = rescueFacet.getRescueStatus(admin, TokenType.NATIVE);
+        uint256 status = rescueFacet.rescueStatus(admin, TokenType.NATIVE);
         assertEq(status, 0, "Rescue should be cancelled (0)");
     }
 
@@ -407,8 +402,8 @@ contract RescueTest is BaseDiamondTest {
         rescueFacet.cancelRescueAll(admin);
 
         // Verify all rescues were cancelled
-        uint256 nativeStatus = rescueFacet.getRescueStatus(admin, TokenType.NATIVE);
-        uint256 erc20Status = rescueFacet.getRescueStatus(admin, TokenType.ERC20);
+        uint256 nativeStatus = rescueFacet.rescueStatus(admin, TokenType.NATIVE);
+        uint256 erc20Status = rescueFacet.rescueStatus(admin, TokenType.ERC20);
 
         assertEq(nativeStatus, 0, "Native rescue should be cancelled");
         assertEq(erc20Status, 0, "ERC20 rescue should be cancelled");
@@ -426,7 +421,7 @@ contract RescueTest is BaseDiamondTest {
         rescueFacet.requestRescueNative();
 
         // Check status
-        uint256 status = rescueFacet.getRescueStatus(admin, TokenType.NATIVE);
+        uint256 status = rescueFacet.rescueStatus(admin, TokenType.NATIVE);
         assertEq(status, 1, "Request should be pending");
 
         // Check if locked
@@ -437,7 +432,7 @@ contract RescueTest is BaseDiamondTest {
         vm.warp(block.timestamp + 2 days);
 
         // Check status after timelock
-        status = rescueFacet.getRescueStatus(admin, TokenType.NATIVE);
+        status = rescueFacet.rescueStatus(admin, TokenType.NATIVE);
         assertEq(status, 0, "Request should be cleared");
 
         // Get admin balance before rescue
@@ -545,13 +540,11 @@ contract RescueTest is BaseDiamondTest {
         vm.prank(admin);
         rescueFacet.requestRescueNative();
 
-        // Try to cancel by unauthorized user
         address randomUser = address(0xBEEF);
         vm.prank(randomUser);
         vm.expectRevert(abi.encodeWithSelector(Errors.Unauthorized.selector, ErrorType.RESCUE));
         rescueFacet.cancelRescue(admin, TokenType.NATIVE);
 
-        // Try to cancel all by unauthorized user
         vm.prank(randomUser);
         vm.expectRevert(abi.encodeWithSelector(Errors.Unauthorized.selector, ErrorType.RESCUE));
         rescueFacet.cancelRescueAll(admin);
@@ -672,7 +665,7 @@ contract RescueTest is BaseDiamondTest {
         rescueFacet.cancelRescue(admin, TokenType.NATIVE);
 
         // Verify the rescue was cancelled
-        uint8 status = rescueFacet.getRescueStatus(admin, TokenType.NATIVE);
+        uint8 status = rescueFacet.rescueStatus(admin, TokenType.NATIVE);
         assertEq(status, 0, "Rescue should be cancelled");
     }
 }

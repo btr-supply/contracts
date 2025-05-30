@@ -1,3 +1,22 @@
+"""
+SPDX-License-Identifier: MIT
+@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+@@@@@@@@@/         '@@@@/            /@@@/         '@@@@@@@@
+@@@@@@@@/    /@@@    @@@@@@/    /@@@@@@@/    /@@@    @@@@@@@
+@@@@@@@/           _@@@@@@/    /@@@@@@@/    /.     _@@@@@@@@
+@@@@@@/    /@@@    '@@@@@/    /@@@@@@@/    /@@    @@@@@@@@@@
+@@@@@/            ,@@@@@/    /@@@@@@@/    /@@@,    @@@@@@@@@
+@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+
+@title Check Naming Conventions Script - Validates Git branch and commit message formats
+@copyright 2025
+@notice Python script to enforce specific naming conventions for Git branches (e.g., type/scope) and commit messages (e.g.,
+[type] summary). Used in Git hooks
+
+@dev Enforces development workflow standards via pre-commit or pre-push hooks
+@author BTR Team
+"""
+
 #!/usr/bin/env python3
 import re
 import sys

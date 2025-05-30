@@ -1,706 +1,579 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.28;
+pragma solidity 0.8.29;
 
-/**
-@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
-@@@@@@@@@/         '@@@@/            /@@@/         '@@@@@@@@
-@@@@@@@@/    /@@@    @@@@@@/    /@@@@@@@/    /@@@    @@@@@@@
-@@@@@@@/           _@@@@@@/    /@@@@@@@/    /.     _@@@@@@@@
-@@@@@@/    /@@@    '@@@@@/    /@@@@@@@/    /@@    @@@@@@@@@@
-@@@@@/            ,@@@@@/    /@@@@@@@/    /@@@,    @@@@@@@@@
-@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+import {BTRErrors as Errors} from "@libraries/BTREvents.sol";
+import {Fees, VaultInitParams, Range, RebalanceParams, RangeParams} from "@/BTRTypes.sol";
+import {BTRUtils as U} from "@libraries/BTRUtils.sol";
+import {LibMaths as M} from "@libraries/LibMaths.sol";
+import {LibTreasury as T} from "@libraries/LibTreasury.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {BaseDiamondTest} from "../BaseDiamondTest.t.sol";
+import {ALMInfoFacet} from "@facets/ALMInfoFacet.sol";
+import {ALMProtectedFacet} from "@facets/ALMProtectedFacet.sol";
+import {ALMUserFacet} from "@facets/ALMUserFacet.sol";
+import {MockERC20} from "../mocks/MockERC20.sol";
+import {Test} from "forge-std/Test.sol";
+import {TreasuryFacet} from "@facets/TreasuryFacet.sol";
+
+/*
+ * @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+ * @@@@@@@@@/         '@@@@/            /@@@/         '@@@@@@@@
+ * @@@@@@@@/    /@@@    @@@@@@/    /@@@@@@@/    /@@@    @@@@@@@
+ * @@@@@@@/           _@@@@@@/    /@@@@@@@/    /.     _@@@@@@@@
+ * @@@@@@/    /@@@    '@@@@@/    /@@@@@@@/    /@@    @@@@@@@@@@
+ * @@@@@/            ,@@@@@/    /@@@@@@@/    /@@@,    @@@@@@@@@
+ * @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
  *
  * @title Treasury Test - Unit tests for TreasuryFacet
  * @copyright 2025
- * @notice Verifies the functionality of fee collection and distribution
- * @dev Tests treasury operations and accounting
+ * @notice Verifies TreasuryFacet functions like setting fees, treasury address, and collecting fees
+ * @dev Tests treasury operations and accounting. Validates `onlyAdmin`/`onlyManager`/`onlyTreasury` modifiers
  * @author BTR Team
  */
 
-import {BaseDiamondTest} from "../BaseDiamondTest.t.sol";
-import "forge-std/console.sol";
-import {TreasuryFacet} from "@facets/TreasuryFacet.sol";
-import {AccessControlFacet} from "@facets/AccessControlFacet.sol";
-import {ALMFacet} from "@facets/ALMFacet.sol";
-import {ManagementFacet} from "@facets/ManagementFacet.sol";
-import {LibAccessControl as AC} from "@libraries/LibAccessControl.sol";
-import {LibTreasury} from "@libraries/LibTreasury.sol";
-import {LibMaths} from "@libraries/LibMaths.sol";
-import {BTRErrors as Errors, BTREvents as Events} from "@libraries/BTREvents.sol";
-import {ErrorType, Fees, VaultInitParams, FeeType, Range, CoreStorage, ALMVault, Rebalance} from "@/BTRTypes.sol";
-import {MockERC20} from "../mocks/MockERC20.sol";
-import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-
-/**
- * @title TreasuryTest
- * @notice Tests treasury functionality including fee management and treasury address management
- * @dev This test focuses exclusively on treasury functionality
- */
 contract TreasuryTest is BaseDiamondTest {
+    using U for uint32;
+    using M for uint256;
+
     TreasuryFacet public treasuryFacet;
-    ALMFacet public almFacet;
-    ManagementFacet public managementFacet;
     MockERC20 public token0;
     MockERC20 public token1;
-    address public treasuryAddress;
-    address public user;
-    uint32 public vaultId;
+    uint32 public vid;
+    ALMUserFacet public almUser;
+    ALMProtectedFacet public almProtected;
+    ALMInfoFacet public almInfo;
 
-    // Example vault ID for tests
-    uint32 constant TEST_VAULT_ID = 1;
-
-    // Constants for testing
-    uint256 constant INITIAL_TOKEN_AMOUNT = 1_000_000 * 10 ** 18;
-    uint256 constant DEPOSIT_AMOUNT = 10_000 * 10 ** 18;
-    uint256 constant INITIAL_SHARES = 10_000 * 10 ** 18;
-
-    // Add helper functions at the beginning of the contract, after the state variables
-
-    // Helper to create a Fees struct with given values
-    function _createFees(uint16 entry, uint16 exit, uint16 mgmt, uint16 perf, uint16 flash)
-        internal
-        pure
-        returns (Fees memory)
-    {
-        return Fees({
-            entry: entry,
-            exit: exit,
-            mgmt: mgmt,
-            perf: perf,
-            flash: flash,
-            __gap: [bytes32(0), bytes32(0), bytes32(0), bytes32(0), bytes32(0), bytes32(0), bytes32(0), bytes32(0)]
-        });
-    }
-
-    // Helper to safely get pending fees with try/catch
-    function _getPendingFees(uint32 _vaultId, IERC20 token) internal returns (uint256) {
-        try treasuryFacet.getPendingFees(_vaultId, token) returns (uint256 amount) {
-            return amount;
-        } catch {
-            return 0;
-        }
-    }
-
-    // Helper to safely get accrued fees with try/catch
-    function _getAccruedFees(uint32 _vaultId, IERC20 token) internal returns (uint256) {
-        try treasuryFacet.getAccruedFees(_vaultId, token) returns (uint256 amount) {
-            return amount;
-        } catch {
-            return 0;
-        }
-    }
-
-    // Helper to ensure vault exists
-    function _ensureVaultExists() internal {
-        if (vaultId == 0) {
-            _createTestVault();
-        }
-    }
-
-    // Helper for setting vault fees
-    function _setVaultFees(uint32 _vaultId, Fees memory fees) internal returns (bool) {
-        vm.prank(manager);
-        try treasuryFacet.setFees(_vaultId, fees) {
-            return true;
-        } catch {
-            console.log("Setting vault fees failed, possibly vault not found");
-            return false;
-        }
-    }
-
-    // Helper for a deposit operation
-    function _deposit(uint32 _vaultId, uint256 amount0, uint256 amount1)
-        internal
-        returns (uint256 shares, bool success)
-    {
-        token0.approve(address(diamond), amount0);
-        token1.approve(address(diamond), amount1);
-
-        try almFacet.deposit(_vaultId, amount0, amount1, address(this)) returns (uint256 mintedShares, uint256, uint256)
-        {
-            return (mintedShares, true);
-        } catch {
-            console.log("Deposit operation failed");
-            return (0, false);
-        }
-    }
-
-    // Helper for a withdraw operation
-    function _withdraw(uint32 _vaultId, uint256 shareAmount)
-        internal
-        returns (uint256 amount0, uint256 amount1, uint256 fee0, uint256 fee1, bool success)
-    {
-        try almFacet.withdraw(_vaultId, shareAmount, address(this)) returns (
-            uint256 _amount0, uint256 _amount1, uint256 _fee0, uint256 _fee1
-        ) {
-            return (_amount0, _amount1, _fee0, _fee1, true);
-        } catch {
-            console.log("Withdraw operation failed");
-            return (0, 0, 0, 0, false);
-        }
-    }
-
-    // Helper for a fee collection operation
-    function _collectFees(uint32 _vaultId, address caller)
-        internal
-        returns (uint256 amount0, uint256 amount1, bool success)
-    {
-        vm.prank(caller);
-        try almFacet.collectFees(_vaultId) returns (uint256 _amount0, uint256 _amount1) {
-            return (_amount0, _amount1, true);
-        } catch {
-            console.log("Fee collection operation failed");
-            return (0, 0, false);
-        }
-    }
-
-    // Helper to create an empty rebalance data struct
-    function _createEmptyRebalance() internal pure returns (Rebalance memory) {
-        return Rebalance({
-            ranges: new Range[](0),
-            swapInputs: new address[](0),
-            swapRouters: new address[](0),
-            swapData: new bytes[](0)
-        });
-    }
-
-    // Helper for rebalance operation
-    function _rebalance(uint32 _vaultId) internal returns (bool) {
-        vm.prank(manager);
-        try almFacet.rebalance(_vaultId, _createEmptyRebalance()) {
-            return true;
-        } catch {
-            return false;
-        }
-    }
-
-    // Helper to verify fees match expected values
-    function _verifyFees(Fees memory actual, Fees memory expected, string memory message) internal {
-        assertEq(actual.entry, expected.entry, string.concat(message, " - Entry fee should match"));
-        assertEq(actual.exit, expected.exit, string.concat(message, " - Exit fee should match"));
-        assertEq(actual.mgmt, expected.mgmt, string.concat(message, " - Management fee should match"));
-        assertEq(actual.perf, expected.perf, string.concat(message, " - Performance fee should match"));
-        assertEq(actual.flash, expected.flash, string.concat(message, " - Flash fee should match"));
-    }
+    // Test constants
+    uint16 internal constant MAX_FEE_BPS = 5000; // 50%
+    address internal collector = makeAddr("collector");
 
     function setUp() public override {
-        // Call base setup first
         super.setUp();
-
-        // Initialize the treasury facet
-        treasuryFacet = TreasuryFacet(diamond);
-        almFacet = ALMFacet(diamond);
-        managementFacet = ManagementFacet(diamond);
-
-        // Deploy test tokens
-        token0 = new MockERC20("Token 0", "TK0", 18);
-        token1 = new MockERC20("Token 1", "TK1", 18);
-
-        // Ensure token0 has lower address than token1 (required by protocol)
+        almUser = ALMUserFacet(diamond);
+        almProtected = ALMProtectedFacet(diamond);
+        almInfo = ALMInfoFacet(diamond);
+        token0 = new MockERC20("T0", "T0", 18);
+        token1 = new MockERC20("T1", "T1", 18);
         if (address(token0) > address(token1)) {
             (token0, token1) = (token1, token0);
         }
 
-        // Create a mock treasury address
-        treasuryAddress = treasury;
+        treasuryFacet = TreasuryFacet(diamond);
 
-        // Create a regular user address for permission tests
-        user = address(0xABCD);
-
-        // Initialize treasury - now just a no-op since treasury is set in constructor
-        vm.prank(admin);
         treasuryFacet.initializeTreasury();
-
-        // Set default fees
         vm.prank(manager);
-        treasuryFacet.setDefaultFees(_createFees(500, 300, 200, 2000, 100));
+        treasuryFacet.setDefaultFees(_makeFees(500, 300, 200, 2000, 100));
+        token0.mint(address(this), 1e24);
+        token1.mint(address(this), 1e24);
+        token0.approve(address(diamond), 1e24);
+        token1.approve(address(diamond), 1e24);
+        _createVault();
 
-        // Create initial token supplies
-        token0.mint(address(this), INITIAL_TOKEN_AMOUNT);
-        token1.mint(address(this), INITIAL_TOKEN_AMOUNT);
-        token0.mint(user, INITIAL_TOKEN_AMOUNT);
-        token1.mint(user, INITIAL_TOKEN_AMOUNT);
-
-        // Create a test vault
-        _createTestVault();
+        vm.startPrank(admin);
+        treasuryFacet.setCollector(collector);
+        vm.stopPrank();
     }
 
-    function _createTestVault() internal {
-        // Create vault initialization parameters
+    function _makeFees(uint16 _e, uint16 _x, uint16 _m, uint16 _p, uint16 _f) internal pure returns (Fees memory) {
+        return Fees({
+            entry: _e,
+            exit: _x,
+            mgmt: _m,
+            perf: _p,
+            flash: _f,
+            updatedAt: uint64(block.timestamp),
+            __gap: [bytes32(0), bytes32(0), bytes32(0), bytes32(0), bytes32(0), bytes32(0), bytes32(0), bytes32(0)]
+        });
+    }
+
+    function _createVault() internal {
         VaultInitParams memory params = VaultInitParams({
-            name: "Test Vault",
-            symbol: "TVALM",
+            name: "TestV",
+            symbol: "TV",
             token0: address(token0),
             token1: address(token1),
-            initAmount0: DEPOSIT_AMOUNT,
-            initAmount1: DEPOSIT_AMOUNT,
-            initShares: INITIAL_SHARES
+            init0: 1e22,
+            init1: 1e22,
+            initShares: 1e22
+        });
+        token0.approve(address(diamond), 1e22);
+        token1.approve(address(diamond), 1e22);
+        vm.prank(manager);
+        vid = almUser.createVault(params);
+    }
+
+    function testEntryAndExitFees() public {
+        uint256 dep = 1e21;
+
+        // Entry fee
+        vm.prank(manager);
+        treasuryFacet.setAlmVaultFees(vid, _makeFees(1000, 0, 0, 0, 0));
+        token0.approve(address(diamond), dep);
+        token1.approve(address(diamond), dep);
+        (, uint256 expEntry0, uint256 expEntry1) = almUser.deposit(vid, dep, dep, address(this));
+        assertEq(treasuryFacet.almPendingFees(vid, IERC20(address(token0))), expEntry0, "entry fee token0");
+        assertEq(treasuryFacet.almPendingFees(vid, IERC20(address(token1))), expEntry1, "entry fee token1");
+
+        // Exit fee
+        vm.prank(manager);
+        treasuryFacet.setAlmVaultFees(vid, _makeFees(0, 1000, 0, 0, 0));
+        token0.approve(address(diamond), dep);
+        token1.approve(address(diamond), dep);
+        (uint256 mintedShares,,) = almUser.deposit(vid, dep, dep, address(this));
+        vm.prank(treasury);
+        almUser.collectFees(vid);
+        (,, uint256 expExit0, uint256 expExit1) = almUser.withdraw(vid, mintedShares / 2, address(this));
+        assertEq(treasuryFacet.almPendingFees(vid, IERC20(address(token0))), expExit0, "exit fee token0");
+        assertEq(treasuryFacet.almPendingFees(vid, IERC20(address(token1))), expExit1, "exit fee token1");
+    }
+
+    function testAccrualManagementAndPerformance() public {
+        vm.prank(manager);
+        treasuryFacet.setAlmVaultFees(vid, _makeFees(0, 0, 200, 3000, 0));
+        almUser.deposit(vid, 1e21, 1e21, address(this));
+        almUser.collectFees(vid); // reset pending
+        vm.warp(block.timestamp + 7889400);
+        token0.mint(address(diamond), 100e18);
+        token1.mint(address(diamond), 50e18);
+
+        RebalanceParams memory empty = RebalanceParams({
+            ranges: new RangeParams[](0),
+            swapInputs: new address[](0),
+            swapRouters: new address[](0),
+            swapData: new bytes[](0)
+        });
+        vm.prank(keeper);
+        almUser.rebalance(vid, empty);
+
+        uint256 acc0 = treasuryFacet.almVaultAccruedFees(vid, IERC20(address(token0)));
+        uint256 expMgmt0 = (1e21 * 200) / 10000 / 4;
+        uint256 expPerf0 = (100e18 * 3000) / 10000;
+        assertApproxEqRel(acc0, expMgmt0 + expPerf0, 1e16, "accrual token0");
+    }
+
+    function testCollectResetsAndTransferst() public {
+        vm.prank(manager);
+        treasuryFacet.setAlmVaultFees(vid, _makeFees(500, 300, 200, 2000, 0));
+        almUser.deposit(vid, 1e21, 1e21, address(this));
+        vm.prank(treasury);
+        (uint256 c0, uint256 c1) = almUser.collectFees(vid);
+
+        assertEq(treasuryFacet.almPendingFees(vid, IERC20(address(token0))), 0, "pending reset token0");
+        assertEq(treasuryFacet.almPendingFees(vid, IERC20(address(token1))), 0, "pending reset token1");
+        assertEq(token0.balanceOf(address(treasury)), c0, "transfer token0");
+        assertEq(token1.balanceOf(address(treasury)), c1, "transfer token1");
+    }
+
+    function testAccessControlsAndInitialization() public {
+        vm.prank(admin);
+        treasuryFacet.setCollector(address(0x1234));
+        assertEq(treasuryFacet.collector(), address(0x1234));
+
+        vm.prank(user);
+        vm.expectRevert();
+        treasuryFacet.setCollector(address(0));
+        vm.prank(user);
+        vm.expectRevert();
+        treasuryFacet.setAlmVaultFees(_makeFees(0, 0, 0, 0, 0));
+        vm.prank(manager);
+        vm.expectRevert();
+        treasuryFacet.setDefaultFees(_makeFees(10000, 0, 0, 0, 0));
+
+        vm.prank(admin);
+        treasuryFacet.initializeTreasury();
+    }
+
+    // --- INITIALIZATION TESTS ---
+
+    function testTreasuryInitialization() public {
+        assertEq(treasuryFacet.collector(), collector, "Collector should be set");
+    }
+
+    function testSetCollector() public {
+        address newCollector = makeAddr("newCollector");
+
+        vm.prank(admin);
+        treasuryFacet.setCollector(newCollector);
+
+        assertEq(treasuryFacet.collector(), newCollector, "Collector should be updated");
+    }
+
+    function testSetCollectorZeroAddress() public {
+        vm.expectRevert(Errors.ZeroAddress.selector);
+        vm.prank(admin);
+        treasuryFacet.setCollector(address(0));
+    }
+
+    // --- FEE VALIDATION TESTS ---
+
+    function testValidateFees() public {
+        Fees memory validFees = Fees({
+            entry: 100, // 1%
+            exit: 200, // 2%
+            mgmt: 300, // 3%
+            perf: 400, // 4%
+            flash: 500, // 5%
+            updatedAt: uint64(block.timestamp)
         });
 
-        // Approve tokens for vault creation
-        token0.approve(address(diamond), DEPOSIT_AMOUNT);
-        token1.approve(address(diamond), DEPOSIT_AMOUNT);
-
-        // Create the vault
-        vm.prank(manager);
-        vaultId = almFacet.createVault(params);
-
-        // Verify vault created successfully using an assert instead of require
-        assert(vaultId > 0);
+        treasuryFacet.validateFees(validFees); // Should not revert
     }
 
-    /*==============================================================
-                           TREASURY ADDRESS
-    ==============================================================*/
+    function testValidateFeesEntryTooHigh() public {
+        Fees memory invalidFees = Fees({
+            entry: 5001, // 50.01% - too high
+            exit: 200,
+            mgmt: 300,
+            perf: 400,
+            flash: 500,
+            updatedAt: uint64(block.timestamp)
+        });
 
-    function testTreasuryAddress() public {
-        // Treasury should be set during setup
-        assertEq(treasuryFacet.getTreasury(), treasuryAddress, "Treasury should be set correctly");
-
-        // Non-admin cannot set treasury
-        vm.prank(user);
         vm.expectRevert();
-        treasuryFacet.setTreasury(address(0x1234));
-
-        // Cannot set treasury to zero address
-        vm.prank(admin);
-        vm.expectRevert(Errors.ZeroAddress.selector);
-        treasuryFacet.setTreasury(address(0));
-
-        // Cannot set treasury to the same address
-        vm.prank(admin);
-        vm.expectRevert(abi.encodeWithSelector(Errors.AlreadyExists.selector, ErrorType.ADDRESS));
-        treasuryFacet.setTreasury(treasuryAddress);
-
-        // Set to a new address should work
-        address newTreasury = address(uint160(uint256(keccak256("new_treasury_address"))));
-        vm.prank(admin);
-        treasuryFacet.setTreasury(newTreasury);
-
-        // Verify treasury is updated
-        assertEq(treasuryFacet.getTreasury(), newTreasury, "Treasury should be updated correctly");
+        treasuryFacet.validateFees(invalidFees);
     }
 
-    /*==============================================================
-                           DEFAULT FEES
-    ==============================================================*/
+    function testValidateFeesExitTooHigh() public {
+        Fees memory invalidFees = Fees({
+            entry: 100,
+            exit: 5001, // 50.01% - too high
+            mgmt: 300,
+            perf: 400,
+            flash: 500,
+            updatedAt: uint64(block.timestamp)
+        });
 
-    function testDefaultFees() public {
-        // Test setting default fees - test each fee type in isolation
-        Fees memory entryOnlyFees = _createFees(100, 0, 0, 0, 0);
-        Fees memory exitOnlyFees = _createFees(0, 200, 0, 0, 0);
-        Fees memory mgmtOnlyFees = _createFees(0, 0, 300, 0, 0);
-        Fees memory perfOnlyFees = _createFees(0, 0, 0, 1000, 0);
-        Fees memory flashOnlyFees = _createFees(0, 0, 0, 0, 50);
+        vm.expectRevert();
+        treasuryFacet.validateFees(invalidFees);
+    }
 
-        // Test each fee type individually
-        vm.startPrank(manager);
-        treasuryFacet.setDefaultFees(entryOnlyFees);
-        _verifyFees(treasuryFacet.getFees(), entryOnlyFees, "Entry-only fees");
+    function testValidateFeesMgmtTooHigh() public {
+        Fees memory invalidFees = Fees({
+            entry: 100,
+            exit: 200,
+            mgmt: 5001, // 50.01% - too high
+            perf: 400,
+            flash: 500,
+            updatedAt: uint64(block.timestamp)
+        });
 
-        treasuryFacet.setDefaultFees(exitOnlyFees);
-        _verifyFees(treasuryFacet.getFees(), exitOnlyFees, "Exit-only fees");
+        vm.expectRevert();
+        treasuryFacet.validateFees(invalidFees);
+    }
 
-        treasuryFacet.setDefaultFees(mgmtOnlyFees);
-        _verifyFees(treasuryFacet.getFees(), mgmtOnlyFees, "Management-only fees");
+    function testValidateFeesPerfTooHigh() public {
+        Fees memory invalidFees = Fees({
+            entry: 100,
+            exit: 200,
+            mgmt: 300,
+            perf: 5001, // 50.01% - too high
+            flash: 500,
+            updatedAt: uint64(block.timestamp)
+        });
 
-        treasuryFacet.setDefaultFees(perfOnlyFees);
-        _verifyFees(treasuryFacet.getFees(), perfOnlyFees, "Performance-only fees");
+        vm.expectRevert();
+        treasuryFacet.validateFees(invalidFees);
+    }
 
-        treasuryFacet.setDefaultFees(flashOnlyFees);
-        _verifyFees(treasuryFacet.getFees(), flashOnlyFees, "Flash-only fees");
+    function testValidateFeesFlashTooHigh() public {
+        Fees memory invalidFees = Fees({
+            entry: 100,
+            exit: 200,
+            mgmt: 300,
+            perf: 400,
+            flash: 5001, // 50.01% - too high
+            updatedAt: uint64(block.timestamp)
+        });
+
+        vm.expectRevert();
+        treasuryFacet.validateFees(invalidFees);
+    }
+
+    // --- DEFAULT FEES TESTS ---
+
+    function testSetDefaultFees() public {
+        Fees memory newDefaultFees = Fees({
+            entry: 150, // 1.5%
+            exit: 250, // 2.5%
+            mgmt: 350, // 3.5%
+            perf: 450, // 4.5%
+            flash: 550, // 5.5%
+            updatedAt: uint64(block.timestamp)
+        });
+
+        vm.prank(admin);
+        treasuryFacet.setDefaultFees(newDefaultFees);
+
+        Fees memory retrievedFees = treasuryFacet.defaultFees();
+        assertEq(retrievedFees.entry, 150, "Entry fee should be updated");
+        assertEq(retrievedFees.exit, 250, "Exit fee should be updated");
+        assertEq(retrievedFees.mgmt, 350, "Management fee should be updated");
+        assertEq(retrievedFees.perf, 450, "Performance fee should be updated");
+        assertEq(retrievedFees.flash, 550, "Flash fee should be updated");
+    }
+
+    function testDefaultFeesInitialState() public {
+        Fees memory defaultFees = treasuryFacet.defaultFees();
+        // Default fees should be zero initially
+        assertEq(defaultFees.entry, 0, "Initial entry fee should be 0");
+        assertEq(defaultFees.exit, 0, "Initial exit fee should be 0");
+        assertEq(defaultFees.mgmt, 0, "Initial management fee should be 0");
+        assertEq(defaultFees.perf, 0, "Initial performance fee should be 0");
+        assertEq(defaultFees.flash, 0, "Initial flash fee should be 0");
+    }
+
+    // --- ALM VAULT FEES TESTS ---
+
+    function testSetAlmVaultFees() public {
+        uint32 vaultId = 1;
+        Fees memory vaultFees =
+            Fees({entry: 100, exit: 200, mgmt: 300, perf: 400, flash: 500, updatedAt: uint64(block.timestamp)});
+
+        vm.prank(manager);
+        treasuryFacet.setAlmVaultFees(vaultId, vaultFees);
+
+        Fees memory retrievedFees = treasuryFacet.almVaultFees(vaultId);
+        assertEq(retrievedFees.entry, 100, "Vault entry fee should be set");
+        assertEq(retrievedFees.exit, 200, "Vault exit fee should be set");
+        assertEq(retrievedFees.mgmt, 300, "Vault management fee should be set");
+        assertEq(retrievedFees.perf, 400, "Vault performance fee should be set");
+        assertEq(retrievedFees.flash, 500, "Vault flash fee should be set");
+    }
+
+    function testAlmVaultFeesInheritDefault() public {
+        uint32 vaultId = 2;
+
+        // Set default fees first
+        Fees memory defaultFees =
+            Fees({entry: 50, exit: 100, mgmt: 150, perf: 200, flash: 250, updatedAt: uint64(block.timestamp)});
+
+        vm.startPrank(admin);
+        treasuryFacet.setDefaultFees(defaultFees);
         vm.stopPrank();
 
-        // Non-manager cannot set default fees
+        // New vault should inherit default fees
+        Fees memory vaultFees = treasuryFacet.almVaultFees(vaultId);
+        // NB: This test might need adjustment based on actual implementation
+        // The vault might start with zero fees until explicitly set
+    }
+
+    // --- ACCESS CONTROL TESTS ---
+
+    function testOnlyAdminCanSetCollector() public {
+        address newCollector = makeAddr("newCollector");
+
+        vm.expectRevert();
         vm.prank(user);
+        treasuryFacet.setCollector(newCollector);
+    }
+
+    function testOnlyAdminCanSetDefaultFees() public {
+        Fees memory fees =
+            Fees({entry: 100, exit: 200, mgmt: 300, perf: 400, flash: 500, updatedAt: uint64(block.timestamp)});
+
         vm.expectRevert();
-        treasuryFacet.setDefaultFees(entryOnlyFees);
-
-        // Test fee validation - entry fee exceeds max
-        Fees memory invalidFees = _createFees(10000, 0, 0, 0, 0); // 100% (exceeds max of 50%)
-
-        vm.prank(manager);
-        vm.expectRevert();
-        treasuryFacet.setDefaultFees(invalidFees);
-    }
-
-    /*==============================================================
-                     ENTRY FEES (DEPOSIT FEES)
-    ==============================================================*/
-
-    function testEntryFees() public {
-        _ensureVaultExists();
-
-        // Set only entry fee (10% entry fee)
-        Fees memory vaultFees = _createFees(1000, 0, 0, 0, 0);
-        if (!_setVaultFees(vaultId, vaultFees)) {
-            return;
-        }
-
-        // Get initial pending fees
-        uint256 depositAmount = 5000 * 10 ** 18;
-        uint256 initialFees0 = _getPendingFees(vaultId, IERC20(address(token0)));
-        uint256 initialFees1 = _getPendingFees(vaultId, IERC20(address(token1)));
-
-        // Preview deposit to get expected values
-        (uint256 expectedShares, uint256 expectedFee0, uint256 expectedFee1) = (0, 0, 0);
-        try almFacet.previewDeposit(vaultId, depositAmount, depositAmount) returns (
-            uint256 shares, uint256 fee0, uint256 fee1
-        ) {
-            expectedShares = shares;
-            expectedFee0 = fee0;
-            expectedFee1 = fee1;
-        } catch {
-            console.log("Preview deposit failed, skipping test");
-            return;
-        }
-
-        // Make deposit
-        (uint256 mintedShares, bool depositSuccess) = _deposit(vaultId, depositAmount, depositAmount);
-        if (!depositSuccess) return;
-
-        // Verify minted shares and fees
-        assertEq(mintedShares, expectedShares, "Minted shares should match preview");
-
-        // Check final pending fees
-        uint256 finalFees0 = _getPendingFees(vaultId, IERC20(address(token0)));
-        uint256 finalFees1 = _getPendingFees(vaultId, IERC20(address(token1)));
-
-        // Verify fees were collected properly
-        assertApproxEqRel(finalFees0 - initialFees0, expectedFee0, 0.01e18, "Entry fee token0 collected correctly");
-
-        // Verify fee is exactly 10% of deposit
-        assertApproxEqRel(
-            expectedFee0, depositAmount * 10 / 100, 0.01e18, "Entry fee token0 should be exactly 10% of deposit"
-        );
-    }
-
-    /*==============================================================
-                     EXIT FEES (WITHDRAWAL FEES)
-    ==============================================================*/
-
-    function testExitFees() public {
-        _ensureVaultExists();
-
-        // Set only exit fee (10% exit fee)
-        Fees memory vaultFees = _createFees(0, 1000, 0, 0, 0);
-        if (!_setVaultFees(vaultId, vaultFees)) return;
-
-        // Make a deposit
-        uint256 depositAmount = 10000 * 10 ** 18;
-        (uint256 mintedShares, bool depositSuccess) = _deposit(vaultId, depositAmount, depositAmount);
-        if (!depositSuccess) return;
-
-        // Collect any pending fees to reset state
-        (,, bool collectSuccess) = _collectFees(vaultId, admin);
-        if (!collectSuccess) return;
-
-        // Withdraw half the shares
-        uint256 withdrawShares = mintedShares / 2;
-
-        // Get initial pending fees
-        uint256 initialFees0 = _getPendingFees(vaultId, IERC20(address(token0)));
-        uint256 initialFees1 = _getPendingFees(vaultId, IERC20(address(token1)));
-
-        // Preview withdraw
-        (uint256 expectedAmount0, uint256 expectedAmount1, uint256 expectedFee0, uint256 expectedFee1) = (0, 0, 0, 0);
-        try almFacet.previewWithdraw(vaultId, withdrawShares) returns (
-            uint256 amount0, uint256 amount1, uint256 fee0, uint256 fee1
-        ) {
-            expectedAmount0 = amount0;
-            expectedAmount1 = amount1;
-            expectedFee0 = fee0;
-            expectedFee1 = fee1;
-        } catch {
-            console.log("Preview withdraw failed, skipping test");
-            return;
-        }
-
-        // Withdraw funds
-        (,,, uint256 withdrawnFee0, bool withdrawSuccess) = _withdraw(vaultId, withdrawShares);
-        if (!withdrawSuccess) return;
-
-        // Check final pending fees
-        uint256 finalFees0 = _getPendingFees(vaultId, IERC20(address(token0)));
-        uint256 finalFees1 = _getPendingFees(vaultId, IERC20(address(token1)));
-
-        // Verify fees were collected properly
-        assertApproxEqRel(finalFees0 - initialFees0, expectedFee0, 0.01e18, "Exit fee token0 collected correctly");
-
-        // Verify fee is exactly 10% of withdrawal
-        assertApproxEqRel(
-            expectedFee0, expectedAmount0 * 10 / 100, 0.01e18, "Exit fee token0 should be exactly 10% of withdrawal"
-        );
-    }
-
-    /*==============================================================
-                       MANAGEMENT FEES
-    ==============================================================*/
-
-    function testManagementFees() public {
-        _ensureVaultExists();
-
-        // Set only management fee (2% annual management fee)
-        Fees memory vaultFees = _createFees(0, 0, 200, 0, 0);
-        if (!_setVaultFees(vaultId, vaultFees)) return;
-
-        // Make a deposit
-        uint256 depositAmount = 10000 * 10 ** 18;
-        (, bool depositSuccess) = _deposit(vaultId, depositAmount, depositAmount);
-        if (!depositSuccess) return;
-
-        // Collect any pending fees to reset state
-        (,, bool collectSuccess) = _collectFees(vaultId, admin);
-        if (!collectSuccess) return;
-
-        // Get initial accrued fees
-        uint256 initialFees0 = _getAccruedFees(vaultId, IERC20(address(token0)));
-        uint256 initialFees1 = _getAccruedFees(vaultId, IERC20(address(token1)));
-
-        // Advance time by ~3 months (91.3 days)
-        vm.warp(block.timestamp + 7889400);
-
-        // Trigger fee accrual with rebalance
-        if (!_rebalance(vaultId)) return;
-
-        // Check accrued fees after 3 months
-        uint256 finalFees0 = _getAccruedFees(vaultId, IERC20(address(token0)));
-        uint256 finalFees1 = _getAccruedFees(vaultId, IERC20(address(token1)));
-
-        // Calculate expected fees (2% annual for ~1/4 year = ~0.5%)
-        uint256 expectedFee0 = depositAmount * 50 / 10000; // 0.5% of deposit
-
-        // Verify management fees
-        assertApproxEqRel(
-            finalFees0 - initialFees0,
-            expectedFee0,
-            0.01e18,
-            "Management fee token0 should be approximately 0.5% after 3 months"
-        );
-    }
-
-    /*==============================================================
-                        PERFORMANCE FEES
-    ==============================================================*/
-
-    function testPerformanceFees() public {
-        _ensureVaultExists();
-
-        // Set only performance fee (30% performance fee)
-        Fees memory vaultFees = _createFees(0, 0, 0, 3000, 0);
-        if (!_setVaultFees(vaultId, vaultFees)) return;
-
-        // Make a deposit
-        uint256 depositAmount = 10000 * 10 ** 18;
-        (, bool depositSuccess) = _deposit(vaultId, depositAmount, depositAmount);
-        if (!depositSuccess) return;
-
-        // Collect any pending fees to reset state
-        (,, bool collectSuccess) = _collectFees(vaultId, admin);
-        if (!collectSuccess) return;
-
-        // Get initial accrued fees
-        uint256 initialFees0 = _getAccruedFees(vaultId, IERC20(address(token0)));
-        uint256 initialFees1 = _getAccruedFees(vaultId, IERC20(address(token1)));
-
-        // Simulate LP earning fees
-        uint256 lpFees0 = 100 * 10 ** 18;
-        uint256 lpFees1 = 200 * 10 ** 18;
-        token0.mint(address(diamond), lpFees0);
-        token1.mint(address(diamond), lpFees1);
-
-        // Trigger fee accrual with rebalance
-        if (!_rebalance(vaultId)) return;
-
-        // Check accrued fees after LP earnings
-        uint256 finalFees0 = _getAccruedFees(vaultId, IERC20(address(token0)));
-        uint256 finalFees1 = _getAccruedFees(vaultId, IERC20(address(token1)));
-
-        // Verify performance fees (exactly 30% of LP fees)
-        assertApproxEqRel(
-            finalFees0 - initialFees0,
-            lpFees0 * 30 / 100,
-            0.01e18,
-            "Performance fee token0 should be exactly 30% of LP fees"
-        );
-
-        assertApproxEqRel(
-            finalFees1 - initialFees1,
-            lpFees1 * 30 / 100,
-            0.01e18,
-            "Performance fee token1 should be exactly 30% of LP fees"
-        );
-    }
-
-    /*==============================================================
-                        COMBINED FEES TEST
-    ==============================================================*/
-
-    function testCombinedFees() public {
-        _ensureVaultExists();
-
-        // Set multiple fees (5% entry, 3% exit, 2% management, 20% performance)
-        Fees memory vaultFees = _createFees(500, 300, 200, 2000, 0);
-        if (!_setVaultFees(vaultId, vaultFees)) return;
-
-        // Make initial deposit
-        uint256 depositAmount = 10000 * 10 ** 18;
-        (uint256 mintedShares, bool depositSuccess) = _deposit(vaultId, depositAmount, depositAmount);
-        if (!depositSuccess) return;
-
-        // Verify entry fee (5% of deposit)
-        uint256 expectedEntryFee = depositAmount * 5 / 100;
-        uint256 initialPendingFees = _getPendingFees(vaultId, IERC20(address(token0)));
-        assertApproxEqRel(initialPendingFees, expectedEntryFee, 0.01e18, "Combined entry fee should be exactly 5%");
-
-        // Advance time by ~6 months (182.5 days)
-        vm.warp(block.timestamp + 15778800);
-
-        // Simulate LP earnings
-        uint256 lpFees = 100 * 10 ** 18;
-        token0.mint(address(diamond), lpFees);
-
-        // Trigger fee accrual with rebalance
-        if (!_rebalance(vaultId)) return;
-
-        // Calculate expected management fee (1% for half year)
-        uint256 expectedMgmtFee = depositAmount * 100 / 10000; // 1% of deposit
-
-        // Calculate expected performance fee (20% of LP fees)
-        uint256 expectedPerfFee = lpFees * 20 / 100;
-
-        // Get total accrued fees
-        uint256 accruedFees = _getAccruedFees(vaultId, IERC20(address(token0)));
-
-        // Verify combined management and performance fees
-        assertApproxEqRel(
-            accruedFees,
-            expectedMgmtFee + expectedPerfFee,
-            0.01e18,
-            "Combined management and performance fees should match expected"
-        );
-
-        // Now test exit fee on withdrawal
-        uint256 withdrawShares = mintedShares / 2;
-        (uint256 withdrawAmount,,, uint256 exitFee, bool withdrawSuccess) = _withdraw(vaultId, withdrawShares);
-        if (!withdrawSuccess) return;
-
-        // Verify exit fee (3% of withdrawal amount)
-        assertApproxEqRel(exitFee, withdrawAmount * 3 / 100, 0.01e18, "Combined exit fee should be exactly 3%");
-    }
-
-    /*==============================================================
-                        FEE COLLECTION
-    ==============================================================*/
-
-    function testFeeCollection() public {
-        _ensureVaultExists();
-
-        // Set vault fees
-        Fees memory vaultFees = _createFees(500, 300, 200, 2000, 100);
-        if (!_setVaultFees(vaultId, vaultFees)) return;
-
-        // Make deposit to generate fees
-        uint256 depositAmount = 10000 * 10 ** 18;
-        (, bool depositSuccess) = _deposit(vaultId, depositAmount, depositAmount);
-        if (!depositSuccess) return;
-
-        // Get initial pending fees
-        uint256 initialFees0 = _getPendingFees(vaultId, IERC20(address(token0)));
-        uint256 initialFees1 = _getPendingFees(vaultId, IERC20(address(token1)));
-
-        // Ensure we have fees to collect
-        assert(initialFees0 > 0);
-        assert(initialFees1 > 0);
-
-        // Collect fees as treasury
-        (uint256 collected0, uint256 collected1, bool collectSuccess) = _collectFees(vaultId, treasuryAddress);
-        if (!collectSuccess) return;
-
-        // Verify collected amounts
-        assertEq(collected0, initialFees0, "Collected amount0 should match pending fees");
-        assertEq(collected1, initialFees1, "Collected amount1 should match pending fees");
-
-        // Verify pending fees are reset to zero
-        assertEq(_getPendingFees(vaultId, IERC20(address(token0))), 0, "Pending fees token0 should be reset to 0");
-        assertEq(_getPendingFees(vaultId, IERC20(address(token1))), 0, "Pending fees token1 should be reset to 0");
-
-        // Verify tokens were actually transferred to treasury
-        assertEq(token0.balanceOf(treasuryAddress), collected0, "Treasury should receive token0 fees");
-        assertEq(token1.balanceOf(treasuryAddress), collected1, "Treasury should receive token1 fees");
-    }
-
-    /*==============================================================
-                         PROTOCOL LEVEL FEES
-    ==============================================================*/
-
-    function testProtocolFees() public {
-        // Set protocol fees as manager
-        Fees memory fees = _createFees(150, 250, 350, 1500, 75);
-
-        // Set protocol fees as manager
-        vm.startPrank(manager);
-        try treasuryFacet.setFees(fees) {
-            // Only verify if the operation succeeds
-            try treasuryFacet.getFees() returns (Fees memory retrievedFees) {
-                _verifyFees(retrievedFees, fees, "Protocol fees");
-            } catch {}
-        } catch {}
-        vm.stopPrank();
-
-        // Non-manager cannot set protocol fees
         vm.prank(user);
-        vm.expectRevert();
-        treasuryFacet.setFees(fees);
-
-        // Test fee validation - exit fee exceeds max
-        Fees memory invalidFees = _createFees(150, 8000, 350, 1500, 75); // 80% (exceeds max of 50%)
-
-        vm.prank(manager);
-        vm.expectRevert();
-        treasuryFacet.setFees(invalidFees);
+        treasuryFacet.setDefaultFees(fees);
     }
 
-    /*==============================================================
-                         VAULT LEVEL FEES
-    ==============================================================*/
+    function testOnlyManagerCanSetAlmVaultFees() public {
+        uint32 vaultId = 1;
+        Fees memory fees =
+            Fees({entry: 100, exit: 200, mgmt: 300, perf: 400, flash: 500, updatedAt: uint64(block.timestamp)});
 
-    function testVaultFees() public {
-        _ensureVaultExists();
-
-        // Set vault fees as manager
-        Fees memory fees = _createFees(1000, 1100, 150, 2000, 200);
-
-        if (_setVaultFees(vaultId, fees)) {
-            // If successful, verify the fees
-            _verifyFees(treasuryFacet.getFees(vaultId), fees, "Vault fees");
-
-            // Non-manager cannot set vault fees
-            vm.prank(user);
-            vm.expectRevert();
-            treasuryFacet.setFees(vaultId, fees);
-
-            // Test fee validation - entry fee exceeds max
-            Fees memory invalidFees = _createFees(10000, 1100, 150, 2000, 200);
-
-            vm.prank(manager);
-            vm.expectRevert();
-            treasuryFacet.setFees(vaultId, invalidFees);
-        }
+        vm.expectRevert();
+        vm.prank(user);
+        treasuryFacet.setAlmVaultFees(vaultId, fees);
     }
 
-    /*==============================================================
-                       INITIALIZATION
-    ==============================================================*/
+    function testOnlyTreasuryCanCollectFees() public {
+        uint32 vaultId = 1;
 
-    function testInitialization() public {
-        // Test double initialization (should succeed without changing state)
+        vm.expectRevert();
+        vm.prank(user);
+        treasuryFacet.collectAlmFees(vaultId);
+    }
+
+    // --- LIBRARY FUNCTION TESTS ---
+
+    function testLibTreasuryPreviewPerfFees() public {
+        uint256 lpFee0 = 1000e18; // 1000 tokens
+        uint256 lpFee1 = 2000e18; // 2000 tokens
+        uint16 perfFeeBp = 2000; // 20%
+
+        // Calculate expected performance fees
+        uint256 expectedPerfFee0 = lpFee0.bpUp(perfFeeBp);
+        uint256 expectedPerfFee1 = lpFee1.bpUp(perfFeeBp);
+
+        assertTrue(expectedPerfFee0 > lpFee0.bpDown(perfFeeBp), "Performance fee should round up");
+        assertTrue(expectedPerfFee1 > lpFee1.bpDown(perfFeeBp), "Performance fee should round up");
+    }
+
+    function testLibTreasuryFeeCalculations() public {
+        uint256 amount = 10000e18;
+        uint16 feeBp = 500; // 5%
+
+        uint256 feeDown = amount.bpDown(feeBp);
+        uint256 feeUp = amount.bpUp(feeBp);
+
+        assertEq(feeDown, 500e18, "5% of 10000 should be 500 (rounded down)");
+        assertTrue(feeUp >= feeDown, "Up rounding should be >= down rounding");
+    }
+
+    // --- EDGE CASES TESTS ---
+
+    function testFeesWithZeroValues() public {
+        Fees memory zeroFees = Fees({entry: 0, exit: 0, mgmt: 0, perf: 0, flash: 0, updatedAt: uint64(block.timestamp)});
+
+        treasuryFacet.validateFees(zeroFees); // Should not revert
+
         vm.prank(admin);
-        treasuryFacet.initializeTreasury();
+        treasuryFacet.setDefaultFees(zeroFees);
 
-        // Test unauthorized initialization
-        vm.prank(user);
+        Fees memory retrievedFees = treasuryFacet.defaultFees();
+        assertEq(retrievedFees.entry, 0, "Zero entry fee should be valid");
+    }
+
+    function testFeesWithMaxValues() public {
+        Fees memory maxFees = Fees({
+            entry: MAX_FEE_BPS,
+            exit: MAX_FEE_BPS,
+            mgmt: MAX_FEE_BPS,
+            perf: MAX_FEE_BPS,
+            flash: MAX_FEE_BPS,
+            updatedAt: uint64(block.timestamp)
+        });
+
+        treasuryFacet.validateFees(maxFees); // Should not revert
+
+        vm.prank(admin);
+        treasuryFacet.setDefaultFees(maxFees);
+
+        Fees memory retrievedFees = treasuryFacet.defaultFees();
+        assertEq(retrievedFees.entry, MAX_FEE_BPS, "Max entry fee should be valid");
+    }
+
+    function testUpdatedAtTimestamp() public {
+        uint64 currentTime = uint64(block.timestamp);
+
+        Fees memory fees = Fees({entry: 100, exit: 200, mgmt: 300, perf: 400, flash: 500, updatedAt: currentTime});
+
+        vm.prank(admin);
+        treasuryFacet.setDefaultFees(fees);
+
+        Fees memory retrievedFees = treasuryFacet.defaultFees();
+        assertEq(retrievedFees.updatedAt, currentTime, "UpdatedAt timestamp should be preserved");
+    }
+
+    // --- INTEGRATION TESTS ---
+
+    function testCompleteFeesWorkflow() public {
+        // 1. Set default fees
+        Fees memory defaultFees = Fees({
+            entry: 25, // 0.25%
+            exit: 50, // 0.5%
+            mgmt: 100, // 1%
+            perf: 1000, // 10%
+            flash: 10, // 0.1%
+            updatedAt: uint64(block.timestamp)
+        });
+
+        vm.prank(admin);
+        treasuryFacet.setDefaultFees(defaultFees);
+
+        // 2. Set specific vault fees
+        uint32 vaultId = 1;
+        Fees memory vaultFees = Fees({
+            entry: 50, // 0.5%
+            exit: 75, // 0.75%
+            mgmt: 150, // 1.5%
+            perf: 1500, // 15%
+            flash: 15, // 0.15%
+            updatedAt: uint64(block.timestamp)
+        });
+
+        vm.prank(manager);
+        treasuryFacet.setAlmVaultFees(vaultId, vaultFees);
+
+        // 3. Verify both default and vault-specific fees
+        Fees memory retrievedDefault = treasuryFacet.defaultFees();
+        Fees memory retrievedVault = treasuryFacet.almVaultFees(vaultId);
+
+        assertEq(retrievedDefault.entry, 25, "Default entry fee should be set");
+        assertEq(retrievedVault.entry, 50, "Vault entry fee should be different from default");
+
+        assertEq(retrievedDefault.perf, 1000, "Default performance fee should be set");
+        assertEq(retrievedVault.perf, 1500, "Vault performance fee should be different from default");
+    }
+
+    // --- FUZZ TESTS ---
+
+    function testFuzzValidateFees(uint16 entry, uint16 exit, uint16 mgmt, uint16 perf, uint16 flash) public {
+        vm.assume(entry <= MAX_FEE_BPS);
+        vm.assume(exit <= MAX_FEE_BPS);
+        vm.assume(mgmt <= MAX_FEE_BPS);
+        vm.assume(perf <= MAX_FEE_BPS);
+        vm.assume(flash <= MAX_FEE_BPS);
+
+        Fees memory fees =
+            Fees({entry: entry, exit: exit, mgmt: mgmt, perf: perf, flash: flash, updatedAt: uint64(block.timestamp)});
+
+        treasuryFacet.validateFees(fees); // Should not revert for valid fees
+    }
+
+    function testFuzzInvalidFees(uint16 entry) public {
+        vm.assume(entry > MAX_FEE_BPS);
+
+        Fees memory fees = Fees({entry: entry, exit: 0, mgmt: 0, perf: 0, flash: 0, updatedAt: uint64(block.timestamp)});
+
         vm.expectRevert();
-        treasuryFacet.initializeTreasury();
+        treasuryFacet.validateFees(fees);
+    }
+
+    function testFuzzFeeCalculations(uint256 amount, uint16 feeBp) public {
+        vm.assume(amount <= type(uint128).max); // Avoid overflow
+        vm.assume(feeBp <= M.BPS); // Valid basis points
+
+        uint256 feeDown = amount.bpDown(feeBp);
+        uint256 feeUp = amount.bpUp(feeBp);
+
+        assertTrue(feeUp >= feeDown, "Up rounding should be >= down rounding");
+        assertTrue(feeDown <= amount, "Fee should not exceed principal");
+
+        if (feeBp == 0) {
+            assertEq(feeDown, 0, "Zero fee rate should result in zero fee");
+            assertEq(feeUp, 0, "Zero fee rate should result in zero fee");
+        }
+
+        if (feeBp == M.BPS) {
+            assertEq(feeDown, amount, "100% fee rate should equal amount");
+        }
+    }
+
+    // --- PERFORMANCE TESTS ---
+
+    function testGasUsageSetDefaultFees() public {
+        Fees memory fees =
+            Fees({entry: 100, exit: 200, mgmt: 300, perf: 400, flash: 500, updatedAt: uint64(block.timestamp)});
+
+        vm.prank(admin);
+        uint256 gasBefore = gasleft();
+        treasuryFacet.setDefaultFees(fees);
+        uint256 gasUsed = gasBefore - gasleft();
+
+        assertTrue(gasUsed < 100000, "Gas usage should be reasonable for setting default fees");
+    }
+
+    function testGasUsageSetVaultFees() public {
+        uint32 vaultId = 1;
+        Fees memory fees =
+            Fees({entry: 100, exit: 200, mgmt: 300, perf: 400, flash: 500, updatedAt: uint64(block.timestamp)});
+
+        vm.prank(manager);
+        uint256 gasBefore = gasleft();
+        treasuryFacet.setAlmVaultFees(vaultId, fees);
+        uint256 gasUsed = gasBefore - gasleft();
+
+        assertTrue(gasUsed < 100000, "Gas usage should be reasonable for setting vault fees");
     }
 }

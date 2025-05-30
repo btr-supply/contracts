@@ -1,8 +1,6 @@
 // SPDX-License-Identifier: MIT
-// cf. https://github.com/code-423n4/2024-10-ramses-exchange/blob/main/contracts
-pragma solidity 0.8.28;
+pragma solidity 0.8.29;
 
-// includes GaugeV3
 interface IRamsesV3Gauge {
     struct Reward {
         uint256 rewardRate;

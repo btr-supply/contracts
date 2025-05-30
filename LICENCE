@@ -1,0 +1,77 @@
+BTR Supply — Dual License
+
+This software, hereinafter referred to as the "Licensed Work" (as defined below), is made available under your selection of the following licenses. In the absence of any contrary indication provided by the SPDX identifiers located at the top of the source code files pertaining to the Licensed Work, or as specified at https://btr.supply/licences, the Business Source License 1.1 shall be applicable until the Change Date (as defined below), subsequent to which the MIT License shall take effect.
+
+Parameters
+----------
+Licensor:             BTR Labs
+Licensed Work:        BTR Supply (© 2025 BTR Labs)
+Additional Use Grant: None
+Change Date:          The earlier of 2029-06-01 or the date specified at https://btr.supply/licences
+Change License:       MIT License
+
+-------------------------------------------------------------------------------
+
+SECTION 1: MIT LICENSE (Effective from Change Date)
+
+Full Text: https://opensource.org/licenses/MIT
+
+Highlights:
+  – Permissive: Allows use, modification, and distribution with minimal restrictions.
+  – Commercial-Friendly: Can be used in commercial products without source code disclosure.
+  – Simple: Short and easy-to-understand license with limited conditions.
+
+Core Terms:
+  • Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
+  • The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
+  • THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+-------------------------------------------------------------------------------
+
+SECTION 2: BUSINESS SOURCE LICENSE 1.1 (Effective until Change Date)
+
+This Business Source License 1.1 ("BSL") applies to the Licensed Work identified in the Parameters section above, licensed by the Licensor also identified above.
+
+Full Text: https://mariadb.com/bsl11/
+
+Highlights:
+  – Source-Available: You can read and modify every line of code today.
+  – Non-Production Use: Allowed for development, testing, evaluation, academic research, and demonstrations as specified below.
+  – Commercial Gate: Use of the Licensed Work in a production environment typically requires a separate commercial license from the Licensor.
+  – Automatic Conversion: On the Change Date, this BSL automatically converts to the Change License (MIT License, as specified in Parameters).
+
+Core Terms of this BSL:
+  1. Non-Production Use Only:
+     You may use, copy, modify, and redistribute the Licensed Work solely for internal, non-production purposes, such as development, testing, prototyping, academic or personal study, and show-and-tell demonstrations.
+     Any use beyond this scope—such as embedding into a product you sell, running it as part of a public Software-as-a-Service offering, or bundling it in an application you distribute—requires a separate commercial license from the Licensor, unless covered by an Additional Use Grant.
+
+  2. Additional Use Grant:
+     As specified in the Parameters section: None.
+
+  3. Change Date:
+     As specified in the Parameters section: The earlier of 2029-06-01 or the date published by the Licensor at https://btr.supply/licences.
+     On this Change Date, the terms of this BSL will automatically be replaced by the terms of the Change License.
+
+  4. Change License:
+     As specified in the Parameters section: MIT License.
+     Post-Change Date, you will no longer need a commercial license from the Licensor for uses previously restricted by this BSL; all downstream users will receive full rights under the MIT License.
+
+  5. No Warranty Clause:
+     The Licensed Work is provided "as is." The Licensor provides no warranties, express or implied, including (but not limited to) any implied warranties of merchantability or fitness for a particular purpose. The Licensor will not be liable for any damages arising from the use of the Licensed Work.
+
+Covenants of the Licensor (BTR Labs):
+  • The Licensor will not change the text of the Business Source License 1.1 itself. Only the Parameters (Additional Use Grant, Change Date, Change License) may vary per release of the Licensed Work.
+  • The Licensor commits that on the Change Date, all BSL restrictions will expire without requiring further action from users.
+  • The Licensor promises that the Change License will always be the MIT License as specified in the Parameters (or a license with equivalent or greater permissive rights).
+
+Why This Licensing Structure for BTR Supply?
+  – Protect Early-Stage Value: Allows BTR Labs to build, iterate, and monetize production deployments of the Licensed Work without immediate concern for unsupported commercial use by others.
+  – Attract Contributors: Full source availability encourages community feedback, bug fixes, integrations, and academic study of the Licensed Work.
+  – Eventual Open Source: By the Change Date (2029 at the latest), the Licensed Work becomes a standard MIT-licensed project, ensuring long-term community access and use.
+
+How This Plays Out:
+  • A developer can fork the Licensed Work today, modify it, and run it on their local machine or a test server for non-production purposes.
+  • If they wish to launch a public service using the Licensed Work or embed it in a product for sale before the Change Date, they must contact BTR Labs to arrange a commercial license.
+  • On or after the Change Date (e.g., June 1, 2029, or an earlier date announced by BTR Labs), these commercial licensing requirements under the BSL cease, and the Licensed Work becomes freely available under the terms of the MIT License.
+
+-------------------------------------------------------------------------------

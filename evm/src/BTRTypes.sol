@@ -1,14 +1,17 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.28;
+pragma solidity 0.8.29;
 
-/**
-@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
-@@@@@@@@@/         '@@@@/            /@@@/         '@@@@@@@@
-@@@@@@@@/    /@@@    @@@@@@/    /@@@@@@@/    /@@@    @@@@@@@
-@@@@@@@/           _@@@@@@/    /@@@@@@@/    /.     _@@@@@@@@
-@@@@@@/    /@@@    '@@@@@/    /@@@@@@@/    /@@    @@@@@@@@@@
-@@@@@/            ,@@@@@/    /@@@@@@@/    /@@@,    @@@@@@@@@
-@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+import {EnumerableSet} from "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+
+/*
+ * @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+ * @@@@@@@@@/         '@@@@/            /@@@/         '@@@@@@@@
+ * @@@@@@@@/    /@@@    @@@@@@/    /@@@@@@@/    /@@@    @@@@@@@
+ * @@@@@@@/           _@@@@@@/    /@@@@@@@/    /.     _@@@@@@@@
+ * @@@@@@/    /@@@    '@@@@@/    /@@@@@@@/    /@@    @@@@@@@@@@
+ * @@@@@/            ,@@@@@/    /@@@@@@@/    /@@@,    @@@@@@@@@
+ * @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
  *
  * @title BTR Types - Custom data structures and types
  * @copyright 2025
@@ -17,19 +20,34 @@ pragma solidity 0.8.28;
  * @author BTR Team
  */
 
-import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import {EnumerableSet} from "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
-
-/*═══════════════════════════════════════════════════════════════╗
-║                          CONSTANTS                             ║
-╚═══════════════════════════════════════════════════════════════*/
-
+// --- CONSTANTS ---
 // Token type bits for rescue operations
 enum TokenType {
     NATIVE, // Native/gas token (eg. ETH, BNB, etc.)
     ERC20, // ERC20 comliant tokens (including ERC777, ERC3643, ERC4626, ERC7540)
     ERC721, // NFTs (ERC721)
     ERC1155 // Multi-token standard (ERC1155)
+
+}
+
+// DEX types for adapter management
+enum DEX {
+    UNISWAP, // Uniswap V3/V4
+    ALGEBRA, // Algebra V3/V4
+    RAMSES, // Ramses V3
+    CAMELOT, // Camelot V3
+    THENA, // Thena V3
+    VELO, // Velodrome V3
+    AERO, // Aerodrome V3
+    PANCAKE, // PancakeSwap V3
+    QUICK, // QuickSwap V3
+    SUSHI, // SushiSwap V3
+    CURVE, // Curve V2
+    BALANCER, // Balancer V2
+    KYBER, // KyberSwap V3
+    TRADER_JOE, // Trader Joe V2
+    MERCHANT_MOE, // Merchant Moe V2
+    CUSTOM // Custom adapter
 
 }
 
@@ -77,52 +95,6 @@ enum ErrorType {
     SWAP
 }
 
-enum DEX {
-    UNISWAP,
-    PANCAKESWAP,
-    VELODROME,
-    AERODROME,
-    CAMELOT,
-    THENA,
-    MAVERICK,
-    JOE,
-    MERCHANT_MOE,
-    SUSHISWAP,
-    QUICKSWAP,
-    SHADOW,
-    KODIAK,
-    SWAPX,
-    LYNEX,
-    ALIEN_BASE,
-    AGNI,
-    RESERVOIR,
-    THRUSTER,
-    RAMSES,
-    PHARAOH,
-    CLEOPATRA,
-    NILE,
-    NURI,
-    BULLA,
-    DRAGONSWAP,
-    IZISWAP,
-    SYNCSWAP,
-    STORY_HUNT,
-    SPARK_DEX,
-    PIPERX,
-    RETRO,
-    HYPERSWAP,
-    BISWAP,
-    OCELEX,
-    FENIX,
-    KOI,
-    HERCULES,
-    SWAPR,
-    EQUALIZER,
-    WAGMI,
-    KIM,
-    STELLASWAP
-}
-
 enum FeeType {
     NONE,
     ENTRY,
@@ -132,72 +104,116 @@ enum FeeType {
     FLASH
 }
 
-/*═══════════════════════════════════════════════════════════════╗
-║                    POSITION MANAGEMENT TYPES                   ║
-╚═══════════════════════════════════════════════════════════════*/
+// --- POSITION MANAGEMENT TYPES ---
 
-struct Range {
-    bytes32 id; // keccak256(abi.encodePacked(poolId, positionId))
-    bytes32 positionId; // id of the underlying position
-    uint32 vaultId;
+struct RangeParams {
     bytes32 poolId;
-    uint256 weightBps; // % weight of the position total
-    uint128 liquidity; // liquidity of the position (LP tokens)
-    int24 lowerTick;
-    int24 upperTick;
+    uint16 weightBp; // % weight of the position total (10000 = 100%)
+    uint128 liquidity; // Liquidity of the position
+    uint160 lowerPriceX96; // Lower price of the range (in sqrt Q64.96 token0/token1)
+    uint160 upperPriceX96; // Upper price of the range (in sqrt Q64.96 token0/token1)
 }
 
-struct WithdrawProceeds {
-    uint256 burn0;
-    uint256 burn1;
-    uint256 fee0;
-    uint256 fee1;
+struct Range {
+    bytes32 id; // Keccak256(abi.encodePacked(poolId, positionId))
+    bytes32 positionId; // Id of the underlying position
+    bytes32 poolId;
+    uint32 vaultId;
+    uint16 weightBp; // % weight of the position total (10000 = 100%)
+    bool inverted;
+    int24 lowerTick;
+    int24 upperTick;
+    uint128 liquidity;
+}
+
+struct MintProceeds {
+    uint256 spent0;
+    uint256 spent1;
+    uint128 shares;
+    uint128 protocolFee0;
+    uint128 protocolFee1;
+}
+
+struct BurnProceeds {
+    uint256 recovered0;
+    uint256 recovered1;
+    uint128 lpFee0;
+    uint128 lpFee1;
+    uint128 protocolFee0;
+    uint128 protocolFee1;
+}
+
+struct RebalanceProceeds {
+    uint256 spent0;
+    uint256 spent1;
+    uint128 lpFee0; // from burning
+    uint128 lpFee1; // from burning
+    uint128 protocolFee0; // from burning
+    uint128 protocolFee1; // from burning
 }
 
 // Detailed DEX pool information
+
 struct PoolInfo {
-    bytes32 poolId;
-    DEX dex;
+    bytes32 id;
+    address adapter; // Address of the DEX adapter contract for this pool
     address token0;
     address token1;
-    uint32 tickSize;
+    bool inverted;
+    uint8 decimals; // LP token decimals
+    uint256 weiPerUnit; // Wei per unit of LP token (1e{decimals})
+    uint24 tickSize;
     uint32 fee;
+    uint16 cScore; // harmonic mean of trust (== sec/track record), liquidity (== scalability), and performance (fee/liquidity)
+    bytes32[4] __gap;
 }
 
-struct Rebalance {
-    Range[] ranges;
+struct RebalanceParams {
+    RangeParams[] ranges;
     address[] swapInputs;
     address[] swapRouters;
     bytes[] swapData;
 }
 
-/*═══════════════════════════════════════════════════════════════╗
-║                       DIAMOND STORAGE                          ║
-╚═══════════════════════════════════════════════════════════════*/
+struct RebalancePrep {
+    uint256 vwap;
+    uint256 totalLiq0;
+    uint256 fee0;
+    uint256 fee1;
+    bool[] inverted;
+    int24[] upperTicks;
+    int24[] lowerTicks;
+    uint256[] lpNeeds;
+    uint256[] lpPrices0;
+    // Uint256[] lpPrices1;
+    address[] swapInputs; // Either of token0 or token1
+    uint256[] exactIn; // In input wei
+        // Uint256[] estimatedOut; // In output wei
+}
+
+// --- DIAMOND STORAGE ---
 
 struct FacetAddressAndPosition {
     address facetAddress;
-    uint96 functionSelectorPosition; // position in facetFunctionSelectors.functionSelectors array
+    uint96 functionSelectorPosition; // Position in facetFunctionSelectors.functionSelectors array
 }
 
 struct FacetFunctionSelectors {
     bytes4[] functionSelectors;
-    uint256 facetAddressPosition; // position of facetAddress in facetAddresses array
+    uint256 facetAddressPosition; // Position of facetAddress in facets array
 }
 
 // Diamond Storage
 struct Diamond {
-    address[] facetAddresses; // array of facet addresses
-    mapping(bytes4 => bool) supportedInterfaces; // supported interfaces
+    address[] facets; // Array of facet addresses
+    mapping(bytes4 => bool) supportedInterfaces; // EIP-165 supported interfaces
     bool cutting; // Reentrancy guard
     mapping(bytes4 => FacetAddressAndPosition) selectorToFacetAndPosition;
     mapping(address => FacetFunctionSelectors) facetFunctionSelectors;
-    bytes32[32] __gap; // upgradeable storage padding
+    bytes32[32] __gap;
 }
 
-/*═══════════════════════════════════════════════════════════════╗
-║                     ACCESS CONTROL TYPES                       ║
-╚═══════════════════════════════════════════════════════════════*/
+// --- ACCESS CONTROL TYPES ---
 
 // Role-related structures
 struct RoleData {
@@ -215,17 +231,14 @@ struct AccessControl {
     mapping(address => PendingAcceptance) pendingAcceptance;
     mapping(bytes32 => RoleData) roles;
     uint256 grantDelay; // Delay before a role grant can be accepted
-    uint256 acceptWindow; // Window of time during which a role grant can be accepted
-    bytes32[16] __gap; // upgradeable storage padding
+    uint256 acceptanceTtl; // Window of time during which a role grant can be accepted
+    bytes32[16] __gap;
 }
 
-/*═══════════════════════════════════════════════════════════════╗
-║                     RESTRICTION STORAGE                        ║
-╚═══════════════════════════════════════════════════════════════*/
+// --- RESTRICTION STORAGE ---
 
 struct Restrictions {
     bool entered; // Reentrancy guard
-    bool paused; // Pause state for vault operations
     // Restriction bitmask:
     // 0 = restrictSwapCaller
     // 1 = restrictSwapRouter
@@ -237,48 +250,64 @@ struct Restrictions {
     // 7 = approveMax
     // 8 = autoRevoke
     uint256 restrictionMask; // Bit flags for various restrictions
-    mapping(address => AccountStatus) accountStatus; // whitelist/blacklist (index 0 is used for protocol level)
-    bytes32[16] __gap; // upgradeable storage padding
+    mapping(address => AccountStatus) accountStatus; // Whitelist/blacklist (index 0 is used for protocol level)
+    bytes32[16] __gap;
 }
 
-/*═══════════════════════════════════════════════════════════════╗
-║                       ORACLES STORAGE                          ║
-╚═══════════════════════════════════════════════════════════════*/
+// --- ORACLES STORAGE ---
+
+struct Feed {
+    address provider;
+    bytes32 providerId;
+    uint16 twapLookback; // Max 0.75 days == 18 hours (30min is enough for most cases)
+    uint16 maxDeviationBp; // In BPS (100 = 1%)
+    uint32 ttl; // Max 49710 days
+}
+
+struct CoreAddresses {
+    address gov; // native chain gov token
+    address gas; // native chain gas token
+    address usdt; // native/canonical usdt address
+    address usdc; // native/canonical usdc address
+    address weth; // native/canonical weth address
+    address wbtc; // native/canonical wbtc address
+    bytes[8] __gap;
+}
 
 struct Oracles {
-    uint32 lookback; // TWAP interval in seconds for price validation
-    uint256 maxDeviation; // Maximum allowed deviation between current price and TWAP (in basis points)
-    bytes32[32] __gap; // upgradeable storage padding
+    CoreAddresses addresses;
+    mapping(bytes32 => Feed) feeds; // Maps feedId → Feed
+    mapping(address => EnumerableSet.Bytes32Set) providerFeeds; // Maps provider → set of feedIds
+    uint32 defaultTwapLookback; // Default TWAP lookback
+    uint256 defaultMaxDeviation; // Default max deviation
+    bytes32[14] __gap; // Adjusted gap due to new fields
 }
 
-/*═══════════════════════════════════════════════════════════════╗
-║                       TREASURY STORAGE                         ║
-╚═══════════════════════════════════════════════════════════════*/
+// --- TREASURY STORAGE ---
 
 struct Fees {
+    uint64 updatedAt; // Timestamp of last fee update
     uint16 entry; // Fee charged when entering the vault (minting)
     uint16 exit; // Fee charged when exiting the vault (burning)
     uint16 mgmt; // Ongoing management fee
     uint16 perf; // Fee on profits
     uint16 flash; // Fee for flash loan operations
-    bytes32[8] __gap; // upgradeable storage padding
+    bytes32[2] __gap;
 }
 
 struct Treasury {
-    address treasury; // address to receive fees
-    Fees defaultFees; // default protocol fees
-    bytes32[32] __gap; // upgradeable storage padding
+    address collector; // Multisig receiving fees
+    mapping(address => Fees) customFees; // Custom fees per user
+    // Fees defaultFees; // Protocol default, pending, accrued are stored in vault[0]
+    bytes32[32] __gap;
 }
 
-/*═══════════════════════════════════════════════════════════════╗
-║                        VAULT STORAGE                           ║
-╚═══════════════════════════════════════════════════════════════*/
+// --- VAULT STORAGE ---
 
 struct TimePoints {
-    uint64 perfAccruedAt;
-    uint64 mgmtAccruedAt;
+    uint64 accruedAt;
     uint64 collectedAt;
-    bytes32[4] __gap;
+    bytes32[2] __gap;
 }
 
 // Main vault storage structure
@@ -290,29 +319,28 @@ struct ALMVault {
     uint8 decimals;
     uint256 totalSupply;
     uint256 maxSupply; // Maximum supply of vault shares
-    mapping(address => uint256) balances; // user balances
-    mapping(address => mapping(address => uint256)) allowances; // user allowances
+    mapping(address => uint256) balances; // User balances
+    mapping(address => mapping(address => uint256)) allowances; // User allowances
     // Vault positions
     IERC20 token0;
     IERC20 token1;
+    uint256 weiPerUnit0;
+    uint256 weiPerUnit1;
     bytes32[] ranges;
     // Fee management
-    uint64 feesCollectedAt; // Last time fees were collected
-    uint64 feeAccruedAt; // Last time fees were accrued
-    Fees fees; // Fee configuration
-    mapping(IERC20 => uint256) accruedFees; // Accrued fees per token
-    mapping(IERC20 => uint256) pendingFees; // Pending fees per token
-    TimePoints timePoints; // Time points for fees
-    uint256 initAmount0; // Initial amount for token0 in the vault
-    uint256 initAmount1; // Initial amount for token1 in the vault
-    uint256 initShares; // Initial share amount for the first deposit (sets share price)
+    Fees fees;
+    mapping(address => uint256) pendingFees; // Pending fees per token
+    mapping(address => uint256) accruedFees; // Accrued fees per token
+    TimePoints timePoints; // Time points for fees etc
+    // Leftover balances (not deployed in LPs)
+    mapping(address => uint256) cash; // Unused token balances held by vault, per token
     // Price protection
     uint32 lookback; // TWAP interval in seconds for price validation
     uint256 maxDeviation; // Maximum allowed deviation between current price and TWAP (in basis points)
     // Restriction state
     bool paused; // Pause state for vault operations
-    bool restrictedMint; // Uses whitelist if true
-    bytes32[16] __gap; // upgradeable storage padding
+    bool mintRestricted; // Uses whitelist if true
+    bytes32[16] __gap;
 }
 
 // Vault initialization parameters
@@ -321,47 +349,76 @@ struct VaultInitParams {
     string symbol; // Vault symbol
     address token0; // First token in the pair (lower address)
     address token1; // Second token in the pair (higher address)
-    uint256 initAmount0; // Initial amount for token0
-    uint256 initAmount1; // Initial amount for token1
-    uint256 initShares; // Initial share amount for the first deposit (sets share price)
+    uint256 init0; // Initial amount for token0
+    uint256 init1; // Initial amount for token1
+    uint256 initShares; // Initial share amount for the above deposit (sets initial share price)
 }
 
-/*═══════════════════════════════════════════════════════════════╗
-║                       REGISTRY STORAGE                         ║
-╚═══════════════════════════════════════════════════════════════*/
+// --- REGISTRY STORAGE ---
 
 struct Registry {
     uint32 vaultCount; // Number of vaults
     uint32 rangeCount; // Number of ranges
-    EnumerableSet.UintSet dexs; // Set of supported DEX types (using uint for enum)
+    uint32 poolCount; // Number of pools
+    uint64 userCount; // Number of users
     mapping(bytes32 => PoolInfo) poolInfo; // Pool info by poolId
     mapping(uint32 => ALMVault) vaults; // Vaults by id
     mapping(bytes32 => Range) ranges; // Protocol-level storage of ranges by rangeId
-    mapping(uint8 => address) dexAdapters; // Dex adapters by dex type
-    mapping(IERC20 => address) oracleAdapters; // Oracle adapters by token address
-    mapping(bytes32 => address) bridgeAdapters; // Bridge adapters by chainId
-    bytes32[32] __gap; // upgradeable storage padding
+    mapping(address => EnumerableSet.Bytes32Set) dexAdapterPools; // Tracks pools for each dex adapter
+    bytes32[16] __gap; // Adjusted gap due to new mapping
 }
 
-/*═══════════════════════════════════════════════════════════════╗
-║                        CORE STORAGE                            ║
-╚═══════════════════════════════════════════════════════════════*/
+// --- RISK MODEL STORAGE ---
+
+// Risk model storage
+struct WeightModel {
+    uint16 defaultCScore; // default pool cScore
+    uint16 scoreAmplifierBp; // exponent for weight calculation (>1 BPS means low score penalty)
+    uint16 minMaxBp; // Minimum maximum weight in basis points (BPS) for dynamic max weight adjustments
+    uint16 maxBp; // max single weight in BPS
+    uint16 diversificationFactorBp; // High exponent means lower max singgle weight, hence lower diversification
+    bytes32[2] __gap;
+}
+
+struct LiquidityModel {
+    uint16 minRatioBp; // min liquidity ratio in BPS (for dynamic liquidity ratio)
+    uint16 tvlExponentBp; // decreases MCR exponentially to TVL increase
+    uint16 tvlFactorBp; // decreases MCR linearly to TVL increase
+    uint16 lowOffsetBp; // for rebalance triggers (low liquidity)
+    uint16 highOffsetBp; // for rebalance triggers (high liquidity)
+    bytes32[2] __gap;
+}
+
+struct SlippageModel {
+    uint16 minSlippageBp; // minimum slippage in BPS (e.g., 10 = 0.1%)
+    uint16 maxSlippageBp; // maximum slippage in BPS (e.g., 500 = 5%)
+    uint16 amplificationBp; // curve amplification in BPS (0 = log-like, 5000 = linear, 10000 = exponential)
+    bytes32[2] __gap;
+}
+
+struct RiskModel {
+    WeightModel weight;
+    LiquidityModel liquidity;
+    SlippageModel slippage;
+    bytes32[6] __gap; // Reduced gap due to new SlippageModel
+}
+
+// --- CORE STORAGE ---
 
 // Core protocol storage
 struct CoreStorage {
     // Version control
-    uint8 version; // protocol version
+    uint8 version; // Protocol version
     AccessControl accessControl; // Access control storage
     Restrictions restrictions; // Restriction storage
+    RiskModel riskModel; // Risk model storage
     Treasury treasury; // Treasury storage
     Registry registry; // Registry storage (vaults, pools, dexs)
     Oracles oracles; // Oracles storage
-    bytes32[64] __gap; // upgradeable storage padding
+    bytes32[64] __gap;
 }
 
-/*═══════════════════════════════════════════════════════════════╗
-║                       RESCUE STORAGE                           ║
-╚═══════════════════════════════════════════════════════════════*/
+// --- RESCUE STORAGE ---
 
 // Request for rescuing stuck tokens
 struct RescueRequest {
@@ -377,5 +434,5 @@ struct Rescue {
     mapping(address => mapping(TokenType => RescueRequest)) rescueRequests;
     uint64 rescueTimelock; // Time that must pass before a rescue can be executed
     uint64 rescueValidity; // Time window during which a rescue request is valid
-    bytes32[32] __gap; // upgradeable storage padding
+    bytes32[16] __gap;
 }

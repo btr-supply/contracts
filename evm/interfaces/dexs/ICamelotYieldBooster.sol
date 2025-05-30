@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.28;
+pragma solidity 0.8.29;
 
 interface ICamelotYieldBooster {
     function MAX_TOTAL_ALLOCATION_FLOOR() external view returns (uint256);
@@ -17,27 +17,27 @@ interface ICamelotYieldBooster {
         uint256 poolTotalAllocation
     ) external view returns (uint256);
     function getMultiplier(
-        address poolAddress,
+        address pool,
         uint256 maxBoostMultiplier,
         uint256 lpAmount,
         uint256 totalLpSupply,
         uint256 userAllocation
     ) external view returns (uint256);
-    function getPoolTotalAllocation(address poolAddress) external view returns (uint256);
-    function getUserPosition(address userAddress, address poolAddress, uint256 index) external view returns (uint256);
-    function getUserPositionAllocation(address userAddress, address poolAddress, uint256 tokenId)
+    function getPoolTotalAllocations(address pool) external view returns (uint256);
+    function getUserPosition(address userAddress, address pool, uint256 index) external view returns (uint256);
+    function getUserPositionAllocations(address userAddress, address pool, uint256 tokenId)
         external
         view
         returns (uint256);
-    function getUserPositionsLength(address userAddress, address poolAddress) external view returns (uint256);
-    function getUserTotalAllocation(address userAddress) external view returns (uint256);
+    function getUserPositionsLength(address userAddress, address pool) external view returns (uint256);
+    function getUserTotalAllocations(address userAddress) external view returns (uint256);
     function owner() external view returns (address);
     function renounceOwnership() external;
     function setTotalAllocationFloor(uint256 floor) external;
-    function totalAllocation() external view returns (uint256);
+    function totalAllocations() external view returns (uint256);
     function totalAllocationFloor() external view returns (uint256);
     function transferOwnership(address newOwner) external;
     function updateForcedDeallocationStatus(bool status) external;
-    function usersPositionsAllocation(address, address, uint256) external view returns (uint256);
+    function usersPositionsAllocations(address, address, uint256) external view returns (uint256);
     function xGrailToken() external view returns (address);
 }

@@ -1,4 +1,40 @@
-#!/bin/sh
+#
+# SPDX-License-Identifier: MIT
+# @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+# @@@@@@@@@/         '@@@@/            /@@@/         '@@@@@@@@
+# @@@@@@@@/    /@@@    @@@@@@/    /@@@@@@@/    /@@@    @@@@@@@
+# @@@@@@@/           _@@@@@@/    /@@@@@@@/    /.     _@@@@@@@@
+# @@@@@@/    /@@@    '@@@@@/    /@@@@@@@/    /@@    @@@@@@@@@@
+# @@@@@/            ,@@@@@/    /@@@@@@@/    /@@@,    @@@@@@@@@
+# @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+#
+# @title Install Dependencies Script - Installs project dependencies
+# @copyright 2025
+# @notice Sets up the development environment by installing necessary tools and libraries (e.g., Foundry, Python packages
+via uv)
+
+# @dev Essential script for onboarding and CI/CD setup
+# @author BTR Team
+#
+
+via uv)
+
+# @dev Essential script for onboarding and CI/CD setup
+# @author BTR Team
+#
+
+via uv)
+
+# @dev Essential script for onboarding and CI/CD setup
+# @author BTR Team
+#
+
+via uv)
+
+# @dev Essential script for onboarding and CI/CD setup
+# @author BTR Team
+#
+
 set -euo pipefail
 
 PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"

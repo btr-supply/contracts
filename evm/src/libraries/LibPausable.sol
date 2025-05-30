@@ -1,14 +1,18 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.28;
+pragma solidity 0.8.29;
 
-/**
-@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
-@@@@@@@@@/         '@@@@/            /@@@/         '@@@@@@@@
-@@@@@@@@/    /@@@    @@@@@@/    /@@@@@@@/    /@@@    @@@@@@@
-@@@@@@@/           _@@@@@@/    /@@@@@@@/    /.     _@@@@@@@@
-@@@@@@/    /@@@    '@@@@@/    /@@@@@@@/    /@@    @@@@@@@@@@
-@@@@@/            ,@@@@@/    /@@@@@@@/    /@@@,    @@@@@@@@@
-@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+import {ALMVault, ErrorType, Restrictions} from "@/BTRTypes.sol";
+import {BTRErrors as Errors, BTREvents as Events} from "@libraries/BTREvents.sol";
+import {BTRUtils as U} from "@libraries/BTRUtils.sol";
+
+/*
+ * @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+ * @@@@@@@@@/         '@@@@/            /@@@/         '@@@@@@@@
+ * @@@@@@@@/    /@@@    @@@@@@/    /@@@@@@@/    /@@@    @@@@@@@
+ * @@@@@@@/           _@@@@@@/    /@@@@@@@/    /.     _@@@@@@@@
+ * @@@@@@/    /@@@    '@@@@@/    /@@@@@@@/    /@@    @@@@@@@@@@
+ * @@@@@/            ,@@@@@/    /@@@@@@@/    /@@@,    @@@@@@@@@
+ * @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
  *
  * @title Pausable Library - Shared pause functionality logic
  * @copyright 2025
@@ -17,54 +21,36 @@ pragma solidity 0.8.28;
  * @author BTR Team
  */
 
-import {BTRStorage as S} from "@libraries/BTRStorage.sol";
-import {BTRUtils} from "@libraries/BTRUtils.sol";
-import {ALMVault, ErrorType, Restrictions} from "@/BTRTypes.sol";
-import {BTRErrors as Errors, BTREvents as Events} from "@libraries/BTREvents.sol";
-
 library LibPausable {
-    using BTRUtils for uint32;
+    using U for uint32;
+    // --- PAUSE ---
+    // vault level pause
 
-    /*═══════════════════════════════════════════════════════════════╗
-    ║                             PAUSE                              ║
-    ╚═══════════════════════════════════════════════════════════════*/
-
-    function pause(uint32 vaultId) internal {
-        if (vaultId == 0) {
-            Restrictions storage rs = S.restrictions();
-            if (rs.paused) revert Errors.Paused(ErrorType.PROTOCOL);
-            rs.paused = true;
-        } else {
-            ALMVault storage vs = vaultId.getVault();
-            if (vs.paused) revert Errors.Paused(ErrorType.VAULT);
-            vs.paused = true;
-        }
-        emit Events.Paused(vaultId, msg.sender);
+    function pauseAlmVault(ALMVault storage _vault) internal {
+        _vault.paused = true;
+        emit Events.Paused(_vault.id, msg.sender);
     }
 
-    function unpause(uint32 vaultId) internal {
-        if (vaultId == 0) {
-            Restrictions storage rs = S.restrictions();
-            if (!rs.paused) revert Errors.NotPaused(ErrorType.PROTOCOL);
-            rs.paused = false;
-        } else {
-            ALMVault storage vs = vaultId.getVault();
-            if (!vs.paused) revert Errors.NotPaused(ErrorType.VAULT);
-            vs.paused = false;
-        }
-        emit Events.Unpaused(vaultId, msg.sender);
+    function unpauseAlmVault(ALMVault storage _vault) internal {
+        if (!_vault.paused) revert Errors.NotPaused(ErrorType.VAULT);
+        _vault.paused = false;
+        emit Events.Unpaused(_vault.id, msg.sender);
     }
 
-    function isPaused(uint32 vaultId) internal view returns (bool) {
-        if (vaultId == 0) {
-            return S.restrictions().paused;
-        } else {
-            return vaultId.getVault().paused;
-        }
+    function isAlmVaultPaused(ALMVault storage _vault) internal view returns (bool) {
+        return _vault.paused;
     }
 
     // protocol level pause
+    function pause() internal {
+        pauseAlmVault(uint32(0).vault());
+    }
+
+    function unpause() internal {
+        unpauseAlmVault(uint32(0).vault());
+    }
+
     function isPaused() internal view returns (bool) {
-        return isPaused(0);
+        return isAlmVaultPaused(uint32(0).vault());
     }
 }

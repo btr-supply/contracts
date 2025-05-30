@@ -1,4 +1,20 @@
-#!/bin/bash
+#
+# SPDX-License-Identifier: BUSL-1.1
+# @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+# @@@@@@@@@/         '@@@@/            /@@@/         '@@@@@@@@
+# @@@@@@@@/    /@@@    @@@@@@/    /@@@@@@@/    /@@@    @@@@@@@
+# @@@@@@@/           _@@@@@@/    /@@@@@@@/    /.     _@@@@@@@@
+# @@@@@@/    /@@@    '@@@@@/    /@@@@@@@/    /@@    @@@@@@@@@@
+# @@@@@/            ,@@@@@/    /@@@@@@@/    /@@@,    @@@@@@@@@
+# @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+#
+# @title Get Swap Data Test Script - Tests fetching swap data for a specific pool
+# @copyright 2025
+# @notice Executes a dry run or test call to retrieve swap data, likely for integration testing or debugging swap logic
+# @dev Calls `get_swap_data.sh` with test parameters
+# @author BTR Team
+#
+
 set -euo pipefail
 
 die() { echo "$1"; exit 1; }

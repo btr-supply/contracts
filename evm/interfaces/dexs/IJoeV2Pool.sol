@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MIT
-pragma solidity >=0.8.4 <0.9.0;
+pragma solidity 0.8.29;
 
-// applicable to v2, v2.1, v2.2
 interface IJoeV2Pool {
     function approveForAll(address spender, bool approved) external;
     function balanceOf(address account, uint256 id) external view returns (uint256);
@@ -21,9 +20,9 @@ interface IJoeV2Pool {
     function getBinStep() external pure returns (uint16);
     function getFactory() external view returns (address factory);
     function getIdFromPrice(uint256 price) external pure returns (uint24 id);
-    function getLBHooksParameters() external view returns (bytes32);
+    function getLBHooksParameterst() external view returns (bytes32);
     function getNextNonEmptyBin(bool swapForY, uint24 id) external view returns (uint24 nextId);
-    function getOracleParameters()
+    function getOracleParameterst()
         external
         view
         returns (uint8 sampleLifetime, uint16 size, uint16 activeSize, uint40 lastUpdated, uint40 firstTimestamp);
@@ -34,7 +33,7 @@ interface IJoeV2Pool {
     function getPriceFromId(uint24 id) external pure returns (uint256 price);
     function getProtocolFees() external view returns (uint128 protocolFeeX, uint128 protocolFeeY);
     function getReserves() external view returns (uint128 reserveX, uint128 reserveY);
-    function getStaticFeeParameters()
+    function getStaticFeeParameterst()
         external
         view
         returns (
@@ -56,7 +55,7 @@ interface IJoeV2Pool {
         returns (uint128 amountInLeft, uint128 amountOut, uint128 fee);
     function getTokenX() external pure returns (address tokenX);
     function getTokenY() external pure returns (address tokenY);
-    function getVariableFeeParameters()
+    function getVariableFeeParameterst()
         external
         view
         returns (uint24 volatilityAccumulator, uint24 volatilityReference, uint24 idReference, uint40 timeOfLastUpdate);

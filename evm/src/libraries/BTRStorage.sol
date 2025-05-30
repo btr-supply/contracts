@@ -1,21 +1,5 @@
-// SPDX-License-Identifier: MIT
-pragma solidity 0.8.28;
-
-/**
-@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
-@@@@@@@@@/         '@@@@/            /@@@/         '@@@@@@@@
-@@@@@@@@/    /@@@    @@@@@@/    /@@@@@@@/    /@@@    @@@@@@@
-@@@@@@@/           _@@@@@@/    /@@@@@@@/    /.     _@@@@@@@@
-@@@@@@/    /@@@    '@@@@@/    /@@@@@@@/    /@@    @@@@@@@@@@
-@@@@@/            ,@@@@@/    /@@@@@@@/    /@@@,    @@@@@@@@@
-@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
- *
- * @title BTR Storage Library - Diamond storage layout definition
- * @copyright 2025
- * @notice Defines the storage layout for the BTR diamond proxy
- * @dev Central location for all diamond storage variables (AppStorage pattern)
- * @author BTR Team
- */
+// SPDX-License-Identifier: BUSL-1.1
+pragma solidity 0.8.29;
 
 import {
     Diamond,
@@ -28,72 +12,78 @@ import {
     Registry,
     Restrictions,
     Oracles,
+    RiskModel,
     AddressType,
     AccountStatus
 } from "@/BTRTypes.sol";
 
-/// @title BTR Centralized Storage
-/// @dev Contains storage accessors for BTR contract facets
+/*
+ * @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+ * @@@@@@@@@/         '@@@@/            /@@@/         '@@@@@@@@
+ * @@@@@@@@/    /@@@    @@@@@@/    /@@@@@@@/    /@@@    @@@@@@@
+ * @@@@@@@/           _@@@@@@/    /@@@@@@@/    /.     _@@@@@@@@
+ * @@@@@@/    /@@@    '@@@@@/    /@@@@@@@/    /@@    @@@@@@@@@@
+ * @@@@@/            ,@@@@@/    /@@@@@@@/    /@@@,    @@@@@@@@@
+ * @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+ *
+ * @title BTR Storage Library - Diamond storage layout definition
+ * @copyright 2025
+ * @notice Defines the storage layout for the BTR diamond proxy
+ * @dev Central location for all diamond storage variables (AppStorage pattern)
+ * @author BTR Team
+ */
+
 library BTRStorage {
-    /*═══════════════════════════════════════════════════════════════╗
-    ║                       STORAGE POSITIONS                        ║
-    ╚═══════════════════════════════════════════════════════════════*/
+    // --- STORAGE ---
 
-    // Storage positions - each must be unique
-    bytes32 constant DIAMOND_NAMESPACE = keccak256("btr.diamond");
-    bytes32 constant CORE_NAMESPACE = keccak256("btr.core");
-    bytes32 constant RESCUE_STORAGE_SLOT = keccak256("btr.rescue");
+    bytes32 constant DIAMOND_NS = keccak256("btr.diamond");
+    bytes32 constant CORE_NS = keccak256("btr.core");
+    bytes32 constant RESCUE_NS = keccak256("btr.rescue");
 
-    /*═══════════════════════════════════════════════════════════════╗
-    ║                       STORAGE ACCESSORS                        ║
-    ╚═══════════════════════════════════════════════════════════════*/
+    // --- STORAGE ACCESSORS ---
 
-    /// @dev Access diamond storage
-    function diamond() internal pure returns (Diamond storage ds) {
-        bytes32 position = DIAMOND_NAMESPACE;
+    function diam() internal pure returns (Diamond storage _ds) {
+        bytes32 position = DIAMOND_NS;
         assembly {
-            ds.slot := position
+            _ds.slot := position
         }
     }
 
-    /// @dev Access core protocol storage
-    function core() internal pure returns (CoreStorage storage cs) {
-        bytes32 position = CORE_NAMESPACE;
+    function core() internal pure returns (CoreStorage storage _cs) {
+        bytes32 position = CORE_NS;
         assembly {
-            cs.slot := position
+            _cs.slot := position
         }
     }
 
-    /// @dev Access treasury storage
-    function treasury() internal view returns (Treasury storage ts) {
+    function tres() internal view returns (Treasury storage _tres) {
         return core().treasury;
     }
 
-    /// @dev Access access control storage
-    function accessControl() internal view returns (AccessControl storage acs) {
+    function acc() internal view returns (AccessControl storage _ac) {
         return core().accessControl;
     }
 
-    /// @dev Access restriction storage
-    function restrictions() internal view returns (Restrictions storage rs) {
+    function rst() internal view returns (Restrictions storage _rs) {
         return core().restrictions;
     }
 
-    /// @dev Access oracles storage
-    function oracles() internal view returns (Oracles storage os) {
+    function ora() internal view returns (Oracles storage _ora) {
         return core().oracles;
     }
 
-    /// @dev Access registry storage
-    function registry() internal view returns (Registry storage rs) {
+    function reg() internal view returns (Registry storage _reg) {
         return core().registry;
     }
 
-    /// @dev Access rescue storage
-    function rescue() internal pure returns (Rescue storage rs) {
-        bytes32 position = RESCUE_STORAGE_SLOT;
+    function risk() internal view returns (RiskModel storage _rm) {
+        return core().riskModel;
+    }
+
+    function res() internal pure returns (Rescue storage _res) {
+        bytes32 position = RESCUE_NS;
         assembly {
-            rs.slot := position
+            _res.slot := position
         }
     }
 }

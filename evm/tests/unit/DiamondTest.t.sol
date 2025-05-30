@@ -1,33 +1,33 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.28;
+pragma solidity 0.8.29;
 
-/**
-@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
-@@@@@@@@@/         '@@@@/            /@@@/         '@@@@@@@@
-@@@@@@@@/    /@@@    @@@@@@/    /@@@@@@@/    /@@@    @@@@@@@
-@@@@@@@/           _@@@@@@/    /@@@@@@@/    /.     _@@@@@@@@
-@@@@@@/    /@@@    '@@@@@/    /@@@@@@@/    /@@    @@@@@@@@@@
-@@@@@/            ,@@@@@/    /@@@@@@@/    /@@@,    @@@@@@@@@
-@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+import {BTRErrors as Errors} from "@libraries/BTREvents.sol";
+import {ErrorType, Diamond} from "@/BTRTypes.sol";
+import {IERC165} from "@openzeppelin/contracts/utils/introspection/IERC165.sol";
+import {BTRStorage as S} from "@libraries/BTRStorage.sol";
+import {LibDiamond as D} from "@libraries/LibDiamond.sol";
+import {IDiamondCut, IDiamondLoupe, IDiamond} from "@interfaces/IDiamond.sol";
+import {BaseDiamondTest} from "../BaseDiamondTest.t.sol";
+import {AccessControlFacet} from "@facets/AccessControlFacet.sol";
+import {BTRDiamond} from "@/BTRDiamond.sol";
+import {DiamondCutFacet} from "@facets/DiamondCutFacet.sol";
+import {DiamondLoupeFacet} from "@facets/DiamondLoupeFacet.sol";
+
+/*
+ * @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+ * @@@@@@@@@/         '@@@@/            /@@@/         '@@@@@@@@
+ * @@@@@@@@/    /@@@    @@@@@@/    /@@@@@@@/    /@@@    @@@@@@@
+ * @@@@@@@/           _@@@@@@/    /@@@@@@@/    /.     _@@@@@@@@
+ * @@@@@@/    /@@@    '@@@@@/    /@@@@@@@/    /@@    @@@@@@@@@@
+ * @@@@@/            ,@@@@@/    /@@@@@@@/    /@@@,    @@@@@@@@@
+ * @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
  *
  * @title Diamond Test - Proxy upgrade validation
  * @copyright 2025
- * @notice Verifies diamond proxy functionality and facet management
- * @dev Tests EIP-2535 compliance
+ * @notice Verifies diamond proxy functionality and facet management (add/remove/replace)
+ * @dev Tests EIP-2535 compliance and core upgrade security via DiamondCutFacet
  * @author BTR Team
  */
-
-import {BaseDiamondTest} from "../BaseDiamondTest.t.sol";
-import {IDiamondCut, IDiamondLoupe, IDiamond} from "@interfaces/IDiamond.sol";
-import {IERC165} from "@openzeppelin/contracts/utils/introspection/IERC165.sol";
-import {DiamondCutFacet} from "@facets/DiamondCutFacet.sol";
-import {DiamondLoupeFacet} from "@facets/DiamondLoupeFacet.sol";
-import {AccessControlFacet} from "@facets/AccessControlFacet.sol";
-import {BTRDiamond} from "@/BTRDiamond.sol";
-import {LibDiamond as D} from "@libraries/LibDiamond.sol";
-import {BTRStorage as S} from "@libraries/BTRStorage.sol";
-import {ErrorType, Diamond} from "@/BTRTypes.sol";
-import {BTRErrors as Errors} from "@libraries/BTREvents.sol";
 
 contract FailingInitializer {
     function initialize() external pure {
@@ -52,19 +52,19 @@ contract DiamondTest is BaseDiamondTest {
 
     // FACET FUNCTIONS TESTS
 
-    function testFacetFunctionSelectors() public {
-        address[] memory facetAddresses = loupeFacet.facetAddresses();
+    function testFacetFunctionSelectorst() public {
+        address[] memory facets = loupeFacet.facets();
 
         // Test normal case with existing facet
-        bytes4[] memory selectors = loupeFacet.facetFunctionSelectors(facetAddresses[0]);
+        bytes4[] memory selectors = loupeFacet.facetFunctionSelectors(facets[0]);
         assertTrue(selectors.length > 0, "No selectors for facet");
 
         // Test pagination with normal parameters
-        selectors = loupeFacet.facetFunctionSelectorsPaginated(facetAddresses[0], 0, 3);
+        selectors = loupeFacet.facetFunctionSelectorsPaginated(facets[0], 0, 3);
         assertLe(selectors.length, 3, "Should respect max limit");
 
         // Test edge cases
-        selectors = loupeFacet.facetFunctionSelectorsPaginated(facetAddresses[0], 0, 0);
+        selectors = loupeFacet.facetFunctionSelectorsPaginated(facets[0], 0, 0);
         assertEq(selectors.length, 0, "Zero limit should return empty array");
 
         selectors = loupeFacet.facetFunctionSelectorsPaginated(address(0), 0, 5);
@@ -72,14 +72,14 @@ contract DiamondTest is BaseDiamondTest {
     }
 
     function testFacetAddressForSelector() public {
-        address[] memory facetAddresses = loupeFacet.facetAddresses();
+        address[] memory facets = loupeFacet.facets();
 
         // Test existing selectors
-        for (uint256 i = 0; i < facetAddresses.length; i++) {
-            bytes4[] memory selectors = loupeFacet.facetFunctionSelectors(facetAddresses[i]);
+        for (uint256 i = 0; i < facets.length; i++) {
+            bytes4[] memory selectors = loupeFacet.facetFunctionSelectors(facets[i]);
             if (selectors.length > 0) {
                 address currentFacetAddr = loupeFacet.facetAddress(selectors[0]);
-                assertEq(currentFacetAddr, facetAddresses[i], "Facet address should match");
+                assertEq(currentFacetAddr, facets[i], "Facet address should match");
                 break;
             }
         }
@@ -92,18 +92,18 @@ contract DiamondTest is BaseDiamondTest {
 
     function testFacetAddresses() public {
         // Test normal function
-        address[] memory facets = loupeFacet.facetAddresses();
+        address[] memory facets = loupeFacet.facets();
         assertTrue(facets.length > 0, "Should have facets");
 
         // Test pagination with normal parameters
-        address[] memory paginatedFacets = loupeFacet.facetAddressesPaginated(0, 2);
+        address[] memory paginatedFacets = loupeFacet.facetsPaginated(0, 2);
         assertLe(paginatedFacets.length, 2, "Should respect max limit");
 
         // Test edge cases
-        paginatedFacets = loupeFacet.facetAddressesPaginated(0, 0);
+        paginatedFacets = loupeFacet.facetsPaginated(0, 0);
         assertEq(paginatedFacets.length, 0, "Zero limit should return empty array");
 
-        paginatedFacets = loupeFacet.facetAddressesPaginated(999, 5);
+        paginatedFacets = loupeFacet.facetsPaginated(999, 5);
         assertEq(paginatedFacets.length, 0, "Out of range offset should return empty array");
     }
 
@@ -125,11 +125,11 @@ contract DiamondTest is BaseDiamondTest {
 
     function testFindFacetPosition() public {
         // Get facet addresses
-        address[] memory facetAddresses = loupeFacet.facetAddresses();
-        assertTrue(facetAddresses.length > 0, "Should have at least one facet");
+        address[] memory facets = loupeFacet.facets();
+        assertTrue(facets.length > 0, "Should have at least one facet");
 
         // Use the loupe facet to find the facet address for a function selector
-        address existingFacet = facetAddresses[0];
+        address existingFacet = facets[0];
         bytes4[] memory selectors = loupeFacet.facetFunctionSelectors(existingFacet);
         assertTrue(selectors.length > 0, "Facet should have selectors");
 
@@ -394,7 +394,7 @@ contract DiamondTest is BaseDiamondTest {
 
     function testUpgradeLoupeFacet() public {
         // Get the current address of DiamondLoupeFacet
-        bytes4 loupeSelector = IDiamondLoupe.facetAddresses.selector;
+        bytes4 loupeSelector = IDiamondLoupe.facets.selector;
         address oldLoupeFacet = loupeFacet.facetAddress(loupeSelector);
 
         // Deploy a new DiamondLoupeFacet
@@ -423,15 +423,15 @@ contract DiamondTest is BaseDiamondTest {
 
     function testComplexPagination() public {
         // Test pagination with all parameters
-        address[] memory facets = loupeFacet.facetAddresses();
+        address[] memory facets = loupeFacet.facets();
 
         // Test empty result case
-        address[] memory emptyFacets = loupeFacet.facetAddressesPaginated(999, 5);
+        address[] memory emptyFacets = loupeFacet.facetsPaginated(999, 5);
         assertEq(emptyFacets.length, 0, "Should return empty array for out of range offset");
 
         // Test partial result case
         if (facets.length > 2) {
-            address[] memory partialFacets = loupeFacet.facetAddressesPaginated(facets.length - 2, 5);
+            address[] memory partialFacets = loupeFacet.facetsPaginated(facets.length - 2, 5);
             assertEq(partialFacets.length, 2, "Should return only available elements");
         }
 
@@ -553,7 +553,7 @@ contract DiamondTest is BaseDiamondTest {
         assertEq(facet, address(0), "Function not removed correctly");
 
         // Verify the facet is no longer in the list
-        address[] memory facets = loupeFacet.facetAddresses();
+        address[] memory facets = loupeFacet.facets();
         for (uint256 i = 0; i < facets.length; i++) {
             assertFalse(facets[i] == address(testFacet), "Facet should be removed completely");
         }

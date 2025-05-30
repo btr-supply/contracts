@@ -7,8 +7,8 @@
       "admin()",
       "checkRole(bytes32)",
       "checkRole(bytes32,address)",
-      "getKeepers()",
-      "getManagers()",
+      "keepers()",
+      "managers()",
       "grantRole(bytes32,address)",
       "hasRole(bytes32,address)",
       "isAdmin(address)",
@@ -18,7 +18,7 @@
       "isTreasury(address)",
       "isWhitelisted(address)",
       "revokeRole(bytes32,address)",
-      "treasury()"
+      "tres()"
     ]
   },
   "DiamondCutFacet": {
@@ -60,8 +60,8 @@
     "initializable": true,
     "ownedSelectors": []
   },
-  "SwapperFacet": {
-    "required": false,
+  "SwapFacet": {
+    "required": true,
     "payable": false,
     "initializable": true,
     "ownedSelectors": [
@@ -69,19 +69,46 @@
       "decodeAndSwapBalance(address,address,bytes)"
     ]
   },
-  "ALMFacet": {
-    "required": false,
+  "ALMInfoFacet": {
+    "required": true,
+    "payable": true,
+    "initializable": false,
+    "ownedSelectors": []
+  },
+  "ALMUserFacet": {
+    "required": true,
+    "payable": true,
+    "initializable": false,
+    "ownedSelectors": []
+  },
+  "ALMProtectedFacet": {
+    "required": true,
     "payable": false,
-    "initializable": true,
+    "initializable": false,
     "ownedSelectors": []
   },
   "TreasuryFacet": {
     "required": false,
     "payable": false,
     "initializable": true,
-    "ownedSelectors": [
-      "getTreasury()",
-      "setTreasury(address)"
-    ]
+    "ownedSelectors": []
+  },
+  "InfoFacet": {
+    "required": false,
+    "payable": false,
+    "initializable": false,
+    "ownedSelectors": []
+  },
+  "OracleFacet": {
+    "required": false,
+    "payable": false,
+    "initializable": true,
+    "ownedSelectors": []
+  },
+  "RiskModelFacet": {
+    "required": false,
+    "payable": false,
+    "initializable": true,
+    "ownedSelectors": []
   }
 }

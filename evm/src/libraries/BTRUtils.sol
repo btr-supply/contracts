@@ -1,85 +1,97 @@
-// SPDX-License-Identifier: MIT
-pragma solidity 0.8.28;
+// SPDX-License-Identifier: BUSL-1.1
+pragma solidity 0.8.29;
 
-/**
-@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
-@@@@@@@@@/         '@@@@/            /@@@/         '@@@@@@@@
-@@@@@@@@/    /@@@    @@@@@@/    /@@@@@@@/    /@@@    @@@@@@@
-@@@@@@@/           _@@@@@@/    /@@@@@@@/    /.     _@@@@@@@@
-@@@@@@/    /@@@    '@@@@@/    /@@@@@@@/    /@@    @@@@@@@@@@
-@@@@@/            ,@@@@@/    /@@@@@@@/    /@@@,    @@@@@@@@@
-@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+import {ALMVault, ErrorType, Range, Restrictions, Registry} from "@/BTRTypes.sol";
+import {BTRErrors as Errors} from "@libraries/BTREvents.sol";
+import {BTRStorage as S} from "@libraries/BTRStorage.sol";
+
+/*
+ * @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+ * @@@@@@@@@/         '@@@@/            /@@@/         '@@@@@@@@
+ * @@@@@@@@/    /@@@    @@@@@@/    /@@@@@@@/    /@@@    @@@@@@@
+ * @@@@@@@/           _@@@@@@/    /@@@@@@@/    /.     _@@@@@@@@
+ * @@@@@@/    /@@@    '@@@@@/    /@@@@@@@/    /@@    @@@@@@@@@@
+ * @@@@@/            ,@@@@@/    /@@@@@@@/    /@@@,    @@@@@@@@@
+ * @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
  *
  * @title BTR Utilities Library - General utility functions
  * @copyright 2025
  * @notice Contains various helper functions used across the protocol
- * @dev Includes type conversions, common checks, etc.
+ * @dev Utility routines (e.g., bytes32↔uint32 conversions, ID helpers)
+- Facilitates diamond storage access and event encoding
+
  * @author BTR Team
  */
 
-import {BTRStorage as S} from "@libraries/BTRStorage.sol";
-import {ALMVault, ErrorType, CoreStorage, DEX, Range, Restrictions, Registry} from "@/BTRTypes.sol";
-import {BTRErrors as Errors} from "@libraries/BTREvents.sol";
-
 library BTRUtils {
-    /*═══════════════════════════════════════════════════════════════╗
-    ║                             UTILS                              ║
-    ╚═══════════════════════════════════════════════════════════════*/
-
-    function getCoreStorageIfVaultExists(uint32 vaultId) internal view returns (CoreStorage storage cs) {
-        cs = S.core();
-        if (vaultId >= cs.registry.vaultCount) {
-            revert Errors.NotFound(ErrorType.VAULT);
-        }
+    // --- UTILS ---
+    function delegate(address _target, bytes4 _selector) internal returns (bytes memory returnData) {
+        (bool success, bytes memory _returnData) = _target.delegatecall(abi.encodeWithSelector(_selector));
+        if (!success) revert Errors.DelegateCallFailed();
+        returnData = _returnData;
     }
 
-    function getRestrictionsStorageIfVaultExists(uint32 vaultId) internal view returns (Restrictions storage rs) {
-        return getCoreStorageIfVaultExists(vaultId).restrictions;
+    function delegate(address _target, bytes4 _selector, bytes memory _calldata)
+        internal
+        returns (bytes memory returnData)
+    {
+        (bool success, bytes memory _returnData) = _target.delegatecall(abi.encodeWithSelector(_selector, _calldata));
+        if (!success) revert Errors.DelegateCallFailed();
+        returnData = _returnData;
     }
 
-    function getVault(uint32 vaultId) internal view returns (ALMVault storage vs) {
-        vs = getCoreStorageIfVaultExists(vaultId).registry.vaults[vaultId];
-        if (vs.id == 0) revert Errors.NotFound(ErrorType.VAULT);
+    function delegate(address _target, bytes memory _calldata) internal returns (bytes memory returnData) {
+        (bool success, bytes memory _returnData) = _target.delegatecall(_calldata);
+        if (!success) revert Errors.DelegateCallFailed();
+        returnData = _returnData;
     }
 
-    function getRange(bytes32 rangeId) internal view returns (Range storage rs) {
-        rs = S.registry().ranges[rangeId];
-        if (rs.id == bytes32(0)) revert Errors.NotFound(ErrorType.RANGE);
+    function vault(uint32 _vid, Registry storage _reg) internal view returns (ALMVault storage v) {
+        v = _reg.vaults[_vid];
+        if (v.id != _vid) revert Errors.NotFound(ErrorType.VAULT);
     }
 
-    function getVaultCount() internal view returns (uint32) {
-        return S.registry().vaultCount;
+    function vault(uint32 _vid) internal view returns (ALMVault storage v) {
+        v = vault(_vid, S.reg());
     }
 
-    function getRangeCount() internal view returns (uint32) {
-        return S.registry().rangeCount;
+    function range(bytes32 _rid) internal view returns (Range storage r) {
+        r = S.reg().ranges[_rid];
+        if (r.id == bytes32(0)) revert Errors.NotFound(ErrorType.RANGE);
     }
 
-    function isValidDEX(DEX dex) internal pure returns (bool) {
-        return uint256(dex) <= uint256(DEX.STELLASWAP);
+    function vaultCount() internal view returns (uint32) {
+        return S.reg().vaultCount;
     }
 
-    function toBytes32(address addr) internal pure returns (bytes32 result) {
-        assembly {
-            result := addr
-        }
+    function rangeCount() internal view returns (uint32) {
+        return S.reg().rangeCount;
     }
 
-    function toAddress(bytes32 b) internal pure returns (address addr) {
-        assembly {
-            addr := and(b, 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF)
-        }
+    function rangeId(uint32 _vid, bytes32 _pid, int24 _tickLower, int24 _tickUpper) internal view returns (bytes32) {
+        return keccak256(abi.encodePacked(address(this), _vid, _pid, _tickLower, _tickUpper));
     }
 
-    function hashFast(address a, address b) internal pure returns (bytes32 c) {
-        assembly {
-            // load the 20-byte representations of the addresses
-            let baseBytes := and(a, 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF)
-            let quoteBytes := and(b, 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF)
+    function rangeId(bytes32 _rid) public view returns (bytes32) {
+        Range storage r = range(_rid);
+        return rangeId(r.vaultId, r.poolId, r.lowerTick, r.upperTick);
+    }
 
-            // shift the first address 12 bytes (96 bits) to the left
-            // then combine with the second address
-            c := or(shl(96, baseBytes), quoteBytes)
+    function positionId(int24 _tickLower, int24 _tickUpper) internal view returns (uint256) {
+        return uint256(keccak256(abi.encodePacked(address(this), _tickLower, _tickUpper)));
+    }
+
+    function positionId(bytes32 _rid) public view returns (uint256) {
+        Range storage r = range(_rid);
+        return positionId(r.lowerTick, r.upperTick);
+    }
+
+    function checkMatchTokens(address _vaultToken0, address _vaultToken1, address _poolToken0, address _poolToken1)
+        internal
+        pure
+    {
+        if (_vaultToken0 != _poolToken0 || _vaultToken1 != _poolToken1) {
+            revert Errors.Unauthorized(ErrorType.TOKEN);
         }
     }
 }

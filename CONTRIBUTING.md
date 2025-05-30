@@ -18,7 +18,7 @@ Thank you for your interest in contributing to BTR Supply Contracts! This docume
 
 This project manages smart contracts across multiple blockchains:
 
-- **`./evm`**: Solidity smart contracts for EVM-compatible chains, managed using Foundry.
+- **`./evm`**: Solidity smart contracts for EVM-compatible chains, managed using Foundry. The EVM code is structured around a diamond architecture, utilizing facets that expose library functions and peripheral contracts (e.g., OracleAdapter and DEXAdapter implementations). The facets handle access control, unless it is necessary to implement it in the underlying library. Additionally, the facets pass storage pointers to the underlying libraries to avoid the need for them to load storage.
 - **`./solana`**: Rust programs for the Solana blockchain.
 - **`./sui`**: Move packages for the Sui blockchain.
 - **`./scripts`**: Shared scripts (Bash, Python) for building, testing, formatting, and deployment.
@@ -48,7 +48,7 @@ This project manages smart contracts across multiple blockchains:
     ```bash
     make install-deps
     ```
-    *(Note: You might need to manually install Solana/Sui toolchains if not handled by the script).*
+    *(NB: You might need to manually install Solana/Sui toolchains if not handled by the script).*
 
 ## Development Workflow
 
@@ -121,6 +121,7 @@ We enforce coding standards through configuration files and `make` commands:
     -   Linting: `ruff` checks for errors and style issues. Run `make python-lint-fix` or `make build`. Configuration is in `pyproject.toml`.
 -   **Solidity (EVM)**:
     -   Formatting: `forge fmt` enforces style. Run `make format` (which executes `scripts/format_code.sh`). Configuration is in `foundry.toml`.
+    -   **Import Organization**: All Solidity files must follow standardized import order (see below).
 -   **Solana (Rust)**:
     -   Formatting: Use `cargo fmt` within the `./solana` directory.
     -   Linting: Use `cargo clippy` within the `./solana` directory.
@@ -128,6 +129,41 @@ We enforce coding standards through configuration files and `make` commands:
     -   Formatting: Use `sui move fmt` within the relevant package directory in `./sui`.
     -   Linting: Use `sui move lint` (if applicable/available).
 -   **Pre-commit Checks**: Before committing, it's recommended to run `make build` to catch formatting, linting, and compilation errors early.
+
+### Solidity Import Organization
+
+All Solidity imports must be organized in this order:
+
+1. **Types/Events/Errors** - `BTRTypes.sol`, `BTREvents.sol`, type aliases
+2. **Libraries** - OpenZeppelin first, then custom (`@libraries/`, `Lib*`)
+3. **Interfaces** - OpenZeppelin first, then custom (`I*`, interfaces)
+4. **Abstract** - Base contracts (`*Facet`, `Abstract*`, `Base*`)
+5. **Contracts** - Concrete contracts for inheritance
+
+**Example:**
+```solidity
+// SPDX-License-Identifier: BUSL-1.1
+pragma solidity 0.8.29;
+
+// 1. Types, Events, Errors
+import {TokenType, ErrorType} from "@/BTRTypes.sol";
+import {BTRErrors as Errors} from "@libraries/BTREvents.sol";
+
+// 2. Libraries (OpenZeppelin first, then custom)
+import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {LibAccessControl as AC} from "@libraries/LibAccessControl.sol";
+
+// 3. Interfaces (OpenZeppelin first, then custom)
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {IDEXAdapter} from "../../interfaces/IDEXAdapter.sol";
+
+// 4. Abstract classes
+import {PermissionedFacet} from "@facets/abstract/PermissionedFacet.sol";
+```
+
+**Automation:**
+- `make organize-imports` - Organizes imports (part of `make format`)
+- `make strip-headers` - Removes headers before regeneration
 
 ## Testing
 

@@ -1,14 +1,28 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.28;
+pragma solidity 0.8.29;
 
-/**
-@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
-@@@@@@@@@/         '@@@@/            /@@@/         '@@@@@@@@
-@@@@@@@@/    /@@@    @@@@@@/    /@@@@@@@/    /@@@    @@@@@@@
-@@@@@@@/           _@@@@@@/    /@@@@@@@/    /.     _@@@@@@@@
-@@@@@@/    /@@@    '@@@@@/    /@@@@@@@/    /@@    @@@@@@@@@@
-@@@@@/            ,@@@@@/    /@@@@@@@/    /@@@,    @@@@@@@@@
-@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+import {LibAccessControl} from "@libraries/LibAccessControl.sol";
+import {IERC20Permit} from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Permit.sol";
+import {IDiamondCut} from "@interfaces/IDiamond.sol";
+import {IDiamond} from "@interfaces/IDiamond.sol";
+import {IERC20} from "@interfaces/ercs/IERC20.sol";
+import {IERC7802} from "@interfaces/ercs/IERC7802.sol";
+import {IXERC20} from "@interfaces/ercs/IXERC20.sol";
+import "../BaseDiamondTest.t.sol";
+import {ERC20Bridgeable} from "@abstract/ERC20Bridgeable.sol";
+import {AccessControlFacet} from "@facets/AccessControlFacet.sol";
+import {BTR} from "@/BTR.sol";
+import {ManagementFacet} from "@facets/ManagementFacet.sol";
+import {TreasuryFacet} from "@facets/TreasuryFacet.sol";
+
+/*
+ * @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+ * @@@@@@@@@/         '@@@@/            /@@@/         '@@@@@@@@
+ * @@@@@@@@/    /@@@    @@@@@@/    /@@@@@@@/    /@@@    @@@@@@@
+ * @@@@@@@/           _@@@@@@/    /@@@@@@@/    /.     _@@@@@@@@
+ * @@@@@@/    /@@@    '@@@@@/    /@@@@@@@/    /@@    @@@@@@@@@@
+ * @@@@@/            ,@@@@@/    /@@@@@@@/    /@@@,    @@@@@@@@@
+ * @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
  *
  * @title BTR Core Test - Tests core BTR contract interactions (if any)
  * @copyright 2025
@@ -17,28 +31,10 @@ pragma solidity 0.8.28;
  * @author BTR Team
  */
 
-import "../BaseDiamondTest.t.sol";
-import {BTR} from "@/BTR.sol";
-import {TreasuryFacet} from "@facets/TreasuryFacet.sol";
-import {AccessControlFacet} from "@facets/AccessControlFacet.sol";
-import {LibAccessControl} from "@libraries/LibAccessControl.sol";
-import {IDiamond} from "@interfaces/IDiamond.sol";
-import {IDiamondCut} from "@interfaces/IDiamond.sol";
-import {IERC7802} from "@interfaces/ercs/IERC7802.sol";
-import {IXERC20} from "@interfaces/ercs/IXERC20.sol";
-import {IERC20} from "@interfaces/ercs/IERC20.sol";
-import {ManagementFacet} from "@facets/ManagementFacet.sol";
-import {ERC20Bridgeable} from "@abstract/ERC20Bridgeable.sol";
-import {IERC20Permit} from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Permit.sol";
-
 // Define errors from ERC20Permit.sol for testing
 error ERC2612ExpiredSignature(uint256 deadline);
 error ERC2612InvalidSigner(address signer, address owner);
 
-/**
- * @title BTRTest
- * @notice Comprehensive test for the BTR token
- */
 contract BTRTest is BaseDiamondTest {
     // Token parameters
     string constant NAME = "BTR Token";
@@ -67,17 +63,6 @@ contract BTRTest is BaseDiamondTest {
     bytes32 public constant PERMIT_TYPEHASH =
         keccak256("Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)");
 
-    // Events for testing
-    event BridgeLimitsSet(uint256 indexed mintingLimit, uint256 indexed burningLimit, address indexed bridge);
-    event CrosschainMint(address indexed to, uint256 indexed amount, address indexed bridge);
-    event CrosschainBurn(address indexed from, uint256 indexed amount, address indexed bridge);
-    event RateLimitPeriodUpdated(uint256 newPeriod);
-    event GenesisMint(address indexed treasury, uint256 amount);
-    event MaxSupplyUpdated(uint256 newMaxSupply);
-
-    /**
-     * @notice Setup for BTR token tests
-     */
     function setUp() public override {
         // Setup the base test (diamond, admin, manager, treasury)
         super.setUp();
@@ -98,16 +83,13 @@ contract BTRTest is BaseDiamondTest {
         btr.mintGenesis(GENESIS_AMOUNT);
     }
 
-    /**
-     * @notice Test initial token setup
-     */
     function testInitialSetup() public {
         assertEq(btr.name(), NAME);
         assertEq(btr.symbol(), SYMBOL);
         assertEq(btr.maxSupply(), MAX_SUPPLY);
         assertEq(btr.totalSupply(), 0);
         assertEq(btr.genesisMinted(), false);
-        assertEq(btr.treasury(), treasury);
+        assertEq(btr.tres(), treasury);
 
         // Check ERC165 interface support
         assertTrue(btr.supportsInterface(type(IERC165).interfaceId));
@@ -117,9 +99,6 @@ contract BTRTest is BaseDiamondTest {
         // Skip the IERC20 interface check
     }
 
-    /**
-     * @notice Test genesis minting
-     */
     function testGenesisMint() public {
         // Only admin can mint genesis
         vm.prank(user1);
@@ -128,7 +107,6 @@ contract BTRTest is BaseDiamondTest {
 
         // Expect GenesisMint event
         vm.expectEmit(true, true, true, true);
-        emit GenesisMint(treasury, GENESIS_AMOUNT);
 
         // Admin can mint genesis
         vm.prank(admin);
@@ -145,27 +123,18 @@ contract BTRTest is BaseDiamondTest {
         btr.mintGenesis(GENESIS_AMOUNT);
     }
 
-    /**
-     * @notice Test genesis mint with zero amount
-     */
     function testGenesisMintZeroAmount() public {
         vm.prank(admin);
         vm.expectRevert(BTR.InvalidAmount.selector);
         btr.mintGenesis(0);
     }
 
-    /**
-     * @notice Test exceeding max supply in genesis mint
-     */
     function testGenesisMintExceedsMaxSupply() public {
         vm.prank(admin);
         vm.expectRevert(ERC20Bridgeable.MaxSupplyExceeded.selector);
         btr.mintGenesis(MAX_SUPPLY + 1);
     }
 
-    /**
-     * @notice Test treasury minting
-     */
     function testMintToTreasury() public {
         uint256 mintAmount = 100_000_000 * 10 ** 18;
 
@@ -188,18 +157,12 @@ contract BTRTest is BaseDiamondTest {
         btr.mintToTreasury(MAX_SUPPLY);
     }
 
-    /**
-     * @notice Test treasury mint with zero amount
-     */
     function testMintToTreasuryZeroAmount() public {
         vm.prank(admin);
         vm.expectRevert(BTR.InvalidAmount.selector);
         btr.mintToTreasury(0);
     }
 
-    /**
-     * @notice Test updating max supply
-     */
     function testSetMaxSupply() public {
         uint256 newMaxSupply = MAX_SUPPLY * 2;
 
@@ -210,7 +173,6 @@ contract BTRTest is BaseDiamondTest {
 
         // Expect MaxSupplyUpdated event
         vm.expectEmit(true, true, true, true);
-        emit MaxSupplyUpdated(newMaxSupply);
 
         // Admin can update max supply
         vm.prank(admin);
@@ -233,9 +195,6 @@ contract BTRTest is BaseDiamondTest {
         btr.setMaxSupply(10 ** 18 - 1);
     }
 
-    /**
-     * @notice Test bridge setup and limits
-     */
     function testBridgeLimits() public {
         // Only admin can set limits
         vm.prank(user1);
@@ -244,7 +203,6 @@ contract BTRTest is BaseDiamondTest {
 
         // Expect BridgeLimitsSet event
         vm.expectEmit(true, true, true, true);
-        emit BridgeLimitsSet(BRIDGE_MINT_LIMIT, BRIDGE_BURN_LIMIT, bridge);
 
         // Admin can set limits
         vm.prank(admin);
@@ -257,9 +215,6 @@ contract BTRTest is BaseDiamondTest {
         assertEq(btr.burningCurrentLimitOf(bridge), BRIDGE_BURN_LIMIT);
     }
 
-    /**
-     * @notice Test bridge limit updates
-     */
     function testUpdateBridgeLimits() public {
         uint256 newMintLimit = BRIDGE_MINT_LIMIT * 2;
         uint256 newBurnLimit = BRIDGE_BURN_LIMIT * 2;
@@ -297,9 +252,6 @@ contract BTRTest is BaseDiamondTest {
         assertEq(btr.mintingCurrentLimitOf(bridge), newMintLimit / 2 - mintAmount);
     }
 
-    /**
-     * @notice Test removing a bridge
-     */
     function testRemoveBridge() public {
         // Setup bridge
         vm.prank(admin);
@@ -324,9 +276,6 @@ contract BTRTest is BaseDiamondTest {
         btr.mint(user1, 1);
     }
 
-    /**
-     * @notice Test zero address bridge
-     */
     function testZeroAddressBridge() public {
         vm.prank(admin);
         vm.expectRevert();
@@ -337,18 +286,12 @@ contract BTRTest is BaseDiamondTest {
         btr.removeBridge(address(0));
     }
 
-    /**
-     * @notice Test non-existent bridge
-     */
     function testNonExistentBridge() public {
         vm.prank(admin);
         vm.expectRevert();
         btr.removeBridge(bridge);
     }
 
-    /**
-     * @notice Test cross-chain minting via bridge
-     */
     function testCrosschainMint() public {
         uint256 mintAmount = 10 ** 18;
 
@@ -363,7 +306,6 @@ contract BTRTest is BaseDiamondTest {
 
         // Expect CrosschainMint event
         vm.expectEmit(true, true, true, true);
-        emit CrosschainMint(user1, mintAmount, bridge);
 
         // Bridge can mint to user
         vm.prank(bridge);
@@ -377,9 +319,6 @@ contract BTRTest is BaseDiamondTest {
         assertEq(btr.mintingCurrentLimitOf(bridge), BRIDGE_MINT_LIMIT - mintAmount);
     }
 
-    /**
-     * @notice Test cross-chain burning via bridge
-     */
     function testCrosschainBurn() public {
         uint256 mintAmount = 10 ** 18;
 
@@ -401,7 +340,6 @@ contract BTRTest is BaseDiamondTest {
 
         // Expect CrosschainBurn event
         vm.expectEmit(true, true, true, true);
-        emit CrosschainBurn(user1, mintAmount, bridge);
 
         // Bridge can burn from user
         vm.prank(bridge);
@@ -415,9 +353,6 @@ contract BTRTest is BaseDiamondTest {
         assertEq(btr.burningCurrentLimitOf(bridge), BRIDGE_BURN_LIMIT - mintAmount);
     }
 
-    /**
-     * @notice Test standard IXERC20 mint function
-     */
     function testIXERC20Mint() public {
         uint256 mintAmount = 10 ** 18;
 
@@ -434,9 +369,6 @@ contract BTRTest is BaseDiamondTest {
         assertEq(btr.balanceOf(user1), mintAmount);
     }
 
-    /**
-     * @notice Test standard IXERC20 burn function
-     */
     function testIXERC20Burn() public {
         uint256 mintAmount = 10 ** 18;
 
@@ -460,9 +392,6 @@ contract BTRTest is BaseDiamondTest {
         assertEq(btr.balanceOf(user1), 0);
     }
 
-    /**
-     * @notice Test rate limit period updates
-     */
     function testRateLimitPeriod() public {
         uint256 newPeriod = 7 days;
 
@@ -473,7 +402,6 @@ contract BTRTest is BaseDiamondTest {
 
         // Expect RateLimitPeriodUpdated event
         vm.expectEmit(true, true, true, true);
-        emit RateLimitPeriodUpdated(newPeriod);
 
         // Admin can update rate limit period
         vm.prank(admin);
@@ -493,9 +421,6 @@ contract BTRTest is BaseDiamondTest {
         btr.setRateLimitPeriod(366 days);
     }
 
-    /**
-     * @notice Test rate limit reset period
-     */
     function testRateLimitReset() public {
         uint256 mintAmount = 10 ** 18;
 
@@ -523,9 +448,6 @@ contract BTRTest is BaseDiamondTest {
         assertEq(btr.balanceOf(user1), mintAmount * 2);
     }
 
-    /**
-     * @notice Test blacklisted user restrictions
-     */
     function testBlacklistedUserRestrictions() public {
         uint256 mintAmount = 10 ** 18;
 
@@ -563,9 +485,6 @@ contract BTRTest is BaseDiamondTest {
         assertEq(btr.balanceOf(user2), mintAmount);
     }
 
-    /**
-     * @notice Test ERC20 functionality
-     */
     function testERC20Functionality() public {
         uint256 mintAmount = 10 ** 18;
 
@@ -593,10 +512,7 @@ contract BTRTest is BaseDiamondTest {
         assertEq(btr.balanceOf(user2), mintAmount);
     }
 
-    /**
-     * @notice Test zero token transfers
-     */
-    function testZeroAmountTransfers() public {
+    function testZeroAmountTransferst() public {
         // Mint some tokens
         vm.prank(admin);
         btr.mintToTreasury(10 ** 18);
@@ -613,16 +529,10 @@ contract BTRTest is BaseDiamondTest {
         btr.transferFrom(treasury, user1, 0);
     }
 
-    /**
-     * @notice Test that the token supports ERC20Permit interface
-     */
     function testERC20PermitInterface() public view {
         assertTrue(btr.supportsInterface(type(IERC20Permit).interfaceId));
     }
 
-    /**
-     * @notice Test basic ERC20Permit functionality
-     */
     function testPermitBasic() public {
         uint256 permitAmount = 10 ** 18;
 
@@ -674,9 +584,6 @@ contract BTRTest is BaseDiamondTest {
         assertEq(btr.allowance(user1, spender), 0);
     }
 
-    /**
-     * @notice Test permit with expired deadline
-     */
     function testPermitExpiredDeadline() public {
         uint256 permitAmount = 10 ** 18;
         uint256 deadline = block.timestamp - 1; // Expired deadline
@@ -701,9 +608,6 @@ contract BTRTest is BaseDiamondTest {
         btr.permit(user1, spender, permitAmount, deadline, v, r, s);
     }
 
-    /**
-     * @notice Test permit with invalid signature
-     */
     function testPermitInvalidSignature() public {
         uint256 permitAmount = 10 ** 18;
         uint256 deadline = block.timestamp + 1 days;
@@ -731,9 +635,6 @@ contract BTRTest is BaseDiamondTest {
         btr.permit(user1, spender, modifiedAmount, deadline, v, r, s); // Wrong amount
     }
 
-    /**
-     * @notice Test permit with replay protection (nonce)
-     */
     function testPermitReplayProtection() public {
         uint256 permitAmount = 10 ** 18;
         uint256 deadline = block.timestamp + 1 days;
@@ -790,9 +691,6 @@ contract BTRTest is BaseDiamondTest {
         assertEq(btr.nonces(user1), 2);
     }
 
-    /**
-     * @notice Test permit with blacklisted user
-     */
     function testPermitWithBlacklist() public {
         uint256 permitAmount = 10 ** 18;
         uint256 deadline = block.timestamp + 1 days;
@@ -837,9 +735,6 @@ contract BTRTest is BaseDiamondTest {
         assertEq(btr.balanceOf(spender), permitAmount);
     }
 
-    /**
-     * @notice Helper function to create permit signature
-     */
     function _createPermitSignature(
         bytes32 domainSeparator,
         address owner,

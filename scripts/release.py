@@ -1,3 +1,22 @@
+"""
+SPDX-License-Identifier: MIT
+@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+@@@@@@@@@/         '@@@@/            /@@@/         '@@@@@@@@
+@@@@@@@@/    /@@@    @@@@@@/    /@@@@@@@/    /@@@    @@@@@@@
+@@@@@@@/           _@@@@@@/    /@@@@@@@/    /.     _@@@@@@@@
+@@@@@@/    /@@@    '@@@@@/    /@@@@@@@/    /@@    @@@@@@@@@@
+@@@@@/            ,@@@@@/    /@@@@@@@/    /@@@,    @@@@@@@@@
+@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+
+@title Release Helper Script - Automates version bumping and changelog generation
+@copyright 2025
+@notice Python script to increment the project version in uv.toml, update CHANGELOG.md based on commit messages since the
+last tag, and clean up local git tags
+
+@dev Requires specific commit message prefixes (e.g., [feat], [fix]) for changelog generation
+@author BTR Team
+"""
+
 #!/usr/bin/env python
 import argparse
 import re
