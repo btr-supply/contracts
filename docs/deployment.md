@@ -1,452 +1,247 @@
-# BTR Supply Deployment Guide
+# BTR Protocol Deployment Guide
 
 ## Overview
 
-This guide covers the complete deployment process for BTR Supply contracts on EVM-compatible chains. The system uses the Diamond Standard (EIP-2535) for modular deployment and upgrades.
+This guide covers the deployment process for BTR Protocol contracts using the Diamond Standard (EIP-2535) for modular deployment and upgrades across EVM-compatible chains.
 
-## Prerequisites
+## Architecture
 
-### Environment Setup
+### Diamond Deployment Pattern
 
-1. **Required Tools**:
-   ```bash
-   # Install Foundry
-   curl -L https://foundry.paradigm.xyz | bash
-   foundryup
-   
-   # Install Python dependencies
-   pip install uv
-   uv sync
-   ```
+BTR Protocol uses a single diamond proxy contract that delegates function calls to multiple specialized facets. This enables:
 
-2. **Environment Configuration**:
-   ```bash
-   cp evm/.env.example evm/.env
-   # Configure the following variables:
-   ```
+- **Modular Deployment**: Individual facets can be upgraded independently
+- **Gas Optimization**: Shared proxy contract reduces deployment costs
+- **Flexible Architecture**: New functionality added via diamond cuts
 
-   **Required Environment Variables**:
-   ```bash
-   # Network Configuration
-   HTTPS_RPC_1=rpc.mevblocker.io     # Ethereum
-   # ...
-   
-   # Deployment Keys
-   DEPLOYER_PK=0x...                 # Deployer private key
-   ADMIN=0x...                       # Protocol admin
-   MANAGER=0x...                     # Vault manager
-   KEEPER=0x...                      # Rebalancing keeper
-   TREASURY=0x...                    # Fee collector
-   
-   # Verification
-   ETHERSCAN_API_KEY=...             # Contract verification
-   BSCSCAN_API_KEY=...
-   POLYGONSCAN_API_KEY=...
-   ```
+### Function Selector Management
 
-### Build Process
+BTR Protocol facets use function selectors to route calls through the diamond proxy. The deployment system handles function selectors with automatic extraction and optional explicit overrides:
 
-The project uses a three-stage build process:
+#### **Automatic Function Extraction (Default Behavior)**
+When `ownedSelectors` is empty (`[]`) in `contracts.json`, **ALL public/external functions are automatically extracted** from the facet's compiled artifacts in `./evm/out`. This is the normal case for most facets.
 
-```bash
-# Complete build with facet generation
-make build
+**Example**: `RescueFacet` with `"ownedSelectors": []` → System extracts all 37 functions from `RescueFacet.json`
 
-# Or manually:
-./scripts/build.sh
-```
+#### **Explicit Selector Override (Special Cases)**
+When `ownedSelectors` contains specific function signatures, **only those exact functions are used**. This is for facets with conflicting function names or when precise control is needed.
 
-**Build Stages**:
-1. **Facet Compilation**: Compiles all facet contracts
-2. **Deployer Generation**: Creates deployment script from `facets.json`
-3. **Final Compilation**: Compiles complete system
+**Example**: `AccessControlFacet` with explicit selectors like `["admin()", "checkRole(bytes32)"]` → System uses only those specific functions
 
-## Deployment Architecture
+#### **Key Points**
+- **Empty `ownedSelectors: []` ≠ No Functions**: It means "extract all functions automatically"
+- **Populated `ownedSelectors` = Override**: It means "use only these specific functions"
+- **All facets get their functions**: Whether through automatic extraction or explicit specification
+- **No functions are missed**: The system ensures complete function mapping to prevent proxy call failures
 
-### Diamond Deployment Structure
+**Configuration**: See `scripts/contracts.json` for facet configuration. Most facets use automatic extraction (`"ownedSelectors": []`).
+
+### Deployment Structure
 
 ```mermaid
 graph TD
-    BTRDiamond[BTRDiamond Proxy] --> CoreFacets[Core Facets]
-    BTRDiamond --> InfraFacets[Infrastructure Facets]
-    BTRDiamond --> DEXFacets[DEX Adapter Facets]
+    Diamond[BTR Diamond Proxy] --> Core[Core Facets]
+    Diamond --> Protocol[Protocol Facets]
+    Diamond --> DEX[DEX Adapter Facets]
     
-    CoreFacets --> DiamondCutFacet[DiamondCutFacet]
-    CoreFacets --> DiamondLoupeFacet[DiamondLoupeFacet]
-    CoreFacets --> ALMUserFacet[ALMUserFacet]
-    CoreFacets --> ALMProtectedFacet[ALMProtectedFacet]
-    CoreFacets --> ALMInfoFacet[ALMInfoFacet]
+    Core --> DiamondCut[DiamondCut]
+    Core --> DiamondLoupe[DiamondLoupe]
+    Core --> ALMUser[ALMUser]
+    Core --> ALMProtected[ALMProtected]
+    Core --> ALMInfo[ALMInfo]
     
-    InfraFacets --> AccessControlFacet[AccessControlFacet]
-    InfraFacets --> ManagementFacet[ManagementFacet]
-    InfraFacets --> TreasuryFacet[TreasuryFacet]
-    InfraFacets --> ERC1155VaultsFacet[ERC1155VaultsFacet]
-    InfraFacets --> SwapFacet[SwapFacet]
+    Protocol --> AccessControl[AccessControl]
+    Protocol --> Management[Management]
+    Protocol --> Treasury[Treasury]
+    Protocol --> Swap[Swap]
     
-    DEXFacets --> UniV3AdapterFacet[UniV3AdapterFacet]
-    DEXFacets --> CakeV3AdapterFacet[CakeV3AdapterFacet]
-    DEXFacets --> ThenaV3AdapterFacet[ThenaV3AdapterFacet]
+    DEX --> UniV3[UniV3 Adapter]
+    DEX --> PancakeV3[PancakeV3 Adapter]
+    DEX --> Thena[Thena Adapter]
 ```
+
+## Prerequisites
+
+### Environment Requirements
+
+1. **Development Tools**:
+   - Foundry (latest version)
+   - Python 3.10+ with `uv` package manager
+   - Node.js (for optional frontend integration)
+
+2. **Network Configuration**:
+   - RPC endpoints for target networks
+   - Sufficient ETH/native tokens for deployment gas
+   - API keys for contract verification (Etherscan, etc.)
+
+3. **Access Control Setup**:
+   - Deployer wallet with sufficient funds
+   - Admin wallet for protocol governance
+   - Manager wallet for vault operations
+   - Keeper wallet for automated operations
+   - Treasury wallet for fee collection
+
+**Reference**: [`.env.example`](../evm/.env.example) for complete configuration template
+
+### Build System
+
+BTR Protocol uses a multi-stage build process:
+
+```bash
+# Complete build pipeline
+make build
+
+# Individual stages
+make compile-facets    # Compile all facet contracts
+make generate-script   # Generate deployment script
+make compile-all       # Final compilation
+```
+
+**Build Process**:
+1. **Facet Compilation**: Individual facet contracts compiled independently
+2. **Deployment Script Generation**: Automated script generation from facet metadata
+3. **Diamond Assembly**: Combined compilation with diamond proxy
+
+**Reference**: [`scripts/build.sh`](../scripts/build.sh)
 
 ## Deployment Process
 
-### 1. Pre-Deployment Verification
+### Network Deployment
 
+BTR Protocol supports deployment across multiple EVM networks:
+
+#### Testnet Deployment
 ```bash
-# Verify build
-forge build --root evm/
-
-# Run tests
-forge test --root evm/
-
-# Check gas estimates
-forge snapshot --root evm/
+# Deploy to testnet (e.g., Sepolia)
+forge script evm/scripts/DeployDiamond.s.sol --rpc-url $TESTNET_RPC --broadcast --verify
 ```
 
-### 2. Deploy Diamond and Core Facets
-
+#### Mainnet Deployment
 ```bash
-# Deploy to local network (for testing)
-anvil &
-forge script evm/scripts/DeployDiamond.s.sol --rpc-url http://localhost:8545 --broadcast
-
-# Deploy to testnet
-forge script evm/scripts/DeployDiamond.s.sol --rpc-url $TESTNET_RPC --broadcast --verify
-
-# Deploy to mainnet (requires additional confirmations)
+# Deploy to mainnet with additional safety checks
 forge script evm/scripts/DeployDiamond.s.sol --rpc-url $MAINNET_RPC --broadcast --verify --slow
 ```
 
-### 3. Deployment Script Overview
-
-The main deployment script (`DeployDiamond.s.sol`) performs:
-
-```solidity
-contract DeployDiamond is Script {
-    function run() external {
-        uint256 deployerPrivateKey = vm.envUint("DEPLOYER_PRIVATE_KEY");
-        vm.startBroadcast(deployerPrivateKey);
-        
-        // 1. Deploy all facets
-        deployFacets();
-        
-        // 2. Deploy diamond with initial cuts
-        deployDiamond();
-        
-        // 3. Initialize all facets
-        initializeFacets();
-        
-        // 4. Set up access control
-        setupAccessControl();
-        
-        // 5. Configure initial parameters
-        configureProtocol();
-        
-        vm.stopBroadcast();
-    }
-}
+#### Local Development
+```bash
+# Deploy to local Anvil instance
+anvil &
+forge script evm/scripts/DeployDiamond.s.sol --rpc-url http://localhost:8545 --broadcast
 ```
 
-### 4. Facet Deployment Order
+### Deployment Phases
 
-**Phase 1: Core Infrastructure**
-```solidity
-// Essential diamond functionality
-DiamondCutFacet cutFacet = new DiamondCutFacet();
-DiamondLoupeFacet loupeFacet = new DiamondLoupeFacet();
+1. **Facet Deployment**: All facet contracts deployed independently
+2. **Diamond Creation**: Proxy contract created with initial diamond cut
+3. **Facet Integration**: Function selectors mapped to facet addresses
+4. **Initialization**: Protocol parameters and access controls configured
+5. **Verification**: Contract verification on block explorers
 
-// Access control (required for other initializations)
-AccessControlFacet accessFacet = new AccessControlFacet();
-```
-
-**Phase 2: Protocol Management**
-```solidity
-// Management and treasury
-ManagementFacet managementFacet = new ManagementFacet();
-TreasuryFacet treasuryFacet = new TreasuryFacet();
-RescueFacet rescueFacet = new RescueFacet();
-
-// Swap functionality
-SwapFacet swapFacet = new SwapFacet();
-```
-
-**Phase 3: ALM Core**
-```solidity
-// Vault management
-ERC1155VaultsFacet vaultsFacet = new ERC1155VaultsFacet();
-
-// ALM operations
-ALMUserFacet userFacet = new ALMUserFacet();
-ALMProtectedFacet protectedFacet = new ALMProtectedFacet();
-ALMInfoFacet infoFacet = new ALMInfoFacet();
-```
-
-**Phase 4: DEX Adapters**
-```solidity
-// DEX integrations
-UniV3AdapterFacet uniV3Facet = new UniV3AdapterFacet();
-CakeV3AdapterFacet cakeV3Facet = new CakeV3AdapterFacet();
-ThenaV3AdapterFacet thenaFacet = new ThenaV3AdapterFacet();
-```
-
-### 5. Diamond Cut Assembly
-
-```solidity
-function assembleDiamondCut() internal returns (IDiamondCut.FacetCut[] memory cuts) {
-    cuts = new IDiamondCut.FacetCut[](facetCount);
-    
-    // Add each facet with its function selectors
-    cuts[0] = IDiamondCut.FacetCut({
-        facetAddress: address(cutFacet),
-        action: IDiamondCut.FacetCutAction.Add,
-        functionSelectors: getCutSelectors()
-    });
-    
-    // ... continue for all facets
-}
-```
+**Reference**: [`evm/scripts/DeployDiamond.s.sol`](../evm/scripts/DeployDiamond.s.sol)
 
 ## Post-Deployment Configuration
 
-### 1. Access Control Setup
+### Access Control Setup
 
-```solidity
-// Grant initial roles
-accessControl.grantRole(ADMIN_ROLE, adminAddress);
-accessControl.grantRole(MANAGER_ROLE, managerAddress);
-accessControl.grantRole(KEEPER_ROLE, keeperAddress);
-accessControl.grantRole(TREASURY_ROLE, treasuryAddress);
+After deployment, configure role-based access control:
 
-// Configure role hierarchies
-accessControl.setRoleAdmin(MANAGER_ROLE, ADMIN_ROLE);
-accessControl.setRoleAdmin(KEEPER_ROLE, ADMIN_ROLE);
-accessControl.setRoleAdmin(TREASURY_ROLE, ADMIN_ROLE);
-```
+1. **Admin Role**: Protocol governance and emergency controls
+2. **Manager Role**: Vault configuration and parameter management
+3. **Keeper Role**: Automated rebalancing and range management
+4. **Treasury Role**: Fee collection and treasury operations
 
-### 2. Protocol Configuration
+### Initial Parameters
 
-```solidity
-// Initialize core components
-managementFacet.initializeManagement();
-treasuryFacet.initializeTreasury(treasuryAddress);
-swapFacet.initializeSwap();
+Configure essential protocol parameters:
+- Fee structures and basis points
+- Risk model parameters
+- Oracle price feed configurations
+- DEX adapter settings
 
-// Set default fee structure
-treasuryFacet.setDefaultFees(500, 500, 200, 2000, 100); // entry, exit, mgmt, perf, flash (BPS)
+### DEX Integration
 
-// Configure risk parameters
-managementFacet.setRiskModel(riskModel);
-managementFacet.setWeightModel(weightModel);
-managementFacet.setLiquidityModel(liquidityModel);
-```
+Enable DEX adapters for target protocols:
+- Uniswap V3/V4 pool configurations
+- PancakeSwap V3 integration
+- Thena DEX setup
+- Additional protocol adapters as needed
 
-### 3. DEX Adapter Registration
+**Reference**: [`docs/access-control/`](./access-control/) for detailed configuration
 
-```solidity
-// Register Uniswap V3 adapter
-almProtected.setDexAdapter(DEX.UNI_V3, address(uniV3Facet));
-
-// Register PancakeSwap V3 adapter  
-almProtected.setDexAdapter(DEX.CAKE_V3, address(cakeV3Facet));
-
-// Register Thena adapter
-almProtected.setDexAdapter(DEX.THENA_V3, address(thenaFacet));
-```
-
-### 4. Pool Registration
-
-```solidity
-// Example: Register USDC/USDT pool on Uniswap V3
-PoolInfo memory poolInfo = PoolInfo({
-    id: keccak256(abi.encodePacked("USDC_USDT_UNI_V3_100")),
-    adapter: address(uniV3Facet),
-    pool: 0x3416cF6C708Da44DB2624D63ea0AAef7113527C6, // Actual pool address
-    token0: 0xA0b86a33E6441c8C62c0b22E96B4b0a86b95c0ad,  // USDC
-    token1: 0xdAC17F958D2ee523a2206206994597C13D831ec7,  // USDT
-    fee: 100,      // 0.01% fee tier
-    tickSpacing: 1
-});
-
-almProtected.setPoolInfo(poolInfo.id, poolInfo);
-```
-
-## Deployment Verification
-
-### 1. Contract Verification
-
-```bash
-# Verify all contracts
-forge verify-contract --chain-id 1 \
-    --num-of-optimizations 200 \
-    --watch \
-    --constructor-args $(cast abi-encode "constructor(address)" $INIT) \
-    --etherscan-api-key $ETHERSCAN_API_KEY \
-    $DIAMOND \
-    src/BTRDiamond.sol:BTRDiamond
-
-# Verify each facet
-for facet in $FACETES; do
-    forge verify-contract --chain-id 1 \
-        --num-of-optimizations 200 \
-        --etherscan-api-key $ETHERSCAN_API_KEY \
-        $facet \
-        src/facets/$(get_facet_name $facet).sol:$(get_facet_name $facet)
-done
-```
-
-### 2. Functional Verification
-
-```solidity
-// Verify diamond functionality
-assert(IDiamondLoupe(diamond).facets().length > 0);
-assert(IDiamondLoupe(diamond).facetFunctionSelectors(address(cutFacet)).length > 0);
-
-// Verify access control
-assert(IAccessControl(diamond).hasRole(ADMIN_ROLE, adminAddress));
-assert(IAccessControl(diamond).hasRole(MANAGER_ROLE, managerAddress));
-
-// Verify facet initialization
-assert(IManagement(diamond).isInitialized());
-assert(ITreasury(diamond).treasury() == treasuryAddress);
-```
-
-### 3. Integration Testing
-
-```bash
-# Run integration tests against deployed contracts
-DIAMOND=$DEPLOYED forge test --match-contract Integration --rpc-url $RPC_URL
-```
-
-## Chain-Specific Considerations
-
-### BNB Chain (BSC)
-
-```bash
-# BSC deployment considerations
-export CHAIN_ID=56
-export GAS_PRICE=5000000000  # 5 gwei
-export GAS_LIMIT=8000000
-
-# BSC-specific pools to register
-# PancakeSwap V3 pools
-# Thena pools
-```
-
-### Polygon
-
-```bash
-# Polygon deployment considerations  
-export CHAIN_ID=137
-export GAS_PRICE=50000000000  # 50 gwei
-export GAS_LIMIT=8000000
-
-# Register Uniswap V3 pools on Polygon
-```
+## Network-Specific Considerations
 
 ### Ethereum Mainnet
+- **Gas Optimization**: Deployment during low network congestion
+- **MEV Protection**: Use private mempools for sensitive transactions
+- **Multi-sig Requirements**: Admin operations require multi-signature approval
 
-```bash
-# Mainnet deployment (higher gas considerations)
-export CHAIN_ID=1
-export GAS_PRICE=20000000000  # 20 gwei
-export GAS_LIMIT=8000000
+### Layer 2 Networks
+- **Polygon**: Lower gas costs, faster finalization
+- **Arbitrum**: Optimistic rollup benefits for high-frequency operations
+- **Optimism**: Lower fees for user interactions
 
-# Use slower deployment for safety
---slow --watch flags
-```
+### BSC and Alternative Chains
+- **Binance Smart Chain**: PancakeSwap integration priority
+- **Avalanche**: Trader Joe and other DEX protocols
+- **Fantom**: SpookySwap and Solidly-based DEXs
 
-## Upgrade Procedures
+## Upgrade Mechanism
 
-### 1. Facet Upgrades
+### Diamond Cuts
 
-```solidity
-// Deploy new facet version
-NewFacet newFacet = new NewFacet();
+BTR Protocol supports safe upgrades via diamond cuts:
 
-// Prepare diamond cut
-IDiamondCut.FacetCut[] memory cuts = new IDiamondCut.FacetCut[](1);
-cuts[0] = IDiamondCut.FacetCut({
-    facetAddress: address(newFacet),
-    action: IDiamondCut.FacetCutAction.Replace,
-    functionSelectors: getReplacementSelectors()
-});
+1. **Facet Development**: New facet implementation development and testing
+2. **Diamond Cut Proposal**: Create upgrade proposal with function selector mappings
+3. **Security Review**: Internal and external security validation
+4. **Timelock Execution**: Delayed execution for sensitive upgrades
+5. **Upgrade Verification**: Post-upgrade functionality validation
 
-// Execute upgrade (requires admin role)
-IDiamondCut(diamond).diamondCut(cuts, address(0), "");
-```
+### Safety Mechanisms
 
-### 2. New Facet Addition
+- **Timelock Delays**: Mandatory delays for major protocol changes
+- **Multi-signature Approval**: Required approvals for sensitive operations
+- **Rollback Capability**: Ability to revert problematic upgrades
+- **Incremental Deployment**: Gradual rollout of new features
 
-```solidity
-// Add new functionality
-IDiamondCut.FacetCut[] memory cuts = new IDiamondCut.FacetCut[](1);
-cuts[0] = IDiamondCut.FacetCut({
-    facetAddress: address(newFacet),
-    action: IDiamondCut.FacetCutAction.Add,
-    functionSelectors: getNewSelectors()
-});
-
-IDiamondCut(diamond).diamondCut(cuts, address(newFacet), initCalldata);
-```
+**Reference**: [`docs/security/`](./security/) for upgrade security practices
 
 ## Monitoring and Maintenance
 
-### 1. Deployment Monitoring
+### Post-Deployment Monitoring
 
-```bash
-# Monitor deployment transaction
-cast receipt $DEPLOYMENT_TX_HASH --rpc-url $RPC_URL
+1. **Contract Verification**: Ensure all contracts verified on block explorers
+2. **Function Testing**: Validate all user and admin functions work correctly
+3. **Gas Usage**: Monitor gas costs for optimization opportunities
+4. **Event Emission**: Verify correct event emission for off-chain monitoring
 
-# Verify contract state
-cast call $DIAMOND "vaultCount()" --rpc-url $RPC_URL
-```
+### Ongoing Maintenance
 
-### 2. Health Checks
+- **Keeper Operations**: Monitor automated rebalancing functionality
+- **Oracle Health**: Validate price feed accuracy and availability
+- **Treasury Management**: Monitor fee collection and distribution
+- **Security Monitoring**: Watch for unusual activity or potential issues
 
-```solidity
-// Regular health check functions
-function healthCheck() external view returns (bool) {
-    // Verify critical functionality
-    require(IAccessControl(diamond).hasRole(ADMIN_ROLE, admin), "Admin missing");
-    require(ITreasury(diamond).treasury() != address(0), "Treasury not set");
-    require(IManagement(diamond).isInitialized(), "Not initialized");
-    return true;
-}
-```
+## Troubleshooting
 
-### 3. Emergency Procedures
+### Common Deployment Issues
 
-```solidity
-// Emergency pause (admin only)
-IManagement(diamond).pause();
+1. **Gas Estimation Failures**: Increase gas limits or deploy during lower congestion
+2. **Verification Failures**: Ensure correct compiler version and optimization settings
+3. **Access Control Issues**: Verify correct wallet addresses in environment configuration
+4. **Network Configuration**: Validate RPC endpoints and network chain IDs
 
-// Emergency asset rescue (with timelock)
-IRescue(diamond).requestRescue(tokens, recipient);
-// ... wait for timelock
-IRescue(diamond).executeRescue(tokens, recipient);
-```
+### Support Resources
 
-## Security Considerations
+- **Build System**: [`Makefile`](../Makefile) for available commands
+- **Test Suite**: [`evm/test/`](../evm/test/) for comprehensive testing
+- **Documentation**: [`docs/`](.) for detailed protocol documentation
+- **Configuration**: [`evm/foundry.toml`](../evm/foundry.toml) for build settings
 
-### 1. Role Management
+---
 
-- **Multi-sig wallets** for admin roles
-- **Timelock contracts** for critical operations
-- **Role rotation** procedures
-- **Emergency response** protocols
-
-### 2. Upgrade Safety
-
-- **Comprehensive testing** before upgrades
-- **Staged rollouts** for major changes
-- **Rollback procedures** for failed upgrades
-- **Community notification** for significant changes
-
-### 3. Operational Security
-
-- **Private key management** using hardware wallets
-- **Deployment verification** through multiple sources
-- **Access control monitoring** and alerting
-- **Regular security audits** and updates
-
-This deployment guide ensures secure, reliable deployment of the BTR Supply protocol across multiple EVM-compatible chains. 
+**Next Steps After Deployment**:
+- **Vault Creation**: [`docs/alm/protocol-flows.md`](./alm/protocol-flows.md)
+- **User Integration**: [`docs/alm/user-flows.md`](./alm/user-flows.md)
+- **Management Operations**: [`docs/management/`](./management/)
+- **Security Practices**: [`docs/security/`](./security/)
