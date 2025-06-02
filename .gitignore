@@ -54,6 +54,9 @@ arrakis-v2
 # Ruff cache
 .ruff_cache
 
+# Generated code files
+*.gen.*
+
 # Generated result files and screenshots
 *results*.png
 *simulation*.png
