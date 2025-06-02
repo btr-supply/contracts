@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.29;
+pragma solidity ^0.8.29;
 
 import {ErrorType, AccountStatus as AS, Restrictions} from "@/BTRTypes.sol";
 import {BTRStorage as S} from "@libraries/BTRStorage.sol";

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.29;
+pragma solidity ^0.8.29;
 
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {BTRSwapUtils} from "./BTRSwapUtils.t.sol";
@@ -33,7 +33,7 @@ contract BTRSwapTest is Test, BnbChainMeta {
         address deployer = vm.envAddress("DEPLOYER");
         uint256 amountIn = 1e17; // 0.1 WBNB
         address inputTokenAddr = WBNB;
-        address outputTokenAddr = usdc();
+        address outputTokenAddr = __tokens().usdc;
 
         // Fund deployer
         deal(inputTokenAddr, deployer, amountIn * 2);

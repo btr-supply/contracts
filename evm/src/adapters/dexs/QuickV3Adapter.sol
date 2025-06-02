@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity 0.8.29;
+pragma solidity ^0.8.29;
 
 import {IQuickV3Pool} from "@interfaces/dexs/IQuickV3Pool.sol";
 import {AlgebraV3Adapter} from "@dexs/AlgebraV3Adapter.sol";

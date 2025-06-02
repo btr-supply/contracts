@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.29;
+pragma solidity ^0.8.29;
 
 interface IMerkleDistributor {
     // Returns the address of the token distributed by this contract.

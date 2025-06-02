@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.29;
+pragma solidity ^0.8.29;
 
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/utils/introspection/ERC165.sol";
@@ -124,19 +124,19 @@ abstract contract ERC20Bridgeable is ERC20, ERC20Permit, ERC165, ReentrancyGuard
         emit BridgeLimitsSet(_newLimit, bridgeConfig.burningLimit, _bridge);
     }
 
-    function updateBurnLimit(address bridge, uint256 newLimit, bool resetCounter) external onlyAdmin {
+    function updateBurnLimit(address _bridge, uint256 _newLimit, bool _resetCounter) external onlyAdmin {
         if (_bridge == address(0)) revert ZeroAddress();
         if (bridges[_bridge].burningLimit == 0) revert BridgeNotFound();
 
-        Bridge storage bridgeConfig = bridges[bridge];
-        bridgeConfig.burningLimit = newLimit;
+        Bridge storage bridgeConfig = bridges[_bridge];
+        bridgeConfig.burningLimit = _newLimit;
 
-        if (resetCounter) {
+        if (_resetCounter) {
             bridgeConfig.burnedInPeriod = 0;
             bridgeConfig.lastBurnResetTime = block.timestamp;
         }
 
-        emit BridgeLimitsSet(bridgeConfig.mintingLimit, newLimit, bridge);
+        emit BridgeLimitsSet(bridgeConfig.mintingLimit, _newLimit, _bridge);
     }
 
     function mintingMaxLimitOf(address _bridge) external view override returns (uint256 limit) {
@@ -176,7 +176,7 @@ abstract contract ERC20Bridgeable is ERC20, ERC20Permit, ERC165, ReentrancyGuard
     function _supplyFits(uint256 _amount) internal view virtual returns (bool);
 
     function _canTransfer(address _from, address _to) internal view virtual returns (bool) {
-        return !(permissioned().isBlacklisted(_from) || permissioned().isBlacklisted(_to));
+        return !(diamond.isBlacklisted(_from) || diamond.isBlacklisted(_to));
     }
 
     function canTransfer(address _from, address _to) public view virtual returns (bool) {
@@ -217,12 +217,12 @@ abstract contract ERC20Bridgeable is ERC20, ERC20Permit, ERC165, ReentrancyGuard
         }
 
         // Check if transfer would exceed limit
-        if (bridgeConfig.burningLimit == 0 || bridgeConfig.burnedInPeriod + amount > bridgeConfig.burningLimit) {
+        if (bridgeConfig.burningLimit == 0 || bridgeConfig.burnedInPeriod + _amount > bridgeConfig.burningLimit) {
             revert IXERC20_NotHighEnoughLimits();
         }
 
         // Update amount burned in this period
-        bridgeConfig.burnedInPeriod += amount;
+        bridgeConfig.burnedInPeriod += _amount;
     }
 
     function _spendAllowance(address _from, address _spender, uint256 _amount) internal override {
@@ -242,7 +242,7 @@ abstract contract ERC20Bridgeable is ERC20, ERC20Permit, ERC165, ReentrancyGuard
         // Check max supply
         if (_supplyFits(_amount)) revert MaxSupplyExceeded();
 
-        _mint(to, amount);
+        _mint(_to, _amount);
 
         emit CrosschainMint(_to, _amount, _bridge);
     }
@@ -288,7 +288,7 @@ abstract contract ERC20Bridgeable is ERC20, ERC20Permit, ERC165, ReentrancyGuard
         override
         nonReentrant
         onlyApprovedBridge
-        transferAllowed(address(0), to)
+        transferAllowed(address(0), _to)
     {
         _processMint(_to, _amount, msg.sender);
     }
@@ -299,7 +299,7 @@ abstract contract ERC20Bridgeable is ERC20, ERC20Permit, ERC165, ReentrancyGuard
         override
         nonReentrant
         onlyApprovedBridge
-        transferAllowed(from, address(0))
+        transferAllowed(_from, address(0))
     {
         _processBurn(_from, _amount, msg.sender);
     }

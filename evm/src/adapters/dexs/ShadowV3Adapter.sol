@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity 0.8.29;
+pragma solidity ^0.8.29;
 
 import {IShadowV3Pool} from "@interfaces/dexs/IShadowV3Pool.sol";
 import {RamsesV3Adapter} from "@dexs/RamsesV3Adapter.sol";

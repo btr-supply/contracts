@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity 0.8.29;
+pragma solidity ^0.8.29;
 
 import {ISwapXV4Pool} from "@interfaces/dexs/ISwapXV4Pool.sol";
 import {AlgebraV4Adapter} from "@dexs/AlgebraV4Adapter.sol";

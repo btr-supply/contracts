@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.29;
+pragma solidity ^0.8.29;
 
 interface IERC7802 {
     event CrosschainMint(address indexed to, uint256 amount, address indexed bridge);

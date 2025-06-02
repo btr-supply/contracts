@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.29;
+pragma solidity ^0.8.29;
 
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/utils/introspection/ERC165.sol";
@@ -159,7 +159,7 @@ abstract contract ERC20Bridgeable is ERC20, ERC20Permit, ERC165, ReentrancyGuard
     function _supplyFits(uint256 _amount) internal view virtual returns (bool);
 
     function canTransfer(address _from, address _to) public view virtual returns (bool) {
-        return !(permissioned().isBlacklisted(_from) || permissioned().isBlacklisted(_to));
+        return !(diamond.isBlacklisted(_from) || diamond.isBlacklisted(_to));
     }
 
     function _updateMintLimit(address _bridge, uint256 _amount) internal {

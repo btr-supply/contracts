@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.29;
+pragma solidity ^0.8.29;
 
 import {LibCast as C} from "@libraries/LibCast.sol";
 import {LibMaths as M} from "@libraries/LibMaths.sol";

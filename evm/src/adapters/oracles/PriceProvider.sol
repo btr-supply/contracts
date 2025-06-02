@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity 0.8.29;
+pragma solidity ^0.8.29;
 
 import {BTRErrors as Errors} from "@libraries/BTREvents.sol";
 import {ErrorType} from "@/BTRTypes.sol";
@@ -7,6 +7,7 @@ import {LibCast as C} from "@libraries/LibCast.sol";
 import {LibMaths as M} from "@libraries/LibMaths.sol";
 import {IERC20Metadata} from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import {IPriceProvider} from "@interfaces/IPriceProvider.sol";
+import {IOracleAdapter} from "@interfaces/IOracleAdapter.sol";
 import {OracleAdapter} from "./OracleAdapter.sol";
 
 /*
@@ -46,7 +47,7 @@ abstract contract PriceProvider is OracleAdapter, IPriceProvider {
         return decimalsByAsset[_asset] > 0;
     }
 
-    function hasFeed(bytes32 _feed) public view override returns (bool) {
+    function hasFeed(bytes32 _feed) public view override(IOracleAdapter, OracleAdapter) returns (bool) {
         return decimalsByAsset[_feed.toAddress()] > 0;
     }
 

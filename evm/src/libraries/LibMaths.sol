@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.29;
+pragma solidity ^0.8.29;
 
 import {LibCast} from "./LibCast.sol";
 
@@ -37,8 +37,6 @@ library LibMaths {
     uint256 internal constant SEC_PER_YEAR = 31_556_952;
     uint256 internal constant Q96 = 0x1000000000000000000000000; // 2^96 == 1 << 96
     uint256 internal constant Q192 = 0x100000000000000000000000000000000; // 2^192 ==  1 << 192
-
-    error MathError();
 
     function bpRatio(uint256 _a, uint256 _b) internal pure returns (uint256) {
         unchecked {
@@ -145,8 +143,7 @@ library LibMaths {
             // Equivalent to `require(y == 0 || x <= type(uint256).max / y)`.
             if gt(x, div(not(0), y)) {
                 if y {
-                    mstore(0x00, 0xf4844814) // `MathError()`.
-                    revert(0x1c, 0x04)
+                    revert(0, 0) // Math error
                 }
             }
             z := div(mul(x, y), WAD)
@@ -158,8 +155,7 @@ library LibMaths {
             z := mul(x, y)
             // Equivalent to `require((x == 0 || z / x == y) && !(x == -1 && y == type(int256).min))`.
             if iszero(gt(or(iszero(x), eq(sdiv(z, x), y)), lt(not(x), eq(y, shl(255, 1))))) {
-                mstore(0x00, 0xf4844814) // `MathError()`.
-                revert(0x1c, 0x04)
+                revert(0, 0) // Math error
             }
             z := sdiv(z, WAD)
         }
@@ -169,8 +165,7 @@ library LibMaths {
         assembly {
             // Equivalent to `require(y != 0 && x <= type(uint256).max / WAD)`.
             if iszero(mul(y, lt(x, add(1, div(not(0), WAD))))) {
-                mstore(0x00, 0xf4844814) // `MathError()`.
-                revert(0x1c, 0x04)
+                revert(0, 0) // Math error
             }
             z := div(mul(x, WAD), y)
         }
@@ -181,8 +176,7 @@ library LibMaths {
             z := mul(x, WAD)
             // Equivalent to `require(y != 0 && ((x * WAD) / WAD == x))`.
             if iszero(mul(y, eq(sdiv(z, WAD), x))) {
-                mstore(0x00, 0xf4844814) // `MathError()`.
-                revert(0x1c, 0x04)
+                revert(0, 0) // Math error
             }
             z := sdiv(z, y)
         }
@@ -212,8 +206,7 @@ library LibMaths {
                     // Make sure `z` is less than `2**256`. Also prevents `d == 0`.
                     // Placing the check here seems to give more optimal stack operations.
                     if iszero(gt(d, p1)) {
-                        mstore(0x00, 0xf4844814) // `MathError()`.
-                        revert(0x1c, 0x04)
+                        revert(0, 0) // Math error
                     }
                     d := div(d, t) // Divide `d` by `t`, which is a power of two.
                     // Invert `d mod 2**256`
@@ -252,8 +245,7 @@ library LibMaths {
             if mulmod(x, y, d) {
                 z := add(z, 1)
                 if iszero(z) {
-                    mstore(0x00, 0xf4844814) // `MathError()`.
-                    revert(0x1c, 0x04)
+                    revert(0, 0) // Math error
                 }
             }
         }
@@ -264,8 +256,7 @@ library LibMaths {
             z := mul(x, y)
             // Equivalent to `require(d != 0 && (y == 0 || x <= type(uint256).max / y))`.
             if iszero(mul(or(iszero(x), eq(div(z, x), y)), d)) {
-                mstore(0x00, 0xf4844814) // `MathError()`.
-                revert(0x1c, 0x04)
+                revert(0, 0) // Math error
             }
             z := div(z, d)
         }
@@ -276,8 +267,7 @@ library LibMaths {
             z := mul(x, y)
             // Equivalent to `require(d != 0 && (y == 0 || x <= type(uint256).max / y))`.
             if iszero(mul(or(iszero(x), eq(div(z, x), y)), d)) {
-                mstore(0x00, 0xf4844814) // `MathError()`.
-                revert(0x1c, 0x04)
+                revert(0, 0) // Math error
             }
             z := add(iszero(iszero(mod(z, d))), div(z, d))
         }
@@ -303,8 +293,7 @@ library LibMaths {
                         _z := add(shl(sub(256, _k), _p1), shr(_k, _z))
                         break
                     }
-                    mstore(0x00, 0xf4844814)
-                    revert(0x1c, 0x04)
+                    revert(0, 0) // Math error
                 }
                 _z := shr(and(_n, 0xff), _z)
                 break
@@ -449,7 +438,7 @@ library LibMaths {
     }
 
     function subNoNeg(int256 _a, int256 _b) internal pure returns (int256) {
-        if (_a < _b) revert LibCast.ValueOutOfCastRange();
+        require(_a >= _b); // value out of range
         unchecked {
             return _a - _b;
         }
@@ -611,8 +600,7 @@ library LibMaths {
            */
             assembly {
                 if iszero(slt(_x, 135305999368893231589)) {
-                    mstore(0x00, 0xf4844814)
-                    revert(0x1c, 0x04)
+                    revert(0, 0) // Math error
                 }
             }
 
@@ -653,8 +641,7 @@ library LibMaths {
             r := or(r, shl(4, lt(0xffff, shr(r, _x))))
             r := or(r, shl(3, lt(0xff, shr(r, _x))))
             if iszero(sgt(_x, 0)) {
-                mstore(0x00, 0xf4844814)
-                revert(0x1c, 0x04)
+                revert(0, 0) // Math error
             }
             // forgefmt: disable-next-item
             r := xor(

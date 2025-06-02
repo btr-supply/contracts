@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.29;
+pragma solidity ^0.8.29;
 
 interface IUniV3PoolFactory {
     function createPool(address tokenA, address tokenB, uint24 fee) external returns (address pool);

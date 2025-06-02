@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.29;
+pragma solidity ^0.8.29;
 
 import {AccountStatus as AS, AddressType, ErrorType, Fees, CoreStorage, ALMVault, Registry} from "@/BTRTypes.sol";
 import {BTRErrors as Errors, BTREvents as Events} from "@libraries/BTREvents.sol";
@@ -8,11 +8,15 @@ import {LibBitMask} from "@libraries/LibBitMask.sol";
 import {LibManagement} from "@libraries/LibManagement.sol";
 import {LibPausable} from "@libraries/LibPausable.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import {BaseDiamondTest} from "../BaseDiamondTest.t.sol";
+import {BaseDiamondTest} from "../BaseDiamondTest.gen.t.sol";
 import {PausableFacet} from "@facets/abstract/PausableFacet.sol";
 import "forge-std/Test.sol";
 import {AccessControlFacet} from "@facets/AccessControlFacet.sol";
 import {ManagementFacet} from "@facets/ManagementFacet.sol";
+import {InfoFacet} from "@facets/InfoFacet.sol";
+import {ALMUserFacet} from "@facets/ALMUserFacet.sol";
+import {ALMInfoFacet} from "@facets/ALMInfoFacet.sol";
+import {ALMProtectedFacet} from "@facets/ALMProtectedFacet.sol";
 import {MockERC20} from "../mocks/MockERC20.sol";
 
 /*
@@ -33,6 +37,10 @@ import {MockERC20} from "../mocks/MockERC20.sol";
 
 contract ManagementTest is BaseDiamondTest {
     ManagementFacet public managementFacet;
+    InfoFacet public infoFacet;
+    ALMUserFacet public almUserFacet;
+    ALMInfoFacet public almInfoFacet;
+    ALMProtectedFacet public almProtectedFacet;
     address public user1;
     address public user2;
     address public router;
@@ -52,7 +60,7 @@ contract ManagementTest is BaseDiamondTest {
         // Store original statuses
         AS[] memory originalStatuses = new AS[](accounts.length);
         for (uint256 i = 0; i < accounts.length; i++) {
-            originalStatuses[i] = managementFacet.accountStatus(accounts[i]);
+            originalStatuses[i] = InfoFacet(diamond).accountStatus(accounts[i]);
         }
 
         // Perform batch operation
@@ -62,7 +70,7 @@ contract ManagementTest is BaseDiamondTest {
         // Verify statuses were updated
         for (uint256 i = 0; i < accounts.length; i++) {
             assertEq(
-                uint256(managementFacet.accountStatus(accounts[i])), uint256(status), "Account status should be updated"
+                uint256(InfoFacet(diamond).accountStatus(accounts[i])), uint256(status), "Account status should be updated"
             );
         }
 
@@ -74,7 +82,7 @@ contract ManagementTest is BaseDiamondTest {
             // Verify reset
             for (uint256 i = 0; i < accounts.length; i++) {
                 assertEq(
-                    uint256(managementFacet.accountStatus(accounts[i])),
+                    uint256(InfoFacet(diamond).accountStatus(accounts[i])),
                     uint256(AS.NONE),
                     "Account status should be reset"
                 );
@@ -96,6 +104,10 @@ contract ManagementTest is BaseDiamondTest {
 
         // Initialize the management facet
         managementFacet = ManagementFacet(diamond);
+        infoFacet = InfoFacet(diamond);
+        almUserFacet = ALMUserFacet(diamond);
+        almInfoFacet = ALMInfoFacet(diamond);
+        almProtectedFacet = ALMProtectedFacet(diamond);
 
         // Setup test addresses
         user1 = address(0xABCD);
@@ -118,15 +130,16 @@ contract ManagementTest is BaseDiamondTest {
     ==============================================================*/
 
     function testVersionManagement() public {
+
         // Check initial version
-        assertEq(managementFacet.version(), 0, "Initial version should be 0");
+        assertEq(infoFacet.version(), 0, "Initial version should be 0");
 
         // Update version
         vm.prank(admin);
         managementFacet.setVersion(2);
 
         // Check updated version
-        assertEq(managementFacet.version(), 2, "Version should be updated to 2");
+        assertEq(infoFacet.version(), 2, "Version should be updated to 2");
 
         vm.prank(user1);
         vm.expectRevert();
@@ -139,15 +152,16 @@ contract ManagementTest is BaseDiamondTest {
 
     // Enhanced test for protocol pause functionality
     function testProtocolPause() public {
+
         // Test initial state
-        assertFalse(managementFacet.isPaused(), "Protocol should not be paused initially");
+        assertFalse(almUserFacet.isPaused(), "Protocol should not be paused initially");
 
         // Pause protocol
         vm.prank(manager);
         managementFacet.pause();
 
         // Verify paused state
-        assertTrue(managementFacet.isPaused(), "Protocol should be paused");
+        assertTrue(almUserFacet.isPaused(), "Protocol should be paused");
 
         // Try to pause again (should revert with Paused error)
         vm.prank(manager);
@@ -159,7 +173,7 @@ contract ManagementTest is BaseDiamondTest {
         managementFacet.unpause();
 
         // Verify unpaused state
-        assertFalse(managementFacet.isPaused(), "Protocol should be unpaused");
+        assertFalse(almUserFacet.isPaused(), "Protocol should be unpaused");
 
         // Try to unpause again (should revert with NotPaused error)
         vm.prank(manager);
@@ -172,23 +186,24 @@ contract ManagementTest is BaseDiamondTest {
     }
 
     function testVaultPause() public {
+
         // We can't test with a real vid which requires complex setup
         // But we can still test the function call behavior
 
         // Test pause vault (will revert for non-existent vault, but with auth check first)
         vm.prank(user1);
         vm.expectRevert();
-        managementFacet.pause(TEST_VAULT_ID);
+        almProtectedFacet.pauseAlmVault(TEST_VAULT_ID);
 
         // Verify manager can call it (will still revert for non-existent vault, but auth passes)
         vm.startPrank(manager);
-        try managementFacet.pause(TEST_VAULT_ID) {} catch {}
-        try managementFacet.unpause(TEST_VAULT_ID) {} catch {}
+        try almProtectedFacet.pauseAlmVault(TEST_VAULT_ID) {} catch {}
+        try almProtectedFacet.unpauseAlmVault(TEST_VAULT_ID) {} catch {}
         vm.stopPrank();
     }
 
     // New test that complements testProtocolPause to cover more edge cases
-    function testPauseEdgeCases() public {
+    function testPauseEdgeCases() public pure {
         // This functionality is now covered by _testPauseUnpauseCycle helper in testProtocolPause
         assertTrue(true, "Covered by testProtocolPause");
     }
@@ -197,10 +212,11 @@ contract ManagementTest is BaseDiamondTest {
                          COUNT FUNCTIONS
     ==============================================================*/
 
-    function testCountFunctions() public {
+    function testCountFunctions() public view {
+
         // These will return 0 in tests since we don't actually register vaults/ranges
-        uint32 vaultCount = managementFacet.vaultCount();
-        uint32 rangeCount = managementFacet.rangeCount();
+        uint32 vaultCount = almInfoFacet.vaultCount();
+        uint32 rangeCount = almInfoFacet.rangeCount();
 
         // Just verify we can call them without errors
         assertEq(vaultCount, 0, "Vault count should be 0 in test environment");
@@ -212,15 +228,16 @@ contract ManagementTest is BaseDiamondTest {
     ==============================================================*/
 
     function testMaxSupply() public {
+
         vm.prank(user1);
         vm.expectRevert();
-        managementFacet.setMaxSupply(TEST_VAULT_ID, 3000000 ether);
+        almProtectedFacet.setMaxSupply(TEST_VAULT_ID, 3000000 ether);
 
         vm.prank(manager);
-        try managementFacet.setMaxSupply(TEST_VAULT_ID, 3000000 ether) {} catch {}
+        try almProtectedFacet.setMaxSupply(TEST_VAULT_ID, 3000000 ether) {} catch {}
 
         // Try to get max supply (will likely return 0 for non-existent vault)
-        try managementFacet.getMaxSupply(TEST_VAULT_ID) returns (uint256 maxSupply) {
+        try almInfoFacet.maxSupply(TEST_VAULT_ID) returns (uint256 maxSupply) {
             // Just to silence compiler warnings
             maxSupply;
         } catch {}
@@ -233,7 +250,7 @@ contract ManagementTest is BaseDiamondTest {
     function testAccountStatus() public {
         // Test initial status
         assertEq(
-            uint256(managementFacet.accountStatus(user1)), uint256(AS.NONE), "Initial account status should be NONE"
+            uint256(InfoFacet(diamond).accountStatus(user1)), uint256(AS.NONE), "Initial account status should be NONE"
         );
 
         // Test status setting
@@ -242,7 +259,7 @@ contract ManagementTest is BaseDiamondTest {
 
         // Verify status
         assertEq(
-            uint256(managementFacet.accountStatus(user1)),
+            uint256(InfoFacet(diamond).accountStatus(user1)),
             uint256(AS.WHITELISTED),
             "Account status should be WHITELISTED"
         );
@@ -289,53 +306,48 @@ contract ManagementTest is BaseDiamondTest {
     ==============================================================*/
 
     function testRestrictedMint() public {
+
         vm.prank(user1);
         vm.expectRevert();
-        managementFacet.restrictMint(TEST_VAULT_ID, true);
+        almProtectedFacet.restrictMint(TEST_VAULT_ID, true);
     }
 
     function testIsRestrictedMint() public {
+
         // Mock the call to avoid NotFound errors since the vault doesn't exist
         vm.mockCall(
-            address(managementFacet),
-            abi.encodeWithSelector(ManagementFacet.isMintRestricted.selector, TEST_VAULT_ID),
+            address(almInfoFacet),
+            abi.encodeWithSelector(ALMInfoFacet.isMintRestricted.selector, TEST_VAULT_ID),
             abi.encode(false)
         );
 
-        bool restricted = managementFacet.isMintRestricted(TEST_VAULT_ID);
+        bool restricted = almInfoFacet.isMintRestricted(TEST_VAULT_ID);
         assertFalse(restricted, "Non-existent vault should not be restricted by default");
     }
 
     function testIsRestrictedMinter() public {
+
         // Add user1 to blacklist
         vm.prank(manager);
         managementFacet.addToBlacklist(user1);
 
-        // Mock the call for isMinterRestricted
+        // Since isMinterRestricted doesn't exist, we'll just test the basic restriction logic
+        // by checking if the vault mint is restricted and if the user is blacklisted
+
+        // Mock the call for isMintRestricted
         vm.mockCall(
-            address(managementFacet),
-            abi.encodeWithSelector(ManagementFacet.isMinterRestricted.selector, TEST_VAULT_ID, user1),
+            address(almInfoFacet),
+            abi.encodeWithSelector(ALMInfoFacet.isMintRestricted.selector, TEST_VAULT_ID),
             abi.encode(true)
         );
 
-        vm.mockCall(
-            address(managementFacet),
-            abi.encodeWithSelector(ManagementFacet.isMinterRestricted.selector, TEST_VAULT_ID, user2),
-            abi.encode(false)
-        );
-
-        // Verify blacklisted user is considered restricted
-        assertTrue(managementFacet.isMinterRestricted(TEST_VAULT_ID, user1), "Blacklisted user should be restricted");
-
-        // Verify normal user isn't restricted initially
-        assertFalse(
-            managementFacet.isMinterRestricted(TEST_VAULT_ID, user2),
-            "Non-blacklisted user should not be restricted initially"
-        );
+        // Verify blacklisted user status
+        assertTrue(managementFacet.isBlacklisted(user1), "User should be blacklisted");
+        assertFalse(managementFacet.isBlacklisted(user2), "User2 should not be blacklisted");
 
         // Try to set restricted mint (may revert if vault doesn't exist)
         vm.prank(manager);
-        try managementFacet.restrictMint(TEST_VAULT_ID, true) {} catch {}
+        try almProtectedFacet.restrictMint(TEST_VAULT_ID, true) {} catch {}
     }
 
     /*==============================================================
@@ -344,8 +356,8 @@ contract ManagementTest is BaseDiamondTest {
 
     function testSwapRestrictions() public {
         // Test initial state (initialized in setUp with default values)
-        assertTrue(managementFacet.isSwapCallerRestricted(user1), "Swap caller should be restricted by default");
-        assertTrue(managementFacet.isSwapRouterRestricted(router), "Swap router should be restricted by default");
+        assertTrue(infoFacet.isSwapCallerRestricted(user1), "Swap caller should be restricted by default");
+        assertTrue(infoFacet.isSwapRouterRestricted(router), "Swap router should be restricted by default");
 
         // Whitelist user and router
         vm.startPrank(manager);
@@ -354,15 +366,15 @@ contract ManagementTest is BaseDiamondTest {
         vm.stopPrank();
 
         // Verify whitelist bypasses restrictions
-        assertFalse(managementFacet.isSwapCallerRestricted(user1), "Whitelisted user should not be restricted");
-        assertFalse(managementFacet.isSwapRouterRestricted(router), "Whitelisted router should not be restricted");
+        assertFalse(infoFacet.isSwapCallerRestricted(user1), "Whitelisted user should not be restricted");
+        assertFalse(infoFacet.isSwapRouterRestricted(router), "Whitelisted router should not be restricted");
 
         // Disable restrictions
         vm.prank(manager);
         managementFacet.setSwapCallerRestriction(false);
 
         // Verify restriction disabled
-        assertFalse(managementFacet.isSwapCallerRestricted(user2), "Restriction should be disabled");
+        assertFalse(infoFacet.isSwapCallerRestricted(user2), "Restriction should be disabled");
 
         // Enable input/output restrictions
         vm.startPrank(manager);
@@ -371,8 +383,8 @@ contract ManagementTest is BaseDiamondTest {
         vm.stopPrank();
 
         // Verify input/output restrictions
-        assertTrue(managementFacet.isSwapInputRestricted(inputToken), "Input token should be restricted");
-        assertTrue(managementFacet.isSwapOutputRestricted(outputToken), "Output token should be restricted");
+        assertTrue(infoFacet.isSwapInputRestricted(inputToken), "Input token should be restricted");
+        assertTrue(infoFacet.isSwapOutputRestricted(outputToken), "Output token should be restricted");
 
         // Whitelist the tokens
         vm.startPrank(manager);
@@ -381,11 +393,12 @@ contract ManagementTest is BaseDiamondTest {
         vm.stopPrank();
 
         // Verify whitelist bypasses restrictions
-        assertFalse(managementFacet.isSwapInputRestricted(inputToken), "Whitelisted input should not be restricted");
-        assertFalse(managementFacet.isSwapOutputRestricted(outputToken), "Whitelisted output should not be restricted");
+        assertFalse(infoFacet.isSwapInputRestricted(inputToken), "Whitelisted input should not be restricted");
+        assertFalse(infoFacet.isSwapOutputRestricted(outputToken), "Whitelisted output should not be restricted");
     }
 
     function testBridgeRestrictions() public {
+
         // Enable bridge restrictions
         vm.startPrank(manager);
         managementFacet.setBridgeInputRestriction(true);
@@ -394,9 +407,9 @@ contract ManagementTest is BaseDiamondTest {
         vm.stopPrank();
 
         // Verify bridge restrictions
-        assertTrue(managementFacet.isBridgeInputRestricted(inputToken), "Bridge input should be restricted");
-        assertTrue(managementFacet.isBridgeOutputRestricted(outputToken), "Bridge output should be restricted");
-        assertTrue(managementFacet.isBridgeRouterRestricted(router), "Bridge router should be restricted");
+        assertTrue(infoFacet.isBridgeInputRestricted(inputToken), "Bridge input should be restricted");
+        assertTrue(infoFacet.isBridgeOutputRestricted(outputToken), "Bridge output should be restricted");
+        assertTrue(infoFacet.isBridgeRouterRestricted(router), "Bridge router should be restricted");
 
         // Whitelist the addresses
         vm.startPrank(manager);
@@ -406,19 +419,20 @@ contract ManagementTest is BaseDiamondTest {
         vm.stopPrank();
 
         // Verify whitelist bypasses restrictions
-        assertFalse(managementFacet.isBridgeInputRestricted(inputToken), "Whitelisted input should not be restricted");
+        assertFalse(infoFacet.isBridgeInputRestricted(inputToken), "Whitelisted input should not be restricted");
         assertFalse(
-            managementFacet.isBridgeOutputRestricted(outputToken), "Whitelisted output should not be restricted"
+            infoFacet.isBridgeOutputRestricted(outputToken), "Whitelisted output should not be restricted"
         );
-        assertFalse(managementFacet.isBridgeRouterRestricted(router), "Whitelisted router should not be restricted");
+        assertFalse(infoFacet.isBridgeRouterRestricted(router), "Whitelisted router should not be restricted");
     }
 
     function testApproveAndRevokeSettings() public {
+
         // Test initial approveMax state (initialized in setUp with default values)
-        assertFalse(managementFacet.isApproveMax(), "ApproveMax should be disabled by default");
+        assertFalse(infoFacet.isApproveMax(), "ApproveMax should be disabled by default");
 
         // Test initial autoRevoke state (initialized in setUp with default values)
-        assertTrue(managementFacet.isAutoRevoke(), "AutoRevoke should be enabled by default");
+        assertTrue(infoFacet.isAutoRevoke(), "AutoRevoke should be enabled by default");
 
         // Toggle settings
         vm.startPrank(manager);
@@ -427,15 +441,15 @@ contract ManagementTest is BaseDiamondTest {
         vm.stopPrank();
 
         // Verify settings
-        assertTrue(managementFacet.isApproveMax(), "ApproveMax should be enabled");
-        assertFalse(managementFacet.isAutoRevoke(), "AutoRevoke should be disabled");
+        assertTrue(infoFacet.isApproveMax(), "ApproveMax should be enabled");
+        assertFalse(infoFacet.isAutoRevoke(), "AutoRevoke should be disabled");
 
-        // Test direct bit manipulation
+        // Test toggling back
         vm.prank(manager);
-        managementFacet.setRestriction(LibManagement.APPROVE_MAX_BIT, false);
+        managementFacet.setApproveMax(false);
 
-        // Verify direct bit manipulation
-        assertFalse(managementFacet.isApproveMax(), "ApproveMax should be disabled");
+        // Verify toggle back
+        assertFalse(infoFacet.isApproveMax(), "ApproveMax should be disabled again");
     }
 
     /*==============================================================
@@ -443,32 +457,33 @@ contract ManagementTest is BaseDiamondTest {
     ==============================================================*/
 
     function testRangeWeights() public {
+
         // Create weights array
-        uint256[] memory weights = new uint256[](3);
+        uint16[] memory weights = new uint16[](3);
         weights[0] = 3000; // 30%
         weights[1] = 4000; // 40%
         weights[2] = 2000; // 20%
 
         vm.prank(user1);
         vm.expectRevert();
-        managementFacet.setWeights(TEST_VAULT_ID, weights);
+        almProtectedFacet.setWeights(TEST_VAULT_ID, weights);
 
         vm.prank(user1);
         vm.expectRevert();
-        managementFacet.zeroOutWeights(TEST_VAULT_ID);
+        almProtectedFacet.zeroOutWeights(TEST_VAULT_ID);
 
         vm.prank(manager);
-        try managementFacet.setWeights(TEST_VAULT_ID, weights) {} catch {}
+        try almProtectedFacet.setWeights(TEST_VAULT_ID, weights) {} catch {}
 
         vm.prank(manager);
-        try managementFacet.zeroOutWeights(TEST_VAULT_ID) {} catch {}
+        try almProtectedFacet.zeroOutWeights(TEST_VAULT_ID) {} catch {}
     }
 
     /*==============================================================
                         FEES AND TREASURY FUNCTIONS
     ==============================================================*/
 
-    function testTreasuryFunctions() public {
+    function testTreasuryFunctions() public pure {
         // Since we can't directly call the library functions and we don't want to test the actual setCollector
         // functionality (which requires more setup), we'll just verify the auth checks on related functions
 
@@ -492,10 +507,10 @@ contract ManagementTest is BaseDiamondTest {
         managementFacet.initializeManagement();
 
         // Verify restrictions remain as expected after re-initialization
-        assertTrue(managementFacet.isSwapCallerRestricted(user1), "Swap caller should still be restricted");
-        assertTrue(managementFacet.isSwapRouterRestricted(router), "Swap router should still be restricted");
-        assertFalse(managementFacet.isApproveMax(), "ApproveMax should still be disabled");
-        assertTrue(managementFacet.isAutoRevoke(), "AutoRevoke should still be enabled");
+        assertTrue(infoFacet.isSwapCallerRestricted(user1), "Swap caller should still be restricted");
+        assertTrue(infoFacet.isSwapRouterRestricted(router), "Swap router should still be restricted");
+        assertFalse(infoFacet.isApproveMax(), "ApproveMax should still be disabled");
+        assertTrue(infoFacet.isAutoRevoke(), "AutoRevoke should still be enabled");
 
         vm.prank(user1);
         vm.expectRevert();
@@ -506,7 +521,7 @@ contract ManagementTest is BaseDiamondTest {
                          RESTRICTION BITS TEST
     ==============================================================*/
 
-    function testRestrictionBits() public {
+    function testRestrictionBits() public pure {
         // This test is now covered by individual tests in testSwapRestrictions and testBridgeRestrictions
         assertTrue(true, "Covered by testSwapRestrictions and testBridgeRestrictions");
     }
@@ -515,7 +530,7 @@ contract ManagementTest is BaseDiamondTest {
                          BIT MASK LIBRARY TEST
     ==============================================================*/
 
-    function testBitMaskLibrary() public {
+    function testBitMaskLibrary() public pure {
         // Test the LibBitMask library which is used by LibManagement
         uint256 mask = 0;
 
@@ -539,7 +554,7 @@ contract ManagementTest is BaseDiamondTest {
     // Add new test to specifically test pause/unpause through the Diamond
     function testPause() public {
         // Initial state checks for protocol pause
-        assertFalse(managementFacet.isPaused(), "Protocol should not be paused initially");
+        assertFalse(almUserFacet.isPaused(), "Protocol should not be paused initially");
 
         // Non-admin cannot pause the protocol
         vm.prank(user1);
@@ -551,14 +566,14 @@ contract ManagementTest is BaseDiamondTest {
         managementFacet.pause();
 
         // Verify protocol is paused
-        assertTrue(managementFacet.isPaused(), "Protocol should be paused after pause");
+        assertTrue(almUserFacet.isPaused(), "Protocol should be paused after pause");
 
         // Admin should be able to unpause the protocol
         vm.prank(admin);
         managementFacet.unpause();
 
         // Verify protocol is unpaused
-        assertFalse(managementFacet.isPaused(), "Protocol should not be paused after unpause");
+        assertFalse(almUserFacet.isPaused(), "Protocol should not be paused after unpause");
 
         // Skip vault-specific tests since they require proper vault initialization
         // Instead, we'll just do permission checks for vault pause functions
@@ -566,12 +581,12 @@ contract ManagementTest is BaseDiamondTest {
         // Non-admin cannot pause a vault (permission check)
         vm.prank(user1);
         vm.expectRevert();
-        managementFacet.pause(TEST_VAULT_ID);
+        almProtectedFacet.pauseAlmVault(TEST_VAULT_ID);
 
         // Admin should be able to call the pause function (even if the vault doesn't exist)
         vm.startPrank(admin);
-        try managementFacet.pause(TEST_VAULT_ID) {} catch {}
-        try managementFacet.unpause(TEST_VAULT_ID) {} catch {}
+        try almProtectedFacet.pauseAlmVault(TEST_VAULT_ID) {} catch {}
+        try almProtectedFacet.unpauseAlmVault(TEST_VAULT_ID) {} catch {}
         vm.stopPrank();
     }
 }

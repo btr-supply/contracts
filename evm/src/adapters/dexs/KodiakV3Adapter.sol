@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity 0.8.29;
+pragma solidity ^0.8.29;
 
 import {IKodiakV3Pool} from "@interfaces/dexs/IKodiakV3Pool.sol";
 import {UniV3Adapter} from "@dexs/UniV3Adapter.sol";

@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.29;
+pragma solidity ^0.8.29;
 
 import "./abstract/ERC20Bridgeable.sol";
+import "@interfaces/IBTR.sol";
 
 /*
  * @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
@@ -19,12 +20,13 @@ import "./abstract/ERC20Bridgeable.sol";
  * @author BTR Team
  */
 
-contract BTR is ERC20Bridgeable, Permissioned {
+contract BTR is ERC20Bridgeable {
     error InvalidMaxSupply();
     error GenesisAlreadyMinted();
     error NoTreasuryFound();
     error InvalidAmount();
     // Custom Events
+    event GenesisMint(address indexed _treasury, uint256 _amount);
 
     event MaxSupplyUpdated(uint256 _newMaxSupply);
     // Supply limits
@@ -40,7 +42,7 @@ contract BTR is ERC20Bridgeable, Permissioned {
     }
 
     function _checkTreasury() internal view returns (address tres) {
-        tres = treasury();
+        tres = diamond.treasury();
         if (tres == address(0)) revert NoTreasuryFound();
     }
 

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity 0.8.29;
+pragma solidity ^0.8.29;
 
 import {RiskModel, WeightModel, LiquidityModel, SlippageModel} from "@/BTRTypes.sol";
 import {BTRStorage as S} from "@libraries/BTRStorage.sol";

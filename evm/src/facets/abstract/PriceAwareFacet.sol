@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.29;
+pragma solidity ^0.8.29;
 
 import {BTRStorage as S} from "@libraries/BTRStorage.sol";
 import {LibOracle as O} from "@libraries/LibOracle.sol";

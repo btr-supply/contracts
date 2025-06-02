@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity 0.8.29;
+pragma solidity ^0.8.29;
 
 import {BTRErrors as Errors} from "@libraries/BTREvents.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
@@ -58,8 +58,8 @@ contract RamsesV3Adapter is UniV3Adapter {
             IRamsesV3Pool(_pool).positions(_positionKey);
     }
 
-    function ramsesV2MintCallback(uint256 _amount0Owed, uint256 _amount1Owed, bytes calldata _data) external {
-        (address poolFromData, address payerAddress) = abi.decode(_data, (address, address));
+    function ramsesV3MintCallback(uint256 _amount0Owed, uint256 _amount1Owed, bytes calldata _data) external {
+        (/* address poolFromData */, address payerAddress) = abi.decode(_data, (address, address));
 
         // msg.sender should be the pool that this callback is registered for.
         if (msg.sender == address(0)) revert Errors.ZeroAddress();

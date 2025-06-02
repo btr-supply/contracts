@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity 0.8.29;
+pragma solidity ^0.8.29;
 
 import {BTRErrors as Errors, BTREvents as Events} from "@libraries/BTREvents.sol";
 import {ErrorType, Oracles, Feed, CoreAddresses} from "@/BTRTypes.sol";

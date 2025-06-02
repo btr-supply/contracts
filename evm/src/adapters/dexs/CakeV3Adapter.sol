@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity 0.8.29;
+pragma solidity ^0.8.29;
 
+import {BTRErrors as Errors} from "@libraries/BTREvents.sol";
 import {ICakeV3Pool} from "@interfaces/dexs/ICakeV3Pool.sol";
 import {UniV3Adapter} from "@dexs/UniV3Adapter.sol";
 

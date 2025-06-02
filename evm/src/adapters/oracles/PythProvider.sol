@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.29;
+pragma solidity ^0.8.29;
 
 import {BTRErrors as Errors} from "@libraries/BTREvents.sol";
 import {ErrorType} from "@/BTRTypes.sol";
@@ -50,7 +50,7 @@ contract PythProvider is PriceProvider {
     function _setFeed(bytes32 _feed, bytes32 _providerId, uint256 _ttl) internal override {
         address asset = address(uint160(uint256(_feed)));
         if (address(pyth) == address(0)) {
-            revert Errors.NotInitialized(ErrorType.PROTOCOL);
+            revert Errors.NotInitialized();
         }
         if (!pyth.priceFeedExists(_providerId)) {
             revert Errors.NotFound(ErrorType.PROTOCOL);
@@ -103,7 +103,7 @@ contract PythProvider is PriceProvider {
         uint256 price256 = uint256(uint64(price.price));
 
         if (_invert) {
-            int256 decimalOffset = int256(_decimals(_asset)) - price.expo;
+            int256 decimalOffset = int256(uint256(_decimals(_asset))) - price.expo;
             return decimalOffset >= 0
                 ? (10 ** uint256(decimalOffset) * M.BPS) / price256
                 : (M.BPS) / (price256 * 10 ** uint256(-decimalOffset));

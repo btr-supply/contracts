@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.29;
+pragma solidity ^0.8.29;
 
 interface IJoeV2Pool {
     function approveForAll(address spender, bool approved) external;

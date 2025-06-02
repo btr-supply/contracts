@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.29;
+pragma solidity ^0.8.29;
 
 import {IRamsesV3PoolNoObs} from "@interfaces/dexs/IRamsesV3Pool.sol";
 import {IUniV3Observable} from "@interfaces/dexs/IUniV3Pool.sol";

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.29;
+pragma solidity ^0.8.29;
 
 import {AccessControl, Diamond, ErrorType} from "@/BTRTypes.sol";
 import {BTRErrors as Errors, BTREvents as Events} from "@libraries/BTREvents.sol";
@@ -39,14 +39,14 @@ contract BTRDiamond is IDiamond {
         }
         _cutFacet.checkContractHasCode(); // Ensure facet is a contract
         AC.initialize(S.acc(), _owner, _treasury); // Initialize access control
-        T.setCollector(_treasury); // Set treasury collector
+        T.setCollector(S.tres(), S.acc(), _treasury); // Set treasury collector
 
         FacetCut[] memory cut = new FacetCut[](1);
         bytes4[] memory functionSelectors = new bytes4[](1);
         functionSelectors[0] = IDiamondCut.diamondCut.selector;
         cut[0] = FacetCut({facetAddress: _cutFacet, action: FacetCutAction.Add, functionSelectors: functionSelectors});
         D.diamondCut(S.diam(), cut, address(0), ""); // Initialize diamond cut
-        Diamond storage diamond = S.diamond();
+        Diamond storage diamond = S.diam();
         diamond.supportedInterfaces[type(IERC165).interfaceId] = true;
         diamond.supportedInterfaces[type(IDiamondCut).interfaceId] = true;
         diamond.supportedInterfaces[type(IDiamondLoupe).interfaceId] = true;
@@ -55,7 +55,7 @@ contract BTRDiamond is IDiamond {
     }
 
     fallback() external payable {
-        Diamond storage diamond = S.diamond();
+        Diamond storage diamond = S.diam();
         address facet = diamond.selectorToFacetAndPosition[msg.sig].facetAddress;
         if (facet == address(0)) revert Errors.NotFound(ErrorType.FUNCTION); // Function not found in any facet
         assembly {

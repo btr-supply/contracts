@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity 0.8.29;
+pragma solidity ^0.8.29;
 
 import {BTRErrors as Errors} from "@libraries/BTREvents.sol";
 import {Range} from "@/BTRTypes.sol";
@@ -20,14 +20,14 @@ import {DEXAdapter} from "@dexs/DEXAdapter.sol";
  * @@@@@/            ,@@@@@/    /@@@@@@@/    /@@@,    @@@@@@@@@
  * @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
  *
- * @title V3 Adapter Base - Base contract for V3-style DEX adapters
+ * @title V3 Tick Adapter Base - Base contract for V3-style tick-based DEX adapters
  * @copyright 2025
- * @notice Provides shared V3 functionality for adapter facets
- * @dev Common logic for V3-based DEX integrations
+ * @notice Provides shared V3 tick-based functionality for adapter facets
+ * @dev Common logic for V3-based DEX integrations using tick system
  * @author BTR Team
  */
 
-abstract contract V3Adapter is DEXAdapter {
+abstract contract V3TickAdapter is DEXAdapter {
     using SafeERC20 for IERC20;
     using C for uint256;
     using C for bytes32;
@@ -75,7 +75,7 @@ abstract contract V3Adapter is DEXAdapter {
             IUniV3Pool(_pool).positions(_positionKey);
     }
 
-    function _rangePositionInfo(Range memory _range)
+    function _rangePositionInfo(Range calldata _range)
         internal
         view
         virtual
@@ -118,22 +118,22 @@ abstract contract V3Adapter is DEXAdapter {
         uint160 sqrtRatioAX96 = _lowerTick.tickToPriceX96V3();
         uint160 sqrtRatioBX96 = _upperTick.tickToPriceX96V3();
 
-        liquidity = DM.getLiquidityForAmounts(priceX96, sqrtRatioAX96, sqrtRatioBX96, _amount0Desired, _amount1Desired);
+        liquidity = DM.amountsToLiquidityPriceX96V3(priceX96, sqrtRatioAX96, sqrtRatioBX96, _amount0Desired, _amount1Desired);
 
         // Recalculate actual amounts for the derived liquidity
         // This logic is from UniswapV3 LiquidityAmounts.getAmountsForLiquidity
         if (priceX96 <= sqrtRatioAX96) {
             // current price is below the range
-            amount0Actual = DM.getAmount0ForLiquidity(sqrtRatioAX96, sqrtRatioBX96, liquidity);
+            amount0Actual = DM.liquidityToAmount0PriceX96V3(sqrtRatioAX96, sqrtRatioBX96, liquidity);
             amount1Actual = 0;
         } else if (priceX96 < sqrtRatioBX96) {
             // current price is inside the range
-            amount0Actual = DM.getAmount0ForLiquidity(priceX96, sqrtRatioBX96, liquidity);
-            amount1Actual = DM.getAmount1ForLiquidity(sqrtRatioAX96, priceX96, liquidity);
+            amount0Actual = DM.liquidityToAmount0PriceX96V3(priceX96, sqrtRatioBX96, liquidity);
+            amount1Actual = DM.liquidityToAmount1PriceX96V3(sqrtRatioAX96, priceX96, liquidity);
         } else {
             // current price is above the range
             amount0Actual = 0;
-            amount1Actual = DM.getAmount1ForLiquidity(sqrtRatioAX96, sqrtRatioBX96, liquidity);
+            amount1Actual = DM.liquidityToAmount1PriceX96V3(sqrtRatioAX96, sqrtRatioBX96, liquidity);
         }
     }
 
@@ -151,7 +151,7 @@ abstract contract V3Adapter is DEXAdapter {
     }
 
     function _mintRange(
-        Range memory _range,
+        Range calldata _range,
         address _recipient,
         bytes calldata _callbackData // Expected to be abi.encode(pool, payerAddress (likely _recipient))
     ) internal virtual override returns (bytes32 positionId, uint128 liquidityMinted, uint256 spent0, uint256 spent1) {
@@ -166,8 +166,8 @@ abstract contract V3Adapter is DEXAdapter {
 
         // Approve tokens from this adapter to the pool.
         // This adapter must have the tokens (transferred by `payerAddress` or `payerAddress` approved this adapter).
-        token0.safeApprove(pool, type(uint256).max);
-        token1.safeApprove(pool, type(uint256).max);
+        token0.forceApprove(pool, type(uint256).max);
+        token1.forceApprove(pool, type(uint256).max);
 
         (spent0, spent1) = _mintPosition(
             pool,
@@ -180,8 +180,8 @@ abstract contract V3Adapter is DEXAdapter {
         liquidityMinted = _range.liquidity; // Assume mint is successful for the desired liquidity.
 
         // Revoke approvals after mint
-        token0.safeApprove(pool, 0);
-        token1.safeApprove(pool, 0);
+        token0.forceApprove(pool, 0);
+        token1.forceApprove(pool, 0);
 
         // Generate a positionId, common for V3 NonfungiblePositionManager.
         // BTRDiamond is responsible for ensuring msg.sender matches the payer in _callbackData if that's the convention.
@@ -191,11 +191,10 @@ abstract contract V3Adapter is DEXAdapter {
 
     function uniswapV3MintCallback(uint256 _amount0Owed, uint256 _amount1Owed, bytes calldata _data) external virtual {
         (address poolFromData, address payerAddress) = abi.decode(_data, (address, address));
+        poolFromData; // Silence unused variable warning
 
         // msg.sender should be the pool that this callback is registered for.
-        // The poolFromData is for an additional check if needed.
         if (msg.sender == address(0)) revert Errors.ZeroAddress(); // Should be pool
-        // if (msg.sender != poolFromData) revert Errors.InvalidCaller(); // Optional check
 
         (IERC20 token0, IERC20 token1) = _poolTokens(msg.sender); // Use msg.sender as pool address
 
@@ -220,7 +219,7 @@ abstract contract V3Adapter is DEXAdapter {
     }
 
     function _burnRange(
-        Range memory _range,
+        Range calldata _range,
         address _recipient,
         bytes calldata _callbackData // Callback data for collect, if applicable
     )
@@ -264,7 +263,7 @@ abstract contract V3Adapter is DEXAdapter {
         int24 _tickUpper,
         uint128 _amount0Max,
         uint128 _amount1Max,
-        bytes calldata _callbackDataForCollect // For V3, not directly used by pool.collect
+        bytes calldata /* _callbackDataForCollect */ // For V3, not directly used by pool.collect
     ) internal virtual returns (uint256 collected0, uint256 collected1) {
         // _callbackDataForCollect is not used by IUniV3Pool.collect. It might be used if this adapter needs to react.
         // The recipient of the collect call is directly specified.
@@ -273,7 +272,7 @@ abstract contract V3Adapter is DEXAdapter {
         return IUniV3Pool(_pool).collect(_recipientForCollect, _tickLower, _tickUpper, _amount0Max, _amount1Max);
     }
 
-    function _collectRangeFees(Range memory _range, address _recipient, bytes calldata _callbackData)
+    function _collectRangeFees(Range calldata _range, address _recipient, bytes calldata _callbackData)
         internal
         virtual
         override
@@ -333,7 +332,7 @@ abstract contract V3Adapter is DEXAdapter {
         (isStale, deviation) = DM.deviationState(priceX96, twapPriceX96, _maxDeviationBp);
     }
 
-    function _previewBurnRange(Range memory _range, uint128 _liquidityToPreview)
+    function _previewBurnRange(Range calldata _range, uint128 _liquidityToPreview)
         internal
         view
         virtual

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.29;
+pragma solidity ^0.8.29;
 
 import {Fees} from "@/BTRTypes.sol";
 import {BTRStorage as S} from "@libraries/BTRStorage.sol";

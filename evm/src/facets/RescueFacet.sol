@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.29;
+pragma solidity ^0.8.29;
 
 import {BTRErrors as Errors, BTREvents as Events} from "@libraries/BTREvents.sol";
 import {TokenType, ErrorType, Rescue, RescueRequest} from "@/BTRTypes.sol";

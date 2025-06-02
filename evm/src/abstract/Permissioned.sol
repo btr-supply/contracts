@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.29;
+pragma solidity ^0.8.29;
 
 import {BTRErrors as Errors} from "@libraries/BTREvents.sol";
 import {IPermissioned} from "@interfaces/IPermissioned.sol";
+import {ErrorType} from "@/BTRTypes.sol";
 
 /*
  * @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
@@ -29,7 +30,7 @@ abstract contract Permissioned {
 
     function _setDiamond(address _diamond) internal {
         if (_diamond == address(0)) revert Errors.ZeroAddress();
-        if (_diamond == diamond) revert Errors.AlreadyInitialized();
+        if (_diamond == address(diamond)) revert Errors.AlreadyInitialized();
         diamond = IPermissioned(_diamond);
     }
 
@@ -43,7 +44,7 @@ abstract contract Permissioned {
     }
 
     modifier onlyDiamond() virtual {
-        if (msg.sender != address(diamond)) revert Errors.NotDiamond();
+        if (msg.sender != address(diamond)) revert Errors.Unauthorized(ErrorType.ADDRESS);
         _;
     }
 

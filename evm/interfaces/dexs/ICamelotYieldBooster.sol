@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.29;
+pragma solidity ^0.8.29;
 
 interface ICamelotYieldBooster {
     function MAX_TOTAL_ALLOCATION_FLOOR() external view returns (uint256);

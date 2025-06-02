@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.29;
+pragma solidity ^0.8.29;
 
 import {Range} from "@/BTRTypes.sol"; // Import Range struct
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
@@ -32,7 +32,7 @@ interface IDEXAdapter {
     // It can be implemented in the abstract DEXAdapter or concrete adapters if needed.
 
     function rangePositionInfo(
-        Range memory _range // Includes pid, owner, lowerTick, upperTick, positionId
+        Range calldata _range // Includes pid, owner, lowerTick, upperTick, positionId
     ) external view returns (uint128 liquidity, uint256 amount0, uint256 amount1, uint256 fee0, uint256 fee1);
 
     function liquidityToAmountsTicks( // Keep this signature as per user's change
@@ -82,14 +82,14 @@ interface IDEXAdapter {
     function lpPrice1(bytes32 _pid, int24 _lowerTick, int24 _upperTick) external view returns (uint256 lpPrice);
 
     function previewBurnRange(
-        Range memory _range, // Includes pid, owner, lowerTick, upperTick, positionId
+        Range calldata _range, // Includes pid, owner, lowerTick, upperTick, positionId
         uint128 _liquidityToPreview
     ) external view returns (uint256 amount0, uint256 amount1, uint256 lpFee0, uint256 lpFee1);
 
     // --- State-changing functions --- //
 
     function mintRange(
-        Range memory _range, // Contains pid, recipient (as owner), ticks, positionId (if new), desired liquidity
+        Range calldata _range, // Contains pid, recipient (as owner), ticks, positionId (if new), desired liquidity
         address _recipient, // Actual recipient of funds/NFT, or for callback context
         bytes calldata _callbackData
     )
@@ -102,13 +102,13 @@ interface IDEXAdapter {
         );
 
     function burnRange(
-        Range memory _range, // Contains pid, owner, ticks, positionId, liquidityToBurn
+        Range calldata _range, // Contains pid, owner, ticks, positionId, liquidityToBurn
         address _recipient, // Actual recipient of funds from burn
         bytes calldata _callbackData
     ) external returns (uint256 amount0, uint256 amount1, uint256 lpFee0, uint256 lpFee1);
 
     function collectRangeFees(
-        Range memory _range, // Contains pid, owner (for identifying position), ticks, positionId
+        Range calldata _range, // Contains pid, owner (for identifying position), ticks, positionId
         address _recipient, // Actual recipient of fees
         bytes calldata _callbackData
     ) external returns (uint256 collectedFee0, uint256 collectedFee1);

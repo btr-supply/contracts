@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity 0.8.29;
+pragma solidity ^0.8.29;
 
 import {ALMVault, MintProceeds, BurnProceeds} from "@/BTRTypes.sol";
 import {BTRErrors as Errors} from "@libraries/BTREvents.sol";

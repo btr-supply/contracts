@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.29;
+pragma solidity ^0.8.29;
 
 import {BTRErrors as Errors, ErrorType} from "@libraries/BTREvents.sol";
 import {BTRStorage as S} from "@libraries/BTRStorage.sol";
@@ -97,7 +97,7 @@ abstract contract PermissionedFacet {
         return AC.admin(S.acc()); // Get the admin address
     }
 
-    function tres() external view virtual returns (address) {
+    function treasury() external view virtual returns (address) {
         return AC.treasury(S.acc()); // Get the treasury address
     }
 

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.29;
+pragma solidity ^0.8.29;
 
 interface ISwapXV4Gauge {
     function _deposit(uint256 amount, uint256 tokenId) external;

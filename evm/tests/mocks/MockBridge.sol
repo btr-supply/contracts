@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.29;
+pragma solidity ^0.8.29;
 
 import "@interfaces/ercs/IERC7802.sol";
 import "@interfaces/ercs/IXERC20.sol";

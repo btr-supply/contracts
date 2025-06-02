@@ -1,5 +1,8 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity 0.8.29;
+pragma solidity ^0.8.29;
+
+// Suppress warnings for virtual functions with unused parameters (intended for override)
+// solhint-disable func-param-name-mixedcase, no-unused-vars
 
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {LibCast as C} from "@libraries/LibCast.sol";
@@ -9,6 +12,8 @@ import {LibMaths as M} from "@libraries/LibMaths.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {IDEXAdapter} from "@interfaces/IDEXAdapter.sol";
 import {Permissioned} from "@/abstract/Permissioned.sol";
+import {Range} from "@/BTRTypes.sol";
+import {BTRErrors as Errors} from "@libraries/BTREvents.sol";
 
 /*
  * @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
@@ -38,8 +43,6 @@ abstract contract DEXAdapter is IDEXAdapter, Permissioned {
     * @param _diamond The address of the BTRDiamond for permission checks
     */
     constructor(address _diamond) Permissioned(_diamond) {}
-
-    // --- Internal Virtual Functions & Their External Interface Implementations ---
 
     // Pool Tokens
     function _poolTokens(bytes32 _pid) internal view virtual returns (IERC20 token0, IERC20 token1);
@@ -217,7 +220,7 @@ abstract contract DEXAdapter is IDEXAdapter, Permissioned {
         (uint256 amount0_val, uint256 amount1_val) =
             _liquidityToAmountsTicks(_pid, _lowerTick, _upperTick, uint128(M.WAD));
         if (_price == 0) {
-            if (amount1_val > 0) revert Errors.OracleFailure();
+            if (amount1_val > 0) revert Errors.InvalidParameter();
             return amount0_val;
         }
         lpPrice = amount0_val + amount1_val.mulDivDown(M.WAD, _price);
@@ -240,7 +243,7 @@ abstract contract DEXAdapter is IDEXAdapter, Permissioned {
     {
         (uint256 amount0_val, uint256 amount1_val) =
             _liquidityToAmountsTicks(_pid, _lowerTick, _upperTick, uint128(M.WAD));
-        if (M.WAD == 0) revert Errors.Configuration();
+        if (M.WAD == 0) revert Errors.InvalidParameter();
         lpPrice = amount1_val + amount0_val.mulDivDown(_price, M.WAD);
     }
 
@@ -332,6 +335,24 @@ abstract contract DEXAdapter is IDEXAdapter, Permissioned {
         return _validatePoolTokens(_pid, _expectedToken0, _expectedToken1);
     }
 
+    // Missing decimals function
+    function decimals() external view virtual returns (uint8) {
+        return 18; // Default to 18 decimals, can be overridden in specific adapters
+    }
+
+    // Missing liquidityToAmounts function (wrapper for liquidityToAmountsTicks)
+    function liquidityToAmounts(bytes32 /* _rid */, uint128 /* _liquidityValue */)
+        external
+        view
+        virtual
+        returns (uint256 /* amount0 */, uint256 /* amount1 */)
+    {
+        // This is a simplified implementation - in a real system, _rid would need to be decoded
+        // to extract poolId, lowerTick, and upperTick. For now, this will need to be implemented
+        // per adapter based on how _rid is structured.
+        revert Errors.NotInitialized();
+    }
+
     // Preview Burn Range
     function _previewBurnRange(Range calldata _range, uint128 _liquidityToPreview)
         internal
@@ -353,25 +374,25 @@ abstract contract DEXAdapter is IDEXAdapter, Permissioned {
         virtual
         returns (bytes32 positionId, uint128 liquidityMinted, uint256 amount0, uint256 amount1);
 
-    function mintRange(Range calldata _range, bytes calldata _callbackData)
+    function mintRange(Range calldata _range, address _recipient, bytes calldata _callbackData)
         external
         onlyDiamond
         returns (bytes32 positionId, uint128 liquidityMinted, uint256 amount0, uint256 amount1)
     {
-        return _mintRange(_range, msg.sender, _callbackData);
+        return _mintRange(_range, _recipient, _callbackData);
     }
 
     // Burn Range
-    function _burnRange(Range calldata _range, bytes calldata _callbackData)
+    function _burnRange(Range calldata _range, address _recipient, bytes calldata _callbackData)
         internal
         virtual
         returns (uint256 amount0, uint256 amount1, uint256 lpFee0, uint256 lpFee1);
 
-    function burnRange(Range calldata _range, bytes calldata _callbackData)
+    function burnRange(Range calldata _range, address _recipient, bytes calldata _callbackData)
         external
         onlyDiamond
         returns (uint256 amount0, uint256 amount1, uint256 lpFee0, uint256 lpFee1)
     {
-        return _burnRange(_range, msg.sender, _callbackData);
+        return _burnRange(_range, _recipient, _callbackData);
     }
 }
