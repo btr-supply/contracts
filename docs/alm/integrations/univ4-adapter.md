@@ -119,8 +119,8 @@ bytes32 positionKey = keccak256(abi.encodePacked(owner, lowerTick, upperTick, sa
 ```solidity
 function _mintRange() {
   // 1. Approve tokens to PositionManager
-  token0.safeApprove(address(positionManager), amount0);
-  token1.safeApprove(address(positionManager), amount1);
+  token0.forceApprove(address(positionManager), amount0);
+  token1.forceApprove(address(positionManager), amount1);
   
   // 2. Prepare unlock data
   bytes memory unlockData = abi.encode(poolKey, modifyParams, recipient);

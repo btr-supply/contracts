@@ -24,12 +24,6 @@ The BTR liquidity buffer system fundamentally transforms user interaction costs 
 - **Illiquid Market Access**: Enables participation in less liquid DEXs, pools, and tokens that would be impractical for real-time operations
 - **Timing Optimization**: Protocol can choose optimal market conditions for large rebalancing operations
 
-#### **Cash Strategy Integration**
-- **Opportunity Cost Mitigation**: Liquidity buffer deployed into cash-equivalent, instantly redeemable DeFi products (e.g., AAVE money markets)
-- **Yield Generation**: Buffer earns returns through "Cash Strategy" while maintaining immediate accessibility
-- **Capital Efficiency**: Eliminates traditional cash drag associated with liquidity buffers
-- **Risk Management**: Maintains liquidity safety while generating yield on reserves
-
 ### Operational Impact
 
 | Benefit Category | Traditional Approach | BTR Liquidity Buffer | Improvement |
@@ -294,7 +288,7 @@ contract CashStrategy {
 ```
 
 #### Supported Cash Strategies
-- **AAVE Money Markets**: Instant liquidity with 3-5% APY
+- **AAVE Money Markets**: Instant liquidity with 3-8% APY
 - **Compound Finance**: cToken positions with immediate redemption
 - **Treasury Bills**: Tokenized T-bills for maximum safety
 - **Stablecoin Yield**: High-grade DeFi yield products

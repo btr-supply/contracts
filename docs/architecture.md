@@ -1,24 +1,22 @@
-# BTR Supply Architecture
+# BTR Protocol Architecture
 
 ## Overview
 
-BTR Supply is built using the **Diamond Standard (EIP-2535)** to create a modular, safely upgradeable, and gas-efficient protocol for **automated liquidity management across multiple DEXs**.
+BTR Protocol implements **automated liquidity management across multiple DEXs** using the **Diamond Standard (EIP-2535)** for modular, upgradeable smart contracts. The protocol's first primitive is the **Automated Liquidity Manager (ALM)**, which optimizes total value locked (TVL) allocation across liquidity pools from Uniswap V3/V4, PancakeSwap V3, Thena, and other compatible DEX protocols.
 
-The first DeFi primitive deployed by BTR Supply is the **Automated Liquidity Manager (ALM)**, which optimizes TVL allocation across liquidity pools from multiple decentralized exchanges including Uniswap V3, Uniswap V4, PancakeSwap V3, Thena, and other compatible DEX protocols.
+## Core Architecture
 
-BTR's architecture enables the protocol to **manage liquidity positions across multiple DEXs** while maintaining a single unified interface for public use and permissioned DAO management.
-
-## System Architecture
+### Diamond Pattern Structure
 
 ```mermaid
 graph TB
-    subgraph BTR["BTR Diamond (ERC-2535 Proxy)"]
-        subgraph TechFacets["Technical Facets"]
+    subgraph Diamond["BTR Diamond (ERC-2535)"]
+        subgraph Technical["Technical Facets"]
             DiamondLoupe[DiamondLoupe]
             DiamondCut[DiamondCut]
         end
         
-        subgraph ProtocolFacets["Protocol Facets"]
+        subgraph Protocol["Protocol Facets"]
             AccessControl[AccessControl]
             RiskModel[RiskModel]
             Treasury[Treasury]
@@ -26,402 +24,196 @@ graph TB
             Rescue[Rescue]
         end
         
-        subgraph ALMFacets["ALM Facets (ERC-1155 Vaults)"]
+        subgraph ALM["ALM Facets"]
             ALMUser[ALMUser]
             ALMProtected[ALMProtected]
-            ALMInfo1[ALMInfo]
+            ALMInfo[ALMInfo]
         end
         
-        subgraph InfoFacets["Information Facets"]
+        subgraph Info["Information Facets"]
             Oracle[Oracle]
             Info[Info]
-            ALMInfo2[ALMInfo]
         end
     end
     
-    subgraph DEXAdapters["Multi-DEX Adapter Network"]
-        UniswapV3[Uniswap V3]
-        UniswapV4[Uniswap V4]
+    subgraph DEXs["Multi-DEX Network"]
+        UniV3[Uniswap V3]
+        UniV4[Uniswap V4]
         PancakeV3[PancakeSwap V3]
-        ThenaV3[Thena V3]
-        CakeV4[PancakeSwap V4]
-        OtherDEXs[Other Compatible DEXs]
+        Thena[Thena V3]
+        Others[Other Compatible DEXs]
     end
     
-    subgraph OracleAdapters["Multi-DEX Oracle Network"]
-        UniswapV3Oracle[Uniswap V3]
-        UniswapV4Oracle[Uniswap V4]
-        PancakeV3Oracle[PancakeSwap V3]
-        ThenaV3Oracle[Thena V3]
-        ExternalOracles[External Price Feeds]
-    end
-    
-    ALMFacets --> DEXAdapters
-    InfoFacets --> DEXAdapters
-    InfoFacets --> OracleAdapters
+    ALM --> DEXs
+    Info --> DEXs
 ```
 
-## Diamond Pattern Implementation
+### Design Principles
 
-### Core Diamond Components
+1. **Modularity**: Diamond pattern enables independent facet upgrades without full system redeployment
+2. **Multi-DEX Architecture**: Protocol-agnostic design supports any Uniswap V3-compatible DEX
+3. **Gas Optimization**: ERC-1155 vaults and cash buffer system minimize transaction costs
+4. **Risk Management**: Composite scoring and weight allocation across DEX pools
 
-1. **BTRDiamond.sol**: The main proxy contract that delegates calls to appropriate facets
-2. **DiamondCutFacet.sol**: Handles upgrades and facet management (EIP-2535 compliance)
-3. **DiamondLoupeFacet.sol**: Provides introspection capabilities for the diamond
+## Core Components
 
-### Storage Architecture
+### ALM Vault System
 
-The system uses the AppStorage pattern for organized storage:
+**Implementation**: ERC-1155 multi-token vaults for gas efficiency
+- Single diamond contract manages multiple vaults
+- Each vault represents a token pair strategy (e.g., USDC/WETH)
+- Ranges distribute liquidity across multiple DEX pools with configurable weights
 
-```solidity
-// BTRStorage.sol - Centralized storage layout
-library BTRStorage {
-    bytes32 constant DIAMOND_NS = keccak256("btr.diamond");
-    bytes32 constant CORE_NS = keccak256("btr.core");
-    bytes32 constant RESCUE_NS = keccak256("btr.rescue");
-    
-    function core() internal pure returns (CoreStorage storage);
-    function diam() internal pure returns (Diamond storage);
-    // ... other storage accessors
-}
-```
+**Reference**: [`evm/src/facets/ALMUserFacet.sol`](../evm/src/facets/ALMUserFacet.sol)
 
-Key storage structures:
-- **Registry**: Manages vaults, pools, and ranges
-- **ALMVault**: Individual vault configuration and state
-- **AccessControl**: Role-based permissions
-- **Treasury**: Fee collection and management
+### Multi-DEX Integration
 
-## Core Facets
+**Adapter Pattern**: Abstract base classes enable consistent DEX integration
+- `DEXAdapterFacet`: Common DEX operations interface
+- `V3AdapterFacet`: Uniswap V3-style DEX implementation
+- Specific adapters: UniV3, PancakeV3, Thena
 
-### ALMUserFacet
-**Purpose**: User-facing operations for deposits and withdrawals
+**Benefits**: 
+- Protocol-agnostic liquidity deployment
+- Risk diversification across DEX protocols
+- Unified user interface despite backend complexity
 
-**Key Functions**:
-- `deposit()`, `safeDeposit()`: Multi-token deposits
-- `depositSingle0()`, `depositSingle1()`: Single-sided deposits
-- `withdraw()`, `safeWithdraw()`: Multi-token withdrawals
-- `withdrawSingle0()`, `withdrawSingle1()`: Single-sided withdrawals
-- Preview functions for all operations
+**Reference**: [`evm/src/facets/adapters/`](../evm/src/facets/adapters/)
 
-**Libraries Used**: `LibALMUser`, `LibALMBase`, `LibERC1155`
+### Cash Buffer Architecture
 
-### ALMProtectedFacet
-**Purpose**: Administrative and keeper operations
-
-**Key Functions**:
-- `createVault()`: Vault creation (admin only)
-- `setWeights()`, `zeroOutWeights()`: Range weight management
-- `rebalance()`: Full vault rebalancing (keeper only)
-- `mintRanges()`, `burnRanges()`: Range management
-- `pauseAlmVault()`, `unpauseAlmVault()`: Emergency controls
-
-**Libraries Used**: `LibALMProtected`, `LibALMBase`
-
-### ALMInfoFacet
-**Purpose**: Read-only information and previews
-
-**Key Functions**:
-- Vault information queries
-- Balance and ratio calculations
-- Price and VWAP functions
-- Preview calculations for user operations
-
-**Libraries Used**: `LibALMBase`, `LibERC1155`
-
-## DEX Integration Architecture
-
-### Abstract Base Classes
-
-```solidity
-// DEXAdapterFacet.sol - Base for all DEX integrations
-abstract contract DEXAdapterFacet {
-    function setPoolInfo(bytes32 _pid, PoolInfo calldata _info) external;
-    // Common DEX operations
-}
-
-// V3AdapterFacet.sol - Base for Uniswap V3-style DEXs
-abstract contract V3AdapterFacet is DEXAdapterFacet {
-    function mintRange(bytes32 _rid, uint128 _liquidity) external;
-    function burnRange(bytes32 _rid, uint128 _liquidity) external;
-    // V3-specific operations
-}
-```
-
-### Specific Implementations
-
-1. **UniV3AdapterFacet**: Uniswap V3 integration
-2. **CakeV3AdapterFacet**: PancakeSwap V3 integration  
-3. **ThenaV3AdapterFacet**: Thena DEX integration
-
-Each adapter handles:
-- Pool registration and validation
-- Liquidity position management
-- Fee collection
-- Token ordering and safety checks
-
-## Vault Management System
-
-### ERC-1155 Implementation
-
-Vaults are implemented as ERC-1155 tokens for gas efficiency:
-
-```solidity
-// Each vault ID maps to an ALMVault struct
-mapping(uint32 => ALMVault) vaults;
-
-// Users hold shares as ERC-1155 tokens
-mapping(address => mapping(uint32 => uint256)) balances;
-```
-
-**Benefits**:
-- Reduced deployment costs (no new contract per vault)
-- Batch operations support
-- Unified interface across all vaults
-
-### Range Management
-
-Each vault can have multiple liquidity ranges across different DEXs:
-
-```solidity
-struct ALMVault {
-    uint32 id;
-    string name;
-    string symbol;
-    IERC20 token0;
-    IERC20 token1;
-    bytes32[] ranges;  // Array of range IDs
-    mapping(address => uint256) cash;  // Token balances
-    // ... other fields
-}
-
-struct Range {
-    bytes32 id;
-    bytes32 poolId;
-    int24 tickLower;
-    int24 tickUpper;
-    uint128 liquidity;
-    uint8 weightBp;  // Weight in basis points
-}
-```
-
-## Cash Buffer System: Optimization Architecture
-
-### Purpose and Design Philosophy
-
-The BTR cash buffer system is a fundamental architectural choice designed for **gas cost optimization** and **enhanced security**, not because of asset quality concerns. The vault tokens (typically high-grade assets like USDC, WETH) are excellent stores of value - cash reserves serve strategic optimization functions.
-
-### Architecture
+**Purpose**: Gas optimization and liquidity management, not asset quality concerns
 
 ```mermaid
-graph TD
-    A[User Deposits] --> B[High-Quality Asset<br/>Cash Buffer]
-    B -->|Keeper-Managed<br/>Liquidity Deployment| C[Multi-DEX Positions<br/>Uniswap V3/V4, PancakeSwap, etc.]
-    C -->|Emergency Liquidation<br/>or Rebalancing| B
-    B --> D[User Withdrawals]
+graph LR
+    Deposits[User Deposits] --> Cash[Cash Buffer<br/>High-Quality Assets]
+    Cash --> Positions[Multi-DEX<br/>LP Positions]
+    Positions --> Cash
+    Cash --> Withdrawals[User Withdrawals]
     
-    E[Cash Strategy] -->|Yield Generation| B
-    B -->|HQLA Investment| E
+    Keepers[Keeper Operations] --> Cash
+    YieldGen[HQLA Yield<br/>AAVE/Compound] --> Cash
 ```
 
-### Strategic Benefits
+**Economic Model**:
+- Target cash ratio decreases with vault scale (7.4% at $1M → 5.0% at $100M TVL)
+- Cash reserves invested in yield-generating, instantly redeemable positions
+- 70%+ gas cost reduction for users vs direct DEX interaction
 
-#### 1. **Gas Cost Optimization at Scale**
-- **User Cost Reduction**: Individual operations cost $1-4 instead of $15-50 per DEX interaction
-- **Batched Operations**: Thousands of user operations batched into single keeper transactions
-- **Amortized Costs**: DEX interaction costs distributed across all vault participants
-- **Layer 1 Efficiency**: 70%+ gas savings compared to direct DEX interaction
+### Access Control System
 
-#### 2. **Enhanced Security & Liquidity Management**
-- **Emergency Liquidity**: Immediate funds available during major liquidation events without slippage
-- **Flow Buffering**: Handles net inflows/outflows without constant DEX rebalancing
-- **MEV Protection**: Reduces predictable transaction patterns vulnerable to front-running
-- **Operational Resilience**: Maintains functionality during DEX downtime or network congestion
+**Role-Based Permissions**:
+- `ADMIN_ROLE`: Protocol configuration and emergency controls
+- `MANAGER_ROLE`: Vault configuration and range weight management  
+- `KEEPER_ROLE`: Rebalancing operations and range management
+- `TREASURY_ROLE`: Fee collection and treasury operations
 
-#### 3. **Yield Generation on Reserves**
-- **High-Quality Liquid Assets (HQLA)**: Cash invested only in top-tier, instantly redeemable positions
-- **Capital Efficiency**: Eliminates traditional cash drag through strategic yield generation
-- **Instant Accessibility**: Maintains immediate liquidity while earning returns
-- **Risk Management**: Conservative investment only in safest DeFi protocols (AAVE, Compound)
+**Reference**: [`docs/access-control/roles.md`](./access-control/roles.md)
 
-### Liquidity Management
+## Allocation Methodology
 
-The system maintains optimal cash ratios using dynamic formulas based on vault scale:
+### Composite Scoring (cScore)
 
-```solidity
-// Target liquidity decreases with vault size for efficiency
-targetRatio = minRatio + (1 - minRatio) × (1 + TVL × tvlFactor)^(-tvlExponent)
+Each DEX pool receives a composite score based on:
+1. **Trust Score**: Protocol security, audits, decentralization
+2. **Liquidity Score**: TVL depth, volume, capital efficiency
+3. **Performance Score**: Fee generation, impermanent loss metrics
 
-// Example: $1M vault = 7.4% cash, $100M vault = 5.0% cash
-```
+**Formula**: `cScore = (trustScore × liquidityScore × performanceScore)^(1/3)`
 
-**Economic Rationale**:
-- **Scale Economies**: Larger vaults can operate with lower relative cash ratios
-- **Flow Netting**: Bigger pools have better inflow/outflow offsetting
-- **Operational Efficiency**: Optimal balance between accessibility and capital deployment
+### Weight Allocation
 
-## Fee System Architecture
+**Exponential Weighting**: `weight_i = (cScore_i)^exponent`
+- Higher scores receive disproportionately more allocation
+- Dynamic max weight per pool ensures diversification
+- Iterative redistribution algorithm prevents over-concentration
 
-### Fee Types
-
-1. **Entry Fees**: Applied on deposits
-2. **Exit Fees**: Applied on withdrawals  
-3. **Management Fees**: Time-based fees on AUM
-4. **Performance Fees**: Percentage of profits
-5. **Flash Fees**: For flash loan operations
-
-### Ratio-Based Fee Adjustment
-
-```solidity
-// Fees adjust based on how operations affect vault ratios
-int256 ratioDiff = calculateRatioImprovement(operation);
-uint256 adjustedFee = baseFee + ratioAdjustment(ratioDiff);
-```
-
-This incentivizes balanced operations and penalizes ratio-worsening activities.
-
-## Access Control System
-
-### Role Hierarchy
-
-```mermaid
-graph TD
-    A[ADMIN_ROLE Root Admin] --> B[MANAGER_ROLE]
-    A --> C[KEEPER_ROLE]
-    A --> D[TREASURY_ROLE]
-    
-    B --> E[Vault configuration]
-    B --> F[Range weight management]
-    B --> G[Protocol parameters]
-    
-    C --> H[Rebalancing operations]
-    C --> I[Range minting/burning]
-    C --> J[Fee collection triggers]
-    
-    D --> K[Fee collection execution]
-```
-
-### Permission Matrix
-
-| Function | Admin | Manager | Keeper | User |
-|----------|-------|---------|--------|------|
-| Create Vault | ✓ | ✗ | ✗ | ✗ |
-| Set Weights | ✗ | ✓ | ✗ | ✗ |
-| Rebalance | ✗ | ✗ | ✓ | ✗ |
-| Deposit | ✗ | ✗ | ✗ | ✓ |
-| Withdraw | ✗ | ✗ | ✗ | ✓ |
+**Reference**: [`docs/vault-allocation.md`](./vault-allocation.md)
 
 ## Security Architecture
 
-### Reentrancy Protection
+### Multi-Layer Protection
 
-```solidity
-modifier nonReentrant() {
-    require(_status != _ENTERED, "ReentrancyGuard: reentrant call");
-    _status = _ENTERED;
-    _;
-    _status = _NOT_ENTERED;
-}
-```
+1. **Contract Level**: Reentrancy guards, pausability, input validation
+2. **Protocol Level**: Role-based access control, timelock for upgrades
+3. **Operational Level**: Emergency pause mechanisms, rescue functions
 
-All state-changing functions use reentrancy guards.
+### Risk Management
 
-### Pausability
+- **Diversification**: Maximum allocation limits per DEX pool
+- **Liquidity Buffers**: Cash reserves for emergency liquidations
+- **Upgrade Safety**: Diamond cuts with security review process
 
-- **Protocol-level pausing**: Emergency stop for all operations
-- **Vault-level pausing**: Granular control per vault
-- **Function-level checks**: Each operation validates pause state
+**Reference**: [`docs/security/`](./security/)
 
-### Input Validation
+## Gas Optimization
 
-- **Token ordering**: Ensures token0 < token1 for all pairs
-- **Range validation**: Tick bounds and liquidity checks
-- **Slippage protection**: Minimum/maximum bounds on all operations
+### Core Strategies
 
-## Gas Optimization Strategies
+1. **Batch Operations**: Multiple ranges managed in single transactions
+2. **Storage Optimization**: Packed structs, minimal storage reads
+3. **ERC-1155**: Shared vault contract reduces deployment costs
+4. **Cash Buffer**: Eliminates per-transaction DEX interactions
 
-### Batch Operations
+### Performance Metrics
 
-```solidity
-// Multiple ranges can be managed in single transaction
-function rebalance(RebalanceParams memory _params) external {
-    // Burn all existing ranges
-    // Execute required swaps
-    // Mint new ranges
-}
-```
-
-### Storage Optimization
-
-- **Packed structs**: Minimize storage slots
-- **Unchecked arithmetic**: Where overflow is impossible
-- **Memory vs storage**: Careful consideration of data location
-
-### Call Optimization
-
-- **External calls batching**: Reduce external call overhead
-- **View function optimization**: Minimize state reads
-- **Assembly usage**: For critical path optimizations
-
-## Upgrade Pattern
-
-### Diamond Cuts
-
-```solidity
-struct FacetCut {
-    address facetAddress;
-    FacetCutAction action;  // Add, Replace, Remove
-    bytes4[] functionSelectors;
-}
-```
-
-### Upgrade Process
-
-1. **Preparation**: New facet development and testing
-2. **Proposal**: Create diamond cut proposal
-3. **Review**: Security review and approval
-4. **Execution**: Execute diamond cut
-5. **Verification**: Validate successful upgrade
-
-### Safety Measures
-
-- **Timelock**: Delayed execution for sensitive upgrades
-- **Multi-sig**: Required approvals for major changes
-- **Rollback capability**: Ability to revert problematic upgrades
+- User operations: $1-4 gas cost vs $15-50 for direct DEX interaction
+- Batch efficiency: Thousands of user operations amortized across single keeper transactions
+- Storage optimization: ~70% reduction in storage slot usage
 
 ## Integration Patterns
 
-### External System Integration
+### External Systems
 
-1. **Oracle Integration**: Price feeds and TWAP calculations
-2. **Bridge Support**: Cross-chain asset management (future)
-3. **Keeper Networks**: Automated operation execution
-4. **Analytics Dashboards**: Read-only access to vault data
+1. **Oracle Integration**: Multi-DEX price feeds and TWAP calculations
+2. **Keeper Networks**: Automated rebalancing and range management
+3. **Frontend Systems**: Read-only vault analytics and user interfaces
+4. **Bridge Support**: Cross-chain asset management (future)
 
-### API Patterns
+### API Standardization
 
-```solidity
-// Consistent interface across all facets
-interface IALMFacet {
-    function initialize() external;
-    // Facet-specific functions
-}
+- Consistent interface patterns across all facets
+- Standardized error handling and event emission
+- Preview functions for all user operations
 
-// Standardized error handling
-library BTRErrors {
-    error NotFound(ErrorType _type);
-    error Unauthorized(ErrorType _origin);
-    // ... other errors
-}
-```
+**Reference**: [`evm/interfaces/`](../evm/interfaces/)
 
-## Future Architecture Considerations
+## Upgrade Mechanism
+
+### Diamond Cuts
+
+**Process**:
+1. Develop and test new facet implementations
+2. Create diamond cut proposal with function selector mappings
+3. Security review and multi-sig approval
+4. Execute diamond cut with timelock protection
+5. Verify successful upgrade and functionality
+
+**Safety Measures**:
+- Timelock delays for sensitive upgrades
+- Multi-signature requirements for major changes
+- Rollback capability for problematic deployments
+
+## Future Architecture
 
 ### Planned Enhancements
 
-1. **Cross-chain Support**: Cross-chain vault management
-2. **Asset Support**: Integration more stable and volatile assets
-3. **CDO**: Vault shares collateralization to mint liquid tokens (eg. USD, BTC or ETH pegged)
-4. **Leverage**: The above would open multiple leverage paths, allowing to provide leveraged liquidity to underlying DEXs
+1. **Cross-Chain Support**: Multi-chain vault management and asset bridging
+2. **Asset Expansion**: Support for additional stable and volatile asset pairs
+3. **CDO Integration**: Vault share collateralization for liquid token minting
+4. **Leverage Mechanisms**: Multiple leverage paths for enhanced capital efficiency
 
-This architecture provides a robust, scalable, and maintainable foundation for the BTR Supply protocol, notably the ALM.
+### Scalability Considerations
+
+- Layer 2 deployment strategies
+- Cross-chain interoperability protocols
+- Advanced oracle aggregation systems
+- Automated market maker integrations
+
+---
+
+**Documentation Structure**:
+- **Implementation Details**: [`docs/alm/`](./alm/)
+- **User Flows**: [`docs/alm/user-flows.md`](./alm/user-flows.md)
+- **Protocol Flows**: [`docs/alm/protocol-flows.md`](./alm/protocol-flows.md)
+- **Metrics & Analytics**: [`docs/metrics/`](./metrics/)

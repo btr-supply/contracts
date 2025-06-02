@@ -1,87 +1,210 @@
-# ALM Protocol Testing Strategy
+# BTR Protocol Testing Strategy
 
-This document outlines the comprehensive testing strategy for the BTR protocol's Automated Liquidity Management (ALM) infrastructure. It covers test targets, environment setup, structure, requirements, implementation plans, review processes, and additional testing considerations.
+## Overview
 
-## Test Coverage Targets
-Implementations will appear in:
-- `CakeV3StableALMTest.t.sol` (for PancakeSwap V3)
-- `ThenaV3StableALMTest.t.sol` (for Thena V3)
-- `UniV3StableALMTest.t.sol` (for Uniswap V3)
+Comprehensive testing strategy for BTR Protocol's Automated Liquidity Management (ALM) system, covering unit tests, integration tests, and end-to-end scenarios across multiple DEX adapters.
 
-All tests inherit from the abstract `BaseALMTest.t.sol` which provides common ALM testing infrastructure.
+## Test Architecture
 
-## Environment Setup
-- Testing operates on BNB Chain forks using the RPC URL in `.env` variable: `HTTPS_RPC_56`
-- Diamond deployment and facet setup is handled through `BaseDiamondTest.t.sol`
-- Build commands defined in `scripts/setup.sh` compile contracts and generate deployment scripts
+### Test Hierarchy
 
-## Test Structure and Requirements
+```mermaid
+graph TD
+    BaseTest[BaseDiamondTest.t.sol] --> ALMBase[BaseALMTest.t.sol]
+    ALMBase --> UniV3[UniV3StableALMTest.t.sol]
+    ALMBase --> CakeV3[CakeV3StableALMTest.t.sol]
+    ALMBase --> Thena[ThenaV3StableALMTest.t.sol]
+    
+    BaseTest --> Unit[Unit Tests]
+    Unit --> AccessControl[AccessControlTest.t.sol]
+    Unit --> Management[ManagementTest.t.sol]
+    Unit --> Treasury[TreasuryTest.t.sol]
+    Unit --> Diamond[DiamondTest.t.sol]
+```
 
-### Core Test Abstractions
-1. **BaseDiamondTest.t.sol**: Handles diamond deployment with all core facets correctly initialized.
-2. **BaseALMTest.t.sol**: Sets up ALM environment, declaring virtual methods to be overridden:
-   - `weights()` - Position weight distribution
-   - `ranges()` - Tick boundaries for positions
-   - `getToken0()`, `getToken1()` - Fetch test tokens
-   - `pools()` - Return test pool addresses
+### Base Test Components
 
-### Test Implementation Requirements
-Each DEX adapter test should implement full lifecycle tests:
+1. **BaseDiamondTest.t.sol**: Diamond deployment and facet initialization
+2. **BaseALMTest.t.sol**: ALM environment setup with virtual methods:
+   - `weights()`: Position weight distribution
+   - `ranges()`: Tick boundaries for positions
+   - `getToken0()`, `getToken1()`: Test token configuration
+   - `pools()`: DEX pool addresses
 
-1. **Setup and Initialization**
-   - Deploy adapter facets for specific DEX (CakeV3, ThenaV3, UniV3)
-   - Register pool info with actual mainnet pool addresses
-   - Create single vault per test file
+**Reference**: [`evm/test/`](../evm/test/)
 
-2. **Range Position Management**
-   - Set appropriate UPPER_PRICE_LIMIT and LOWER_PRICE_LIMIT for each DEX
-   - Convert price limits to ticks via LibDEXMaths
-   - Verify `setWeights` and `zeroOutWeights` functionality (ALMProtectedFacet)
+## Test Environment
 
-3. **Rebalancing Tests**
-   - Equal Rebalance: Same range, no swaps needed
-   - Full Rebalance: Different range requiring swaps (using CLI `btr-swap`) 
-   - Test individual range management functions (`burnRanges`, `mintRanges`, `remintRanges`)
-   - Track residual token balances after swaps
-   - Validate preview functions (`prepareRebalance`, `previewBurnRanges`)
+### Network Configuration
 
-4. **User Flow Testing**
-   - Test all deposit variants:
-     - Regular deposit (token amounts)
-     - Safe deposit (with minimum shares)
-     - Exact token0/token1 deposits
-     - Mint (share-based)
-   - Test all withdrawal variants:
-     - Regular withdraw (token amounts)
-     - Safe withdraw (with maximum burnt shares)
-     - Exact token0/token1 withdrawals
-     - Redeem (share-based)
-   - Test preview functions match actual operation results
-   - Validate all "safe" variants revert when constraints are not met
-   - Verify fees are correctly collected by treasury
+- **Primary**: BNB Chain forks (HTTPS_RPC_56)
+- **Secondary**: Ethereum mainnet forks for Uniswap V3 testing
+- **Local**: Anvil for isolated testing scenarios
 
-5. **Vault Management Testing**
-   - Test pause/unpause functionality
-   - Validate mint restrictions (restrictMint)
-   - Test totalSupply, maxSupply limits
+### Build Integration
 
-## Review Plan
+```bash
+# Complete test build
+make test
 
-- Audit diamond deployment flows via `make build` or `build.sh` and `DiamondCutFacet` for correct facet inclusion and `onlyAdmin` protection. Check tests in `DiamondTest.t.sol`.
-- Verify `setDexAdapter` and `setPoolInfo` enforce `onlyManager` and handle idempotency and error cases (primarily tested via setup in `BaseALMTest.t.sol`).
-- Confirm `createVault` initialization logic and `onlyAdmin` access control (tested via `BaseALMTest.t.sol`).
-- Ensure all vault upkeep functions (`rebalance`, `mintRanges`, `remintRanges` and `burnRanges`) are gated by `onlyKeeper`.
-- Verify all vault management functions (`pauseAlmVault`, `unpauseAlmVault`, `restrictMint`, `setWeights`, `zeroOutWeights`) are protected by `onlyManager`.
-- Check that only the treasury's fee collector can call `collectAlmFees` (tested in `TreasuryTest.t.sol`).
-- Validate user flows (all deposit and withdrawal variants) apply `whenVaultNotPaused`, `nonReentrant`, and correct fee logic (tested in `BaseALMTest.t.sol` and children).
-- Verify all preview functions return accurate estimates that match actual operation results.
-- Review safety mechanisms in "safe" variants of user functions to ensure they properly revert when constraints aren't met.
-- Review ERC1155 vault operations (`mint`, `burn` in `ERC1155VaultsFacet`) enforce `onlyUnrestrictedMinter` and maintain NFT accounting integrity (tested implicitly in ALM flows).
-- Audit sensitive modifiers across facets (`onlyAdmin`, `onlyManager`, `onlyKeeper`, `onlyTreasury`, `onlyUnrestrictedMinter`, `whenVaultNotPaused`, `nonReentrant`) and ensure coverage in relevant unit tests (`AccessControlTest.t.sol`, `ManagementTest.t.sol`, `TreasuryTest.t.sol`, `RescueTest.t.sol`) and integration tests (`BaseALMTest.t.sol` ...).
-- Identify test coverage gaps for preview APIs, full-rebalance swap paths, edge-case fee scenarios, and inverted-pair support.
+# Individual test categories
+make test-unit        # Unit tests only
+make test-integration # Integration tests only
+make test-alm         # ALM-specific tests
+```
 
-## Additional Considerations
-- Token sorting consistency across pools is critical; test reverse-order tokens to verify adapters handle this correctly.
-- Vault-level accounting must be solid - especially for leftover tokens after rebalances. Current implementation does not keep track of excess tokens per vault, only active positions (dust/excess liquidity after rebalance swaps+deposits are all accrued to the Diamond address, which will be problematic)
-- Protocol fees must be accurately tracked and accrued per vault and collectible by the treasury. Pending fees should be reset per-vault when collected.
-- Test full information flow through ALMInfoFacet to verify all view functions accurately represent vault state.
+**Reference**: [`Makefile`](../Makefile)
+
+## Test Coverage Requirements
+
+### Core Functionality Tests
+
+#### 1. Diamond Pattern Testing
+- Facet deployment and registration
+- Diamond cuts and upgrades
+- Function selector routing
+- Access control integration
+
+#### 2. ALM Lifecycle Testing
+- Vault creation and initialization
+- Range position management
+- Rebalancing operations
+- Fee collection and accounting
+
+#### 3. User Flow Testing
+- **Deposit Variants**: Standard, safe, exact amounts, single-sided
+- **Withdrawal Variants**: Standard, safe, exact amounts, single-sided
+- **Preview Functions**: Accurate estimates for all operations
+- **Safety Mechanisms**: Proper reversion when constraints not met
+
+#### 4. DEX Adapter Testing
+- Pool registration and validation
+- Liquidity minting and burning
+- Swap execution and slippage handling
+- Fee calculation and collection
+
+### Security Testing
+
+#### Access Control Validation
+- `onlyAdmin`: Protocol governance functions
+- `onlyManager`: Vault configuration operations
+- `onlyKeeper`: Rebalancing and automation
+- `onlyTreasury`: Fee collection functions
+
+#### Safety Mechanism Testing
+- Reentrancy protection (`nonReentrant`)
+- Pause functionality (`whenVaultNotPaused`)
+- Input validation and bounds checking
+- Emergency rescue operations
+
+**Reference**: [`docs/access-control/roles.md`](./access-control/roles.md)
+
+## Test Implementation Strategy
+
+### DEX-Specific Test Files
+
+Each DEX adapter requires comprehensive testing:
+
+```solidity
+contract UniV3StableALMTest is BaseALMTest {
+    // Override virtual methods
+    function pools() internal override returns (bytes32[] memory) { ... }
+    function ranges() internal override returns (Range[] memory) { ... }
+    function weights() internal override returns (uint256[] memory) { ... }
+    
+    // DEX-specific test implementations
+    function test_UniV3_Rebalancing() external { ... }
+    function test_UniV3_UserFlows() external { ... }
+}
+```
+
+### Test Scenarios
+
+#### 1. Rebalancing Tests
+- **Equal Rebalance**: Same ranges, no swaps required
+- **Full Rebalance**: Different ranges requiring token swaps
+- **Partial Rebalance**: Selective range updates
+- **Emergency Rebalance**: Liquidation scenarios
+
+#### 2. User Flow Tests
+- **Standard Operations**: Normal deposit/withdrawal flows
+- **Edge Cases**: Minimum/maximum amounts, slippage limits
+- **Error Conditions**: Insufficient balance, paused vaults
+- **Fee Scenarios**: Various fee configurations and calculations
+
+#### 3. Integration Tests
+- **Multi-DEX Operations**: Cross-protocol interactions
+- **Oracle Integration**: Price feed validation
+- **Keeper Operations**: Automated rebalancing triggers
+- **Treasury Operations**: Fee collection and distribution
+
+## Test Data and Scenarios
+
+### Test Token Configuration
+
+- **Stable Pairs**: USDC/USDT for low-volatility testing
+- **Volatile Pairs**: ETH/USDC for high-volatility scenarios
+- **Exotic Pairs**: Custom tokens for edge case testing
+
+### Price Range Testing
+
+- **In-Range**: Current price within active ranges
+- **Out-of-Range**: Price movements outside ranges
+- **Range Transitions**: Price crossing range boundaries
+- **Extreme Movements**: Large price swings and rebalancing
+
+## Test Validation
+
+### Accuracy Requirements
+
+- **Preview Functions**: ±0.1% accuracy vs actual operations
+- **Fee Calculations**: Exact match with expected fees
+- **Balance Accounting**: Zero tolerance for accounting errors
+- **Gas Usage**: Within 10% of expected gas consumption
+
+### Performance Benchmarks
+
+- **Deployment**: < 15M gas for complete system
+- **Vault Creation**: < 500K gas per vault
+- **Rebalancing**: < 2M gas for 3-range rebalance
+- **User Operations**: < 200K gas for standard deposit/withdrawal
+
+## Known Issues and Considerations
+
+### Current Limitations
+
+1. **Dust Handling**: Excess tokens after rebalancing not properly tracked per vault
+2. **Token Sorting**: Requires validation across all DEX adapters for consistency
+3. **Fee Accounting**: Per-vault fee tracking needs verification
+4. **Preview Accuracy**: Some edge cases may have estimation errors
+
+### Testing Priorities
+
+1. **High Priority**: Access control, user fund safety, fee accuracy
+2. **Medium Priority**: Gas optimization, preview function accuracy
+3. **Low Priority**: Edge case handling, performance optimization
+
+**Reference**: [`docs/todo.md`](./todo.md) for testing roadmap
+
+## Continuous Integration
+
+### Automated Testing
+
+- **Pre-commit**: Unit tests and linting
+- **Pull Request**: Full integration test suite
+- **Release**: Comprehensive test suite plus gas benchmarks
+- **Deploy**: Mainnet fork testing before actual deployment
+
+### Test Reporting
+
+- **Coverage**: Minimum 90% line coverage for core contracts
+- **Gas Reports**: Automated gas usage tracking
+- **Security**: Static analysis and vulnerability scanning
+- **Performance**: Benchmark comparison across versions
+
+---
+
+**Test Execution**:
+- **Local Development**: [`scripts/test.sh`](../scripts/test.sh)
+- **CI/CD Pipeline**: [`.github/workflows/`](../.github/workflows/)
+- **Gas Analysis**: [`scripts/gas-report.sh`](../scripts/gas-report.sh)

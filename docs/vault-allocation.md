@@ -2,15 +2,15 @@
 
 ## Overview
 
-The BTR protocol implements a sophisticated risk-based allocation system that **distributes vault TVL across liquidity pools from multiple DEXs** (Uniswap V3, Uniswap V4, PancakeSwap, Thena, etc.) based on composite scoring and exponential weighting. This methodology ensures optimal diversification while maintaining risk-adjusted returns across the multi-DEX ecosystem.
+BTR Protocol implements a risk-based allocation system that distributes vault TVL across liquidity pools from multiple DEXs based on composite scoring and exponential weighting. This methodology aims to optimize diversification while maintaining risk-adjusted returns across the multi-DEX ecosystem.
 
 ## DEX Pool Composite Scoring (cScore)
 
 ### Methodology
 
-Each **DEX liquidity pool** receives a composite score (cScore) that represents its overall quality across multiple dimensions:
+Each DEX liquidity pool receives a composite score representing its overall quality across three dimensions:
 
-1. **Trust Score**: DEX protocol security, audit status, team reputation, decentralization level
+1. **Trust Score**: Protocol security, audit status, team reputation, decentralization level
 2. **Liquidity Score**: Pool TVL depth, trading volume consistency, capital efficiency, slippage characteristics  
 3. **Performance Score**: Fee generation efficiency (fee/TVL ratio), impermanent loss/LVR metrics, yield stability
 
@@ -18,20 +18,22 @@ Each **DEX liquidity pool** receives a composite score (cScore) that represents 
 
 The composite score uses a geometric mean to ensure balanced evaluation across all risk dimensions:
 
-```solidity
+```
 cScore = (trustScore × liquidityScore × performanceScore)^(1/3)
 ```
 
-**Key Properties:**
-- **Zero Tolerance**: Any zero score results in composite zero (eliminates unsafe DEX pools)
-- **Balanced Weighting**: No single dimension can dominate the pool score
-- **Multiplicative Relationship**: All dimensions must perform reasonably well for high allocation
+**Properties**:
+- Any zero score results in composite zero (eliminates problematic pools)
+- Balanced weighting across all dimensions
+- All dimensions must perform reasonably well for high allocation
 
-### Score Range
+**Reference**: [`evm/src/libraries/LibManagement.sol`](../evm/src/libraries/LibManagement.sol)
+
+### Score Parameters
 
 - **Range**: 0 to 10,000 BPS (0% to 100%)
 - **Default**: 5,000 BPS (50%) for new DEX pools
-- **Updates**: Manager-controlled via `setPoolCScore()` for each DEX integration
+- **Updates**: Manager-controlled via `setPoolCScore()` function
 
 ## Weight Allocation Algorithm
 
@@ -70,7 +72,7 @@ maxWeight = minMaxBp + e^(-poolCount × diversificationFactorBp)
 
 ### Weight Capping Algorithm
 
-The system implements an iterative redistribution algorithm:
+Iterative redistribution algorithm:
 
 1. **Calculate Raw Weights**: Apply exponential function to scores
 2. **Identify Excess**: Find pools exceeding maximum weight
@@ -81,23 +83,14 @@ The system implements an iterative redistribution algorithm:
 
 ### Target Allocation Calculation
 
-For a vault with total TVL in USD:
-
-```solidity
-function targetAllocations(
-    uint16[] memory cScores,
-    uint256 totalAmount,
-    uint16 maxWeightBp,
-    uint16 scoreAmplifierBp
-) returns (uint256[] memory allocations)
-```
-
-### Steps:
+For a vault with total TVL:
 
 1. **Score Validation**: Ensure all scores are valid (0-10000 BPS)
 2. **Weight Calculation**: Apply exponential weighting with capping
 3. **Amount Distribution**: Multiply weights by total amount
 4. **Dust Adjustment**: Add remainder to largest allocation
+
+**Reference**: [`evm/src/libraries/LibALMBase.sol`](../evm/src/libraries/LibALMBase.sol)
 
 ### Example Allocation
 
@@ -105,26 +98,23 @@ function targetAllocations(
 
 1. **Raw Weights**: [8000^1.5, 6000^1.5, 4000^1.5, 2000^1.5]
 2. **Normalized**: [45.3%, 31.2%, 16.0%, 7.5%]
-3. **Capped**: Apply 55% max weight (no capping needed)
+3. **Capped**: Apply 55% max weight (no capping needed in this case)
 4. **Final Allocation**: [$453K, $312K, $160K, $75K]
 
 ## Risk Management Integration
 
 ### Liquidity Requirements
 
-The allocation system integrates with liquidity management:
-
-```solidity
-function targetAlmWeightsAndLiquidity(ALMVault storage vault)
-    returns (uint256[] memory weights, uint256 targetLiquidityRatioBp)
-```
+The allocation system integrates with liquidity management to maintain optimal cash ratios based on vault scale and flow patterns.
 
 ### Dynamic Rebalancing
 
-Allocations adjust automatically based on:
+Allocations adjust based on:
 - **Score Updates**: Manager adjustments to pool cScores
 - **TVL Changes**: Vault growth/shrinkage affects liquidity ratios
 - **Pool Addition/Removal**: Diversification parameters adapt
+
+**Reference**: [`docs/alm/protocol-flows.md`](./alm/protocol-flows.md)
 
 ## Implementation Details
 
@@ -179,6 +169,8 @@ WeightModel({
 - **Rebalancing Frequency**: How often allocations change
 - **Performance Attribution**: Returns by pool weight
 
+**Reference**: [`docs/metrics/allocation.md`](./metrics/allocation.md)
+
 ### Risk Indicators
 
 - **Concentration Risk**: Single pool weight > 50%
@@ -194,9 +186,4 @@ WeightModel({
 3. **Volatility Weighting**: Adjust for pool volatility differences
 4. **Time-Weighted Scoring**: Historical performance integration
 
-### Research Areas
-
-- **Machine Learning**: Predictive scoring models
-- **Cross-Chain**: Multi-chain allocation optimization
-- **MEV Protection**: Front-running resistant rebalancing
-- **Liquidity Mining**: Incentive-aware allocation 
+**Reference**: [`docs/todo.md`](./todo.md) for implementation timeline
