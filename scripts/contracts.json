@@ -1,0 +1,237 @@
+{
+  "BTRDiamond": {
+    "required": true,
+    "initializable": true,
+    "salt": "0x0a37aec263cba0aabc09bac56a0f2074a22e69a300f9dc05ebadfeea0076dd1a",
+    "description": "BTR Diamond proxy contract",
+    "expectedAddress": "0xB71277d580D45F4Aa4E03cD261CA34527785B712"
+  },
+  "BTR": {
+    "required": false,
+    "initializable": true,
+    "salt": "0x0a37aec263cba0aabc09bac56a0f2074a22e69a300637409d4a5539601c914cc",
+    "description": "BTR ERC20 token contract",
+    "expectedAddress": "0xB7126f81759Cf7495721e70c0765A6fCcE72B712"
+  },
+  "facets": {
+    "AccessControlFacet": {
+      "required": false,
+      "payable": false,
+      "initializable": false,
+      "includeInDeployer": true,
+      "includeInCuts": true,
+      "salt": "0x0a37aec263cba0aabc09bac56a0f2074a22e69a30030d6f06d1a2b1002c664a2",
+      "expectedAddress": "0xb7127AE785907441BFBC6C7bDAcC339CD7e2b712",
+      "ownedSelectors": [
+        "admin()",
+        "checkRole(bytes32)",
+        "checkRole(bytes32,address)",
+        "keepers()",
+        "managers()",
+        "grantRole(bytes32,address)",
+        "hasRole(bytes32,address)",
+        "isAdmin(address)",
+        "isBlacklisted(address)",
+        "isKeeper(address)",
+        "isManager(address)",
+        "isTreasury(address)",
+        "isWhitelisted(address)",
+        "revokeRole(bytes32,address)",
+        "treasury()",
+        "diamond()",
+        "isDiamond(address)"
+      ]
+    },
+    "DiamondCutFacet": {
+      "required": true,
+      "payable": false,
+      "initializable": false,
+      "includeInDeployer": false,
+      "includeInCuts": false,
+      "salt": "0x0a37aec263cba0aabc09bac56a0f2074a22e69a300bd8547f48cdb0302ad4c3e",
+      "expectedAddress": "0xb712dCA09c4327daC7789EA34574783dC554b712",
+      "ownedSelectors": [
+        "diamondCut((address,uint8,bytes4[])[],address,bytes)"
+      ]
+    },
+    "DiamondLoupeFacet": {
+      "required": true,
+      "payable": false,
+      "initializable": false,
+      "includeInDeployer": true,
+      "includeInCuts": true,
+      "salt": "0x0a37aec263cba0aabc09bac56a0f2074a22e69a300f97afd86eb2822037ef997",
+      "expectedAddress": "0xb7122066D05B248FB3F09025EFe1db9d1761b712",
+      "ownedSelectors": [
+        "facetAddress(bytes4)",
+        "facetAddresses()",
+        "facetFunctionSelectors(address)",
+        "facets()",
+        "supportsInterface(bytes4)"
+      ]
+    },
+    "ManagementFacet": {
+      "required": false,
+      "payable": false,
+      "initializable": true,
+      "includeInDeployer": true,
+      "includeInCuts": true,
+      "salt": "0x0a37aec263cba0aabc09bac56a0f2074a22e69a3007364b2b87a4d7f01969bc2",
+      "expectedAddress": "0xb7128212286a6e7f4fEF52E9c5CE6963C75ab712",
+      "ownedSelectors": [
+        "isPaused()",
+        "isPaused(uint32)",
+        "pause()",
+        "pause(uint32)",
+        "unpause()",
+        "unpause(uint32)"
+      ]
+    },
+    "RescueFacet": {
+      "required": false,
+      "payable": true,
+      "initializable": true,
+      "includeInDeployer": true,
+      "includeInCuts": true,
+      "salt": "0x0a37aec263cba0aabc09bac56a0f2074a22e69a30034678660a51ffe032a91de",
+      "expectedAddress": "0xb71269762A37C3bAaE98Bc1C9d95aec3885Fb712",
+      "ownedSelectors": []
+    },
+    "SwapFacet": {
+      "required": true,
+      "payable": false,
+      "initializable": true,
+      "includeInDeployer": true,
+      "includeInCuts": true,
+      "salt": "0x0a37aec263cba0aabc09bac56a0f2074a22e69a3009083cfa69f58ef012aaf17",
+      "expectedAddress": "0xb7120441f633D69E9DA41ba35Ea34C5FDDC0b712",
+      "ownedSelectors": []
+    },
+    "ALMInfoFacet": {
+      "required": true,
+      "payable": true,
+      "initializable": false,
+      "includeInDeployer": true,
+      "includeInCuts": true,
+      "salt": "0x0a37aec263cba0aabc09bac56a0f2074a22e69a300cd34ffd7f2032b0224f7f9",
+      "expectedAddress": "0xb712Ad3BF61287d5215967B46AB004d4D8F8b712",
+      "ownedSelectors": []
+    },
+    "ALMUserFacet": {
+      "required": true,
+      "payable": true,
+      "initializable": false,
+      "includeInDeployer": true,
+      "includeInCuts": true,
+      "salt": "0x0a37aec263cba0aabc09bac56a0f2074a22e69a3006b72cc545afe49025539a4",
+      "expectedAddress": "0xb712ecdCAe7C9D7CC09E17d0aFb5D3A9BD84b712",
+      "ownedSelectors": []
+    },
+    "ALMProtectedFacet": {
+      "required": true,
+      "payable": false,
+      "initializable": false,
+      "includeInDeployer": true,
+      "includeInCuts": true,
+      "salt": "0x0a37aec263cba0aabc09bac56a0f2074a22e69a3004f092449c979df037ccf9e",
+      "expectedAddress": "0xb7128D71a6007e0D20bE7B79c91f033bB88eb712",
+      "ownedSelectors": []
+    },
+    "TreasuryFacet": {
+      "required": false,
+      "payable": false,
+      "initializable": true,
+      "includeInDeployer": true,
+      "includeInCuts": true,
+      "salt": "0x0a37aec263cba0aabc09bac56a0f2074a22e69a300b5f29f92392cad00263e71",
+      "expectedAddress": "0xb7127500d2AF9bc26ae4BBaFE6f0C69d32b6b712",
+      "ownedSelectors": []
+    },
+    "InfoFacet": {
+      "required": false,
+      "payable": false,
+      "initializable": false,
+      "includeInDeployer": true,
+      "includeInCuts": true,
+      "salt": "0x0a37aec263cba0aabc09bac56a0f2074a22e69a30082476e2f333f6e0357ff34",
+      "expectedAddress": "0xb712194a06eE406E6b84b655f6759075Fc93b712",
+      "ownedSelectors": []
+    },
+    "OracleFacet": {
+      "required": false,
+      "payable": false,
+      "initializable": true,
+      "includeInDeployer": true,
+      "includeInCuts": true,
+      "salt": "0x0a37aec263cba0aabc09bac56a0f2074a22e69a300dcf541c4deaf8a0014e12f",
+      "expectedAddress": "0xb712f924D63431d95713864768a5E93Ec28Cb712",
+      "ownedSelectors": []
+    },
+    "RiskModelFacet": {
+      "required": false,
+      "payable": false,
+      "initializable": true,
+      "includeInDeployer": true,
+      "includeInCuts": true,
+      "salt": "0x0a37aec263cba0aabc09bac56a0f2074a22e69a3001fd3fbe4b326fa03f9d415",
+      "expectedAddress": "0xb712D910E26E9bd8a74D29D9a92832f3e430b712",
+      "ownedSelectors": []
+    }
+  },
+  "adapters": {
+    "dexs": {
+      "UniV3Adapter": {
+        "salt": "0x0a37aec263cba0aabc09bac56a0f2074a22e69a3007f7376a3eb2fff03398e1e",
+        "expectedAddress": "0xbbbb4a42775f9d01fb2870e702c7ed47ed5b04bb",
+        "description": "Uniswap V3 DEX adapter"
+      },
+      "UniV4Adapter": {
+        "salt": "0x0a37aec263cba0aabc09bac56a0f2074a22e69a300bc1f715b7ef8ff03b100a2",
+        "expectedAddress": "0xbbbb12e5f2e8682a731202645cf3f863e9a5e2bb",
+        "description": "Uniswap V4 DEX adapter"
+      },
+      "CakeV3Adapter": {
+        "salt": "0x0a37aec263cba0aabc09bac56a0f2074a22e69a3003ef9f4b604c0fd03d65b4d",
+        "expectedAddress": "0xbbbb9d6e02822bfe346b42985f54903d16419cbb",
+        "description": "PancakeSwap V3 DEX adapter"
+      },
+      "CakeV4Adapter": {
+        "salt": "0x0a37aec263cba0aabc09bac56a0f2074a22e69a300557ce5d8a6dbfe038ec92b",
+        "expectedAddress": "0xbbbb8b9e7794532c28a72cc1513fd7f76257b0bb",
+        "description": "PancakeSwap V4 DEX adapter"
+      },
+      "ThenaV3Adapter": {
+        "salt": "0x0a37aec263cba0aabc09bac56a0f2074a22e69a3001720cb50c3cdfd03560672",
+        "expectedAddress": "0xbbbb90f51f61bf8b1f96f2528daebdfc321f91bb",
+        "description": "Algebra V3 DEX adapter"
+      },
+      "VeloV3Adapter": {
+        "salt": "0x0a37aec263cba0aabc09bac56a0f2074a22e69a300bc8a0a155f83ff03facaba",
+        "expectedAddress": "0xbbbb1fb625a6fa6f8a03e1b1c6d26a41177bf7bb",
+        "description": "Velo V3 DEX adapter"
+      },
+      "AeroV3Adapter": {
+        "salt": "0x0a37aec263cba0aabc09bac56a0f2074a22e69a300fab2bc8b8f2dfd0330eccc",
+        "expectedAddress": "0xbbbb9094f5bf727a6144b354029abafb8c384fbb",
+        "description": "Aero V3 DEX adapter"
+      },
+      "CamelotV3Adapter": {
+        "salt": "0x0a37aec263cba0aabc09bac56a0f2074a22e69a300629fcc7678ddff038a4e2a",
+        "expectedAddress": "0xbbbb91b967c1efe11f0be13b8b191bc6e71ac5bb",
+        "description": "Camelot V3 DEX adapter"
+      }
+    },
+    "oracles": {
+      "ChainlinkProvider": {
+        "salt": "0x0a37aec263cba0aabc09bac56a0f2074a22e69a300e4269b50f9dafc03541aa5",
+        "expectedAddress": "0xbbbbe41729d9ad375c979fe8562e05f8036b88bb",
+        "description": "Chainlink price provider"
+      },
+      "PythProvider": {
+        "salt": "0x0a37aec263cba0aabc09bac56a0f2074a22e69a300876580efd47fff037051ca",
+        "expectedAddress": "0xbbbb4cd51926fd22943de93f5f2768e01a8da0bb",
+        "description": "Pyth price provider"
+      }
+    }
+  }
+}
