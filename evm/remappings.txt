@@ -7,6 +7,7 @@ forge-std/=.deps/forge-std/src/
 @interfaces/=interfaces/
 @libraries/=src/libraries/
 @utils/=utils/
+@scripts/=scripts/
 @dexs/=src/adapters/dexs/
 @oracles/=src/adapters/oracles/
 @bridges/=src/adapters/bridges/

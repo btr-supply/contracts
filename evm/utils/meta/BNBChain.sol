@@ -34,7 +34,7 @@ abstract contract BnbChainMeta is __ChainMeta {
 
     function __link() public pure override returns (ChainlinkMeta memory l) {
         l.gov = 0x0567F2323251f0Aab15c8dFb1967E4e8A7D42aeE; // BNB
-        l.wgas = 0x0567F2323251f0Aab15c8dFb1967E4e8A7D42aeE; // BNB
+        l.gas = 0x0567F2323251f0Aab15c8dFb1967E4e8A7D42aeE; // BNB
         l.usdt = 0xB97Ad0E74fa7d920791E90258A6E2085088b4320;
         l.usdc = 0x51597f405303C4377E36123cBc172b13269EA163;
         l.eth = 0x9ef1B8c0E4F7dc8bF5719Ea496883DC6401d5b2e;

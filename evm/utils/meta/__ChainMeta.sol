@@ -2,6 +2,7 @@
 pragma solidity 0.8.29;
 
 import {IPriceProvider} from "@interfaces/IPriceProvider.sol";
+import {LibCast} from "@libraries/LibCast.sol";
 
 /*
  * @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
@@ -73,22 +74,22 @@ abstract contract __ChainMeta {
         ChainlinkMeta memory l = __link();
         TokenMeta memory t = __tokens();
         (p.feeds, p.providerIds, p.ttls) = (new bytes32[](4), new bytes32[](4), new uint256[](4));
-        (p.feeds[0], p.providerIds[0], p.ttls[0]) = (t.usdc.toBytes32(), l.usdc, 1 days);
-        (p.feeds[1], p.providerIds[1], p.ttls[1]) = (t.usdt.toBytes32(), l.usdt, 1 days);
-        (p.feeds[2], p.providerIds[2], p.ttls[2]) = (t.weth.toBytes32(), l.eth, 1 days);
-        (p.feeds[3], p.providerIds[3], p.ttls[3]) = (t.wbtc.toBytes32(), l.btc, 1 days);
-        // (p.feeds[4], p.providerIds[4], p.ttls[4]) = (t.bnb.toBytes32(), l.bnb, 1 days);
+        (p.feeds[0], p.providerIds[0], p.ttls[0]) = (LibCast.toBytes32(t.usdc), LibCast.toBytes32(l.usdc), 1 days);
+        (p.feeds[1], p.providerIds[1], p.ttls[1]) = (LibCast.toBytes32(t.usdt), LibCast.toBytes32(l.usdt), 1 days);
+        (p.feeds[2], p.providerIds[2], p.ttls[2]) = (LibCast.toBytes32(t.weth), LibCast.toBytes32(l.eth), 1 days);
+        (p.feeds[3], p.providerIds[3], p.ttls[3]) = (LibCast.toBytes32(t.wbtc), LibCast.toBytes32(l.btc), 1 days);
+        // (p.feeds[4], p.providerIds[4], p.ttls[4]) = (LibCast.toBytes32(t.bnb), l.bnb, 1 days);
     }
 
     function __testPythProviderParams() public pure virtual returns (IPriceProvider.PythParams memory p) {
         PythMeta memory pyth = __pyth();
         TokenMeta memory t = __tokens();
-        p.provider = pyth.provider;
+        p.pyth = pyth.provider;
         (p.feeds, p.providerIds, p.ttls) = (new bytes32[](4), new bytes32[](4), new uint256[](4));
-        (p.feeds[0], p.providerIds[0], p.ttls[0]) = (t.usdc.toBytes32(), pyth.usdc, 1 days);
-        (p.feeds[1], p.providerIds[1], p.ttls[1]) = (t.usdt.toBytes32(), pyth.usdt, 1 days);
-        (p.feeds[2], p.providerIds[2], p.ttls[2]) = (t.eth.toBytes32(), pyth.eth, 1 days);
-        (p.feeds[3], p.providerIds[3], p.ttls[3]) = (t.btc.toBytes32(), pyth.btc, 1 days);
+        (p.feeds[0], p.providerIds[0], p.ttls[0]) = (LibCast.toBytes32(t.usdc), pyth.usdc, 1 days);
+        (p.feeds[1], p.providerIds[1], p.ttls[1]) = (LibCast.toBytes32(t.usdt), pyth.usdt, 1 days);
+        (p.feeds[2], p.providerIds[2], p.ttls[2]) = (LibCast.toBytes32(t.weth), pyth.eth, 1 days);
+        (p.feeds[3], p.providerIds[3], p.ttls[3]) = (LibCast.toBytes32(t.wbtc), pyth.btc, 1 days);
     }
 
     function __aave() public pure virtual returns (AaveMeta memory);
