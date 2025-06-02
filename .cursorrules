@@ -30,6 +30,8 @@ globs:
 - Choose narrow scope interpretations
 - Require explicit approval for [MAJOR] scope changes, otherwise, proceed with implementations on your own
 - Use only `make build` for builds
+- Never compile solidity with via-ir, never change build parameters unless explicitly asked.
+- Only build with "make build" if available. Do not skip any files in the build process.
 
 ### Build Workflow
 - **Installation:**

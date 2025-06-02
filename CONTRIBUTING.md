@@ -88,14 +88,13 @@ main     ← production-ready, version bumps + releases triggered via Make comma
 
 All branches and commits must use specific prefixes for consistency:
 
-| Type    | Description                 | Branch Example        | Commit Example                         |
-| ------- | --------------------------- | --------------------- | -------------------------------------- |
-| **feat**  | New features, improvements  | `feat/evm-permit2`    | `[feat] Add Permit2 support to EVM`    |
-| **fix**   | Bug fixes, typos            | `fix/sui-build-error` | `[fix] Resolve Sui package build issue`|
-| **refac** | Code style, performance     | `refac/python-script` | `[refac] Optimize deployment script`   |
-| **ops**   | Tooling, scripting, CI/CD   | `ops/update-makefile` | `[ops] Add new target to Makefile`     |
-| **docs**  | Documentation, READMEs      | `docs/solana-usage`   | `[docs] Explain Solana program usage`  |
-| **chore** | Minor non-functional change | `chore/bump-uv`       | `[chore] Update uv version`            |
+| Type     | Example Branch          | Example Commit                    | Description                          |
+|----------|-------------------------|-----------------------------------|--------------------------------------|
+| **feat** | `feat/live-data`        | `[feat] Add real-time feeds`      | New features, improvements, updates  |
+| **fix**  | `fix/chart-leak`        | `[fix] Resolve memory leak`       | Bug fixes, issues                    |
+| **refac**| `refac/stores`          | `[refac] Optimize state`          | Refactors for style or performance   |
+| **docs** | `docs/examples`         | `[docs] Add examples`             | Docs, comments, translations, README |
+| **ops**  | `ops/deps`              | `[ops] Update dependencies`       | CI/CD, dependencies, scripts, chores |
 
 #### Important Notes:
 
@@ -143,7 +142,7 @@ All Solidity imports must be organized in this order:
 **Example:**
 ```solidity
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity 0.8.29;
+pragma solidity ^0.8.29;
 
 // 1. Types, Events, Errors
 import {TokenType, ErrorType} from "@/BTRTypes.sol";
